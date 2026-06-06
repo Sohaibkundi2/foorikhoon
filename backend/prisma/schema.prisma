@@ -11,21 +11,124 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
-
+// User (base for all roles)
 model User {
-  id String @id @default(uuid())
-  email String @unique 
-  name    String?
-  phone   String?
-  role    Role     @default(DONOR)
-  password String
-  city String
-  createdAt  DateTime   @default(now()) 
-  updatedAt  DateTime   @updatedAt
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  phone     String?
+  city      String
+  role      Role     @default(DONOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  donor     Donor?
+  hospital  Hospital?
 }
 
+// Donor profile
+model Donor {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id])
+  bloodGroup      BloodGroup
+  lastDonated     DateTime?
+  isAvailable     Boolean   @default(true)
+  commitmentScore Int       @default(0)
+  latitude        Float?
+  longitude       Float?
+
+  matches         Match[]
+}
+
+// Hospital profile
+model Hospital {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  name        String
+  address     String
+  licenseNo   String   @unique
+  verified    Boolean  @default(false)
+
+  requests    BloodRequest[]
+  inventory   Inventory[]
+}
+
+// Request
+model BloodRequest {
+  id          String        @id @default(uuid())
+  hospitalId  String
+  hospital    Hospital      @relation(fields: [hospitalId], references: [id])
+  bloodGroup  BloodGroup
+  units       Int
+  urgency     Urgency       @default(NORMAL)
+  status      RequestStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime  @updatedAt
+  expiresAt   DateTime?
+
+  matches     Match[]
+}
+
+// Match (donor <---> request)
+model Match {
+  id          String      @id @default(uuid())
+  requestId   String
+  request     BloodRequest @relation(fields: [requestId], references: [id])
+  donorId     String
+  donor       Donor        @relation(fields: [donorId], references: [id])
+  status      MatchStatus  @default(PENDING)
+  respondedAt DateTime?
+  createdAt   DateTime     @default(now())
+}
+
+// Hospital Inventory
+model Inventory {
+  id          String     @id @default(uuid())
+  hospitalId  String
+  hospital    Hospital   @relation(fields: [hospitalId], references: [id])
+  bloodGroup  BloodGroup
+  units       Int        @default(0)
+  updatedAt   DateTime   @updatedAt
+}
+
+// ENUMS
 enum Role {
   DONOR
   HOSPITAL
   ADMIN
+}
+
+enum BloodGroup {
+  A_POS
+  A_NEG
+  B_POS
+  B_NEG
+  AB_POS
+  AB_NEG
+  O_POS
+  O_NEG
+}
+
+enum Urgency {
+  NORMAL
+  URGENT
+  CRITICAL
+}
+
+enum RequestStatus {
+  PENDING
+  MATCHED
+  FULFILLED
+  EXPIRED
+}
+
+enum MatchStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  COMPLETED
 }
