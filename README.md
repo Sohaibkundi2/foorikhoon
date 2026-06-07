@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ForiKhoon
 
-## Getting Started
+A blood donation platform built for Local Area, connecting donors with hospitals in real time.
 
-First, run the development server:
+## The Problem
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Finding blood in an emergency in Pakistan is still largely word-of-mouth. Hospitals run out of stock with no reliable way to notify donors. Donors are willing to help but have no structured way to be reached. The gap between supply and demand costs lives.
+
+## What ForiKhoon Does
+
+ForiKhoon bridges that gap with a platform that handles the full lifecycle of a blood donation request — from the moment a hospital posts a need, to matching the right donor, to tracking whether the donation happened.
+
+**For donors** — register once, set your blood group and availability, and get notified when someone nearby needs your blood type.
+
+**For hospitals** — post emergency requests, track responses in real time, and manage your blood inventory in one place.
+
+**For administrators** — monitor donation activity across cities, verify hospitals, and view shortage trends before they become crises.
+
+## Key Features
+
+- Role-based access for donors, hospitals, and admins
+- Smart donor matching based on blood group, location, and availability
+- Escalation system that widens the search if no donor responds within a time window
+- Commitment scoring that tracks donor reliability over time
+- City-level heatmap showing blood availability and active requests
+- AI-powered shortage prediction using historical donation patterns
+- SMS and push notifications via Twilio and Firebase
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js, TypeScript, Tailwind CSS |
+| Backend | Node.js, Express, TypeScript |
+| Database | PostgreSQL (Neon), Prisma ORM |
+| AI Engine | Python, Flask |
+| Notifications | Twilio SMS, Firebase Push |
+| Infrastructure | Docker |
+
+## Architecture
+
+```
+Next.js Frontend
+      |
+      | REST
+      |
+Node.js + Express (API Gateway)
+      |
+      |--- Prisma ORM --- PostgreSQL (Neon)
+      |--- HTTP --------- Python Flask (AI Engine)
+      |--- SDK ---------- Twilio / Firebase
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Project Structure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+foorikhoon/
+├── frontend/        Next.js app
+├── backend/         Node.js + Express API
+└── ai-engine/       Python Flask microservice
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Status
 
-## Learn More
+Active development. Built as a final year project at Gomal University, with the goal of deploying a working version for use in D.I. Khan and surrounding districts.
 
-To learn more about Next.js, take a look at the following resources:
+## Author
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Sohaib Khan
+BSCS — Gomal University
