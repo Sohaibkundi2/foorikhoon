@@ -3,22 +3,24 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 dotenv.config()
 import prisma from './lib/prisma'
+import authRouter from './routes/auth.routes'
 
-
-const app = express();
+const app = express()
 
 app.use(cors())
 app.use(express.json())
 
-prisma.$connect()
-  .then(() => console.log('Database connected'))
-  .catch((err) => console.error('Database connection failed', err))
+app.use('/api/auth', authRouter)
 
 app.get('/', (req, res) => {
   res.json({ message: 'ForiKhoon API running' })
 })
 
+prisma.$connect()
+  .then(() => console.log('Database connected'))
+  .catch((err) => console.error('Database connection failed', err))
+
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
+  console.log(`Server running on port http://localhost:${PORT}`)
 })
