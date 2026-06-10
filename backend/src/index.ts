@@ -5,12 +5,18 @@ dotenv.config()
 import prisma from './lib/prisma'
 import authRouter from './routes/auth.routes'
 
+//protected routes
+import hospitalRouter from './routes/hospital.routes'
+import donorRouter from './routes/donor.routes'
+
 const app = express()
 
 app.use(cors())
 app.use(express.json())
 
 app.use('/api/auth', authRouter)
+app.use('/api/hospital', hospitalRouter)
+app.use('/api/donor', donorRouter)  
 
 app.get('/', (req, res) => {
   res.json({ message: 'ForiKhoon API running' })
