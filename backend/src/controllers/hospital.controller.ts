@@ -133,10 +133,35 @@ const getRequests = async (req: Request, res: Response) => {
     }
 }
 
+const createHospitalProfile = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId
+    if (!userId) {
+      return res.status(400).json({ message: 'Invalid user ID' })
+    }
+
+    const { name, address, licenseNo } = req.body
+
+    const hospital = await prisma.hospital.create({
+      data: {
+        userId,
+        name,
+        address,
+        licenseNo
+      }
+    })
+
+    res.status(201).json({ message: 'Hospital profile created', hospital })
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}
+
 export {
     getProfile,
     updateProfile,
     getInventory,
     updateInventory,
-    getRequests
+    getRequests,   
+    createHospitalProfile
 }

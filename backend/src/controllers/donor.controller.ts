@@ -130,10 +130,34 @@ const respondToMatch = async (req: Request, res: Response) => {
     }
 }
 
+// donor.controller.ts
+const createDonorProfile = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId
+    if (!userId) {
+      return res.status(400).json({ message: 'Invalid user ID' })
+    }
+
+    const { bloodGroup } = req.body
+
+    const donor = await prisma.donor.create({
+      data: {
+        userId,
+        bloodGroup
+      }
+    })
+
+    res.status(201).json({ message: 'Donor profile created', donor })
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}
+
 export {
     getProfile,
     updateProfile,
     updateAvailability,
     getMatches,
-    respondToMatch
+    respondToMatch,
+    createDonorProfile
 }
