@@ -93,7 +93,16 @@ const getMatches = async (req: Request, res: Response) => {
             return
         }
 
-        const matchedDonor = await prisma.match.findMany({ where: { donorId: donor.id } })
+        const matchedDonor = await prisma.match.findMany({
+            where: { donorId: donor.id },
+            include: {
+                request: {
+                include: {
+                    hospital: true
+                }
+                }
+            }
+            })
 
         res.status(200).json({ matches: matchedDonor })
 
