@@ -96,13 +96,15 @@ const updateInventory = async (req: Request, res: Response) => {
 
         const { bloodGroup, units } = req.body
 
-        const updatedInventory = await prisma.inventory.updateMany({
-            where: { hospitalId: hospital.id, bloodGroup },
-            data: { units }
+        const updatedInventory = await prisma.inventory.upsert({
+        where: {
+            hospitalId_bloodGroup: { hospitalId: hospital.id, bloodGroup }
+        },
+        update: { units },
+        create: { hospitalId: hospital.id, bloodGroup, units }
         })
-
+        // console.log(bloodGroup, units)
         res.status(200).json({ message: "Inventory updated successfully", updatedInventory })
-
     } catch (error) {
         res.status(500).json({ message: 'Internal server error' })
     }

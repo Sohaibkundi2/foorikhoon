@@ -5,6 +5,13 @@ import { useAuthStore } from '@/store/authStore'
 import { useRouter } from 'next/navigation'
 import api from '@/lib/api'
 import Link from 'next/link'
+import dayjs from 'dayjs'
+
+import relativeTime from 'dayjs/plugin/relativeTime'
+
+dayjs.extend(relativeTime)
+
+
 
 interface HospitalProfile {
   id: string
@@ -63,12 +70,19 @@ export default function HospitalDashboard() {
   const [requests, setRequests] = useState<BloodRequest[]>([])
   const [inventory, setInventory] = useState<Inventory[]>([])
   const [loading, setLoading] = useState(true)
+  const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
+    setHydrated(true)
+  }, [])
+
+
+  useEffect(() => {
+    if (!hydrated) return 
     if (!user) { router.push('/login'); return }
     if (user.role !== 'HOSPITAL') { router.push('/'); return }
     fetchData()
-  }, [user])
+  }, [hydrated, user])
 
   const fetchData = async () => {
     try {
@@ -229,7 +243,7 @@ export default function HospitalDashboard() {
                   </p>
                   <p className="text-[#6B7280] text-xs mt-1">
                     {req.matches?.length} donor{req.matches?.length !== 1 ? 's' : ''} matched ·{' '}
-                    {new Date(req.createdAt).toLocaleDateString()}
+                    {dayjs(req.createdAt).fromNow()}
                   </p>
                 </div>
               </div>
@@ -249,7 +263,7 @@ export default function HospitalDashboard() {
                   <p className="text-white text-sm font-medium">
                     {bloodGroupLabels[req.bloodGroup]} · {req.units} unit{req.units > 1 ? 's' : ''}
                   </p>
-                  <p className="text-[#6B7280] text-xs mt-0.5">{new Date(req.createdAt).toLocaleDateString()}</p>
+                  <p className="text-[#6B7280] text-xs mt-0.5">{dayjs(req.createdAt).fromNow()}</p>
                 </div>
                 <span className={`text-xs px-2.5 py-1 rounded-full border ${statusColors[req.status]}`}>
                   {req.status}

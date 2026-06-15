@@ -93,6 +93,8 @@ model Inventory {
   bloodGroup  BloodGroup
   units       Int        @default(0)
   updatedAt   DateTime   @updatedAt
+
+  @@unique([hospitalId, bloodGroup])
 }
 
 // ENUMS
