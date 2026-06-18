@@ -1,5 +1,6 @@
 import { Request, Response } from "express"
 import prisma from "../lib/prisma"
+import axios from "axios"
 
 const createRequest = async (req: Request, res: Response) => {
 
@@ -44,13 +45,32 @@ const createRequest = async (req: Request, res: Response) => {
             include: { user: true }
         })
 
+        const aiResponse = await axios.post('http://localhost:5001/ai/match', {
+            donors: matchingDonors.map(d => ({
+                id: d.id,
+                bloodGroup: d.bloodGroup,
+                city: d.user.city,
+                commitmentScore: d.commitmentScore,
+                isAvailable: d.isAvailable
+            })),
+            request: {
+                bloodGroup,
+                city: hospital.user.city,
+                urgency
+            }
+        })
+
+        const rankedDonors = aiResponse.data.matches
+
+        const topDonors = rankedDonors.slice(0, 3)
+
         // create match for each donor
         const matches = await Promise.all(
-            matchingDonors.map(donor =>
+            topDonors.map((ranked: any) =>
                 prisma.match.create({
                     data: {
                         requestId: newRequest.id,
-                        donorId: donor.id
+                        donorId: ranked.donorId
                     }
                 })
             )
@@ -59,7 +79,8 @@ const createRequest = async (req: Request, res: Response) => {
         res.status(201).json({
             message: 'Request created and donors matched',
             request: newRequest,
-            matchedDonors: matches.length
+            matchedDonors: matches.length,
+            aiRanking: rankedDonors
         })
     }
     catch (error) {
@@ -73,7 +94,7 @@ const getRequests = async (req: Request, res: Response) => {
         const pendingRequests = await prisma.bloodRequest.findMany({
             where: { status: 'PENDING' },
             include: { hospital: true }
-            })
+        })
 
         res.status(200).json({ requests: pendingRequests })
     }
@@ -89,16 +110,16 @@ const getRequestById = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Invalid user ID' })
         }
 
-        const  id  = req.params.id as string
+        const id = req.params.id as string
 
         const request = await prisma.bloodRequest.findUnique({
-        where: { id },
-        include: { hospital: true, matches: true }
+            where: { id },
+            include: { hospital: true, matches: true }
         })
 
         if (!request) {
-        res.status(404).json({ message: 'Request not found' })
-        return
+            res.status(404).json({ message: 'Request not found' })
+            return
         }
 
         res.status(200).json({ request })
@@ -118,7 +139,7 @@ const updateRequestStatus = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Invalid user ID' })
         }
 
-        const {newStatus} = req.body
+        const { newStatus } = req.body
         const id = req.params.id as string
 
         const updateStatus = await prisma.bloodRequest.update({
