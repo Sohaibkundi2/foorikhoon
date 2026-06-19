@@ -77,12 +77,13 @@ export default function HospitalDashboard() {
   }, [])
 
 
-  useEffect(() => {
-    if (!hydrated) return 
-    if (!user) { router.push('/login'); return }
-    if (user.role !== 'HOSPITAL') { router.push('/'); return }
-    fetchData()
-  }, [hydrated, user])
+useEffect(() => {
+  if (!user) { router.push('/login'); return }
+  if (user.role === 'ADMIN') { router.push('/admin/dashboard'); return }
+  if (user.role === 'DONOR') { router.push('/donor/dashboard'); return }
+  if (user.role !== 'HOSPITAL') { router.push('/'); return }
+  fetchData()
+}, [hydrated, user])
 
   const fetchData = async () => {
     try {

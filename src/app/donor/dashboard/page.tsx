@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import api from '@/lib/api'
 import Link from 'next/link'
 
+
 interface DonorProfile {
   id: string
   bloodGroup: string | null
@@ -61,12 +62,19 @@ export default function DonorDashboard() {
   const [matches, setMatches] = useState<Match[]>([])
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
 
-  useEffect(() => {
-    if (!user) { router.push('/login'); return }
-    if (user.role !== 'DONOR') { router.push('/'); return }
-    fetchData()
-  }, [user])
+    useEffect(() => {
+      setHydrated(true)
+    }, [])
+
+useEffect(() => {
+  if (!user) { router.push('/login'); return }
+  if (user.role === 'ADMIN') { router.push('/admin/dashboard'); return }
+  if (user.role === 'HOSPITAL') { router.push('/hospital/dashboard'); return }
+  if (user.role !== 'DONOR') { router.push('/'); return }
+  fetchData()
+}, [hydrated, user])
 
   const fetchData = async () => {
     try {

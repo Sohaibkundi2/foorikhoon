@@ -9,6 +9,7 @@ import authRouter from './routes/auth.routes'
 import hospitalRouter from './routes/hospital.routes'
 import donorRouter from './routes/donor.routes'
 import requestRouter from './routes/request.routes'
+import adminRouter from './routes/admin.routes'
 
 const app = express()
 
@@ -19,6 +20,7 @@ app.use('/api/auth', authRouter)
 app.use('/api/hospital', hospitalRouter)
 app.use('/api/donor', donorRouter)  
 app.use('/api/requests', requestRouter)
+app.use('/api/admin', adminRouter)
 
 app.get('/', (req, res) => {
   res.json({ message: 'ForiKhoon API running' })
