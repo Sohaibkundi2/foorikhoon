@@ -99,4 +99,11 @@ const getRequests = async (req: Request, res: Response) => {
   }
 }
 
-export { getStats, getHospitals, verifyHospital, getUsers, getRequests }
+
+export { 
+  getStats, 
+  getHospitals, 
+  verifyHospital, 
+  getUsers, 
+  getRequests, 
+ }

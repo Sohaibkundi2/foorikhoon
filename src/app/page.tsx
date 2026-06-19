@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import Map from '@/components/Map'
 
 const stats = [
   { value: '2,400+', label: 'Donors Registered' },
@@ -76,6 +77,12 @@ export default function LandingPage() {
             </Link>
           </div>
         </div>
+      </section>
+
+      {/* Heatmap */}
+      <section className="py-20 max-w-6xl mx-auto px-8">
+        <p className="text-[#6B7280] text-xs uppercase tracking-widest mb-6">Live activity map</p>
+        <Map />
       </section>
 
       {/* Stats */}
