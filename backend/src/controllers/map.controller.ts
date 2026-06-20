@@ -26,4 +26,18 @@ const getMapStats = async (req: Request, res: Response) => {
   }
 }
 
-export { getMapStats }
+const getPublicStats = async (req: Request, res: Response) => {
+  try {
+    const [totalDonors, totalHospitals, totalMatches] = await Promise.all([
+      prisma.donor.count(),
+      prisma.hospital.count({ where: { verified: true } }),
+      prisma.match.count({ where: { status: 'ACCEPTED' } })
+    ])
+
+    res.status(200).json({ totalDonors, totalHospitals, totalMatches })
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}
+
+export { getMapStats, getPublicStats }

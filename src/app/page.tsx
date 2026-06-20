@@ -4,12 +4,6 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import Map from '@/components/Map'
 
-const stats = [
-  { value: '2,400+', label: 'Donors Registered' },
-  { value: '38+', label: 'Hospitals Connected' },
-  { value: '890+', label: 'Lives Saved' },
-]
-
 const bloodGroups = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−']
 
 const steps = [
@@ -30,13 +24,104 @@ const steps = [
   },
 ]
 
+// ---- Live stats ----
+
+interface PublicStats {
+  totalDonors: number
+  totalHospitals: number
+  totalMatches: number
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
+const STATS_ENDPOINT = `${API_BASE_URL}/api/map/public-stats`
+const REFRESH_INTERVAL_MS = 60_000 // re-poll every 60s so the "live" badge is honest
+
+if (!API_BASE_URL && typeof window !== 'undefined') {
+  // Fails loudly in the browser console instead of silently rendering "—" forever.
+  // NEXT_PUBLIC_* vars are baked in at dev-server start — if you add/change this
+  // value while `next dev` is running, you must restart it for the change to apply.
+  console.error(
+    '[ForiKhoon] NEXT_PUBLIC_API_URL is undefined. Check .env.local and restart `npm run dev`.'
+  )
+}
+
+function useStats() {
+  const [stats, setStats] = useState<PublicStats | null>(null)
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchStats() {
+      try {
+        const res = await fetch(STATS_ENDPOINT, { cache: 'no-store' })
+        if (!res.ok) throw new Error('Bad response')
+        const data: PublicStats = await res.json()
+        if (!cancelled) {
+          setStats(data)
+          setStatus('ready')
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('[ForiKhoon] Failed to fetch /public-stats:', err)
+          setStatus('error')
+        }
+      }
+    }
+
+    fetchStats()
+    const interval = setInterval(fetchStats, REFRESH_INTERVAL_MS)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [])
+
+  return { stats, status }
+}
+
+function formatCount(n: number) {
+  // 2400 -> "2,400+"  |  38 -> "38+"  |  0 -> "0"
+  if (n === 0) return '0'
+  return `${n.toLocaleString('en-US')}+`
+}
+
+function StatBlock({
+  value,
+  label,
+  loading,
+}: {
+  value: string
+  label: string
+  loading: boolean
+}) {
+  return (
+    <div className="text-center">
+      <p className="text-4xl font-bold text-white mb-1 tabular-nums">
+        {loading ? (
+          <span className="inline-block h-9 w-20 bg-[#1A1A1A] rounded animate-pulse align-middle" />
+        ) : (
+          value
+        )}
+      </p>
+      <p className="text-[#9CA3AF] text-sm">{label}</p>
+    </div>
+  )
+}
+
+// ---- Page ----
+
 export default function LandingPage() {
   const [visible, setVisible] = useState(false)
+  const { stats, status } = useStats()
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 80)
     return () => clearTimeout(t)
   }, [])
+
+  const loading = status === 'loading'
 
   return (
     <main className="bg-[#0A0A0A] text-white w-full">
@@ -47,7 +132,7 @@ export default function LandingPage() {
           className="max-w-6xl mx-auto px-8 w-full transition-all duration-700 ease-out"
           style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(20px)' }}
         >
-          <div className="inline-flex items-center gap-2 bg-[#DC2626]/10 border border-[#DC2626]/20 rounded-full px-4 py-1.5 mb-8">
+          <div className="inline-flex items-center gap-2 bg-[#DC2626]/10 border border-[#DC2626]/20 rounded-full px-4 py-1.5 mb-8 mt-4 md:mt-0">
             <span className="w-1.5 h-1.5 rounded-full bg-[#DC2626] animate-pulse"></span>
             <span className="text-[#DC2626] text-xs font-medium tracking-wide">Live donor matching — Pakistan</span>
           </div>
@@ -79,21 +164,32 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Heatmap */}
-      <section className="py-20 max-w-6xl mx-auto px-8">
-        <p className="text-[#6B7280] text-xs uppercase tracking-widest mb-6">Live activity map</p>
-        <Map />
-      </section>
 
       {/* Stats */}
       <div className="border-t border-b border-[#1A1A1A]">
-        <div className="max-w-6xl mx-auto px-8 py-12 grid grid-cols-3 gap-8">
-          {stats.map((s) => (
-            <div key={s.label} className="text-center">
-              <p className="text-4xl font-bold text-white mb-1">{s.value}</p>
-              <p className="text-[#9CA3AF] text-sm">{s.label}</p>
-            </div>
-          ))}
+        <div className="max-w-6xl mx-auto px-8 py-12">
+          <div className="grid grid-cols-3 gap-8">
+            <StatBlock
+              value={stats ? formatCount(stats.totalDonors) : '—'}
+              label="Donors Registered"
+              loading={loading}
+            />
+            <StatBlock
+              value={stats ? formatCount(stats.totalHospitals) : '—'}
+              label="Hospitals Connected"
+              loading={loading}
+            />
+            <StatBlock
+              value={stats ? formatCount(stats.totalMatches) : '—'}
+              label="Successful Matches"
+              loading={loading}
+            />
+          </div>
+          {status === 'error' && (
+            <p className="text-center text-[#6B7280] text-xs mt-4">
+              Live stats are temporarily unavailable. Showing last known data.
+            </p>
+          )}
         </div>
       </div>
 
@@ -112,6 +208,11 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Heatmap */}
+      <section className="py-20 max-w-6xl mx-auto px-8">
+        <p className="text-[#6B7280] text-xs uppercase tracking-widest mb-6">Live activity map</p>
+        <Map />
+      </section>
       <div className="border-t border-[#1A1A1A]" />
 
       {/* How it works */}
@@ -146,7 +247,6 @@ export default function LandingPage() {
       <footer className="border-t border-[#1A1A1A] px-8 py-8">
         <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-[#6B7280]">
           <span><span className="text-[#DC2626] font-semibold">Fori</span>Khoon</span>
-          <span>Gomal University Final Year Project · D.I. Khan, Pakistan</span>
         </div>
       </footer>
 
