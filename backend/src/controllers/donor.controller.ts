@@ -111,32 +111,50 @@ const getMatches = async (req: Request, res: Response) => {
     }
 }
 const respondToMatch = async (req: Request, res: Response) => {
-
-    try {
-
-        const userId = req.user?.userId
-        if (!userId) {
-            return res.status(400).json({ message: 'Invalid user ID' })
-        }
-
-        const matchId = req.params.id as string
-
-        const { status } = req.body
-
-        const updatedMatch = await prisma.match.update({
-            where: { id: matchId },
-            data: {
-                status,
-                respondedAt: new Date()
-            }
-        })
-
-        res.status(200).json({ message: 'Match updated', match: updatedMatch })
-
-
-    } catch (error) {
-        res.status(500).json({ message: "interval server error" })
+  try {
+    const userId = req.user?.userId
+    if (!userId) {
+      return res.status(400).json({ message: 'Invalid user ID' })
     }
+
+    const matchId = req.params.id as string
+    const { status } = req.body
+
+    // update match
+    const updatedMatch = await prisma.match.update({
+      where: { id: matchId },
+      data: {
+        status,
+        respondedAt: new Date()
+      }
+    })
+
+    // update commitment score
+    if (status === 'ACCEPTED') {
+      await prisma.donor.update({
+        where: { id: updatedMatch.donorId },
+        data: { commitmentScore: { increment: 10 } }
+      })
+    } else if (status === 'DECLINED') {
+      await prisma.donor.update({
+        where: { id: updatedMatch.donorId },
+        data: { commitmentScore: { decrement: 5 } }
+      })
+    }
+
+    // if accepted → mark request as MATCHED
+    if (status === 'ACCEPTED') {
+      await prisma.bloodRequest.update({
+        where: { id: updatedMatch.requestId },
+        data: { status: 'MATCHED' }
+      })
+    }
+
+    res.status(200).json({ message: 'Match updated', match: updatedMatch })
+
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' })
+  }
 }
 
 // donor.controller.ts
