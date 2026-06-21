@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { useRouter } from 'next/navigation'
+import BadgePopup, { BadgeShelf } from '@/components/BadgePopup'
 import api from '@/lib/api'
 import Link from 'next/link'
 
@@ -60,6 +61,7 @@ export default function DonorDashboard() {
 
   const [donor, setDonor] = useState<DonorProfile | null>(null)
   const [matches, setMatches] = useState<Match[]>([])
+  const [badges, setBadges] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState(false)
   const [hydrated, setHydrated] = useState(false)
@@ -84,6 +86,7 @@ useEffect(() => {
       ])
       setDonor(profileRes.data.donor)
       setMatches(matchesRes.data.matches)
+      setBadges(profileRes.data.badges) 
     } catch (err) {
       console.error(err)
     } finally {
@@ -154,6 +157,13 @@ useEffect(() => {
         </Link>
       </div>
 
+          {badges.length > 0 && (
+      <div className="mb-8">
+        <h2 className="text-sm font-semibold text-white uppercase tracking-widest mb-4">Your Badges</h2>
+        <BadgeShelf badges={badges} />
+      </div>
+    )}
+
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
 
@@ -164,6 +174,10 @@ useEffect(() => {
             {donor?.bloodGroup ? bloodGroupLabels[donor.bloodGroup] : '—'}
           </p>
         </div>
+
+        {/* Badges */}
+
+        <BadgePopup badges={badges} donorId={donor?.id || ''} />
 
         {/* Availability */}
         <div className="bg-[#141414] border border-[#222] rounded-xl p-5">
