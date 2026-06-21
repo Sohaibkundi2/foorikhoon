@@ -157,12 +157,19 @@ useEffect(() => {
         </Link>
       </div>
 
-          {badges.length > 0 && (
-      <div className="mb-8">
-        <h2 className="text-sm font-semibold text-white uppercase tracking-widest mb-4">Your Badges</h2>
-        <BadgeShelf badges={badges} />
-      </div>
-    )}
+      {/* Badges dashboard */}
+
+      {badges.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-white uppercase tracking-widest">
+              Your Badges
+              <span className="ml-2 text-[#DC2626]">{badges.length}</span>
+            </h2>
+          </div>
+          <BadgeShelf badges={badges} />
+        </div>
+      )}
 
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

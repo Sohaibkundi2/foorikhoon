@@ -1,6 +1,10 @@
+
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
+
+from flask_cors import CORS
+CORS(app)
 
 
 def calculate_score(donor, blood_request):

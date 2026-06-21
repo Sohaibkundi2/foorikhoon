@@ -3,6 +3,11 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import Map from '@/components/Map'
+import dynamic from 'next/dynamic'
+
+const WeeklyHeroes = dynamic(() => import('@/components/WeeklyHeroes'), {
+  ssr: false
+})
 
 const bloodGroups = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−']
 
@@ -192,6 +197,13 @@ export default function LandingPage() {
           )}
         </div>
       </div>
+
+      {/* Weekly Heroes */}
+      <section className="py-16 max-w-6xl mx-auto px-8">
+        <WeeklyHeroes />
+      </section>
+
+      <div className="border-t border-[#1A1A1A]" />
 
       {/* Blood groups */}
       <section id="blood-groups" className="py-20 max-w-6xl mx-auto px-8">

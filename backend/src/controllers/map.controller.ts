@@ -40,4 +40,36 @@ const getPublicStats = async (req: Request, res: Response) => {
   }
 }
 
-export { getMapStats, getPublicStats }
+const getWeeklyHeroes = async (req: Request, res: Response) => {
+  try {
+    const oneWeekAgo = new Date()
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+
+    const heroes = await prisma.match.findMany({
+      where: {
+        status: 'ACCEPTED',
+        respondedAt: { gte: oneWeekAgo }
+      },
+      include: {
+        donor: {
+          include: { user: true }
+        }
+      },
+      orderBy: { respondedAt: 'desc' },
+      take: 10
+    })
+
+    const heroList = heroes.map(match => ({
+      name: match.donor.user.name || 'Anonymous',
+      city: match.donor.user.city,
+      bloodGroup: match.donor.bloodGroup,
+      commitmentScore: match.donor.commitmentScore
+    }))
+
+    res.status(200).json({ heroes: heroList })
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}
+
+export { getMapStats, getPublicStats, getWeeklyHeroes }
