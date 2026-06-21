@@ -2,6 +2,8 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 dotenv.config()
+
+import { startExpiryJob } from './jobs/expiry.job'
 import prisma from './lib/prisma'
 import authRouter from './routes/auth.routes'
 
@@ -29,8 +31,11 @@ app.get('/', (req, res) => {
 })
 
 prisma.$connect()
-  .then(() => console.log('Database connected'))
-  .catch((err) => console.error('Database connection failed', err))
+  .then(() => {
+    console.log('Database connected')
+    startExpiryJob()
+  })
+  .catch((err: Error) => console.error('Database connection failed', err))
 
 const PORT = process.env.PORT || 8000
 const server = app.listen(PORT, () => {
