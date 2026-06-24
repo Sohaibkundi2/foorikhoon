@@ -39,12 +39,16 @@ export default function Navbar() {
               <Link href="/hospital/inventory" className="hover:text-white transition-colors duration-150">Inventory</Link>
             </>
           )}
-          {!user && (
-            <>
-              <Link href="/#how-it-works" className="hover:text-white transition-colors duration-150">How it works</Link>
-              <Link href="/#blood-groups" className="hover:text-white transition-colors duration-150">Blood Groups</Link>
-            </>
-          )}
+            {!user && (
+              <>
+                <Link href="/requests" className="hover:text-white transition-colors duration-150">
+                  Active Requests
+                </Link>
+                <Link href="/#how-it-works" className="hover:text-white transition-colors duration-150">
+                  How it works
+                </Link>
+              </>
+            )}
         </div>
 
         {/* Auth buttons */}

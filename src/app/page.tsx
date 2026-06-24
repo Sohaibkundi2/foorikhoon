@@ -2,11 +2,15 @@
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import Map from '@/components/Map'
 import dynamic from 'next/dynamic'
 
 const WeeklyHeroes = dynamic(() => import('@/components/WeeklyHeroes'), {
   ssr: false
+})
+
+const Map = dynamic(() => import('@/components/Map'), {
+  ssr: false,
+  loading: () => <div className="h-[450px] bg-[#141414] border border-[#222] rounded-xl animate-pulse" />
 })
 
 const bloodGroups = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−']
@@ -164,6 +168,12 @@ export default function LandingPage() {
               className="bg-[#141414] hover:bg-[#1A1A1A] border border-[#2A2A2A] hover:border-[#3A3A3A] text-white px-7 py-3 rounded-md font-medium transition-all duration-150"
             >
               Register your hospital
+            </Link>
+            <Link
+              href="/requests"
+              className="bg-[#141414] hover:bg-[#1A1A1A] border border-[#DC2626]/30 hover:border-[#DC2626]/60 text-[#DC2626] px-7 py-3 rounded-md font-medium transition-all duration-150"
+            >
+              Active Requests →
             </Link>
           </div>
         </div>

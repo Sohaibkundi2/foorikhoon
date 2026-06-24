@@ -89,20 +89,27 @@ const createRequest = async (req: Request, res: Response) => {
     }
 }
 const getRequests = async (req: Request, res: Response) => {
+  try {
+    const pendingRequests = await prisma.bloodRequest.findMany({
+      where: { status: 'PENDING' },
+      include: {
+        hospital: {
+          include: {
+            user: true  
+          }
+        },
+        matches: true
+      }
+    })
 
-    try {
-
-        const pendingRequests = await prisma.bloodRequest.findMany({
-            where: { status: 'PENDING' },
-            include: { hospital: true }
-        })
-
-        res.status(200).json({ requests: pendingRequests })
-    }
-    catch (error) {
-        res.status(500).json({ message: 'Internal server error' })
-    }
+    res.status(200).json({ requests: pendingRequests })
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' })
+  }
 }
+
+
+
 const getRequestById = async (req: Request, res: Response) => {
 
     try {
