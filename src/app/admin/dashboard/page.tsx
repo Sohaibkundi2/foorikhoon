@@ -77,8 +77,8 @@ const roleColors: Record<string, string> = {
   DONOR: 'text-green-400 bg-green-400/10 border-green-400/20',
 }
 
-type Tab = 'OVERVIEW' | 'HOSPITALS' | 'USERS' | 'REQUESTS'
-const TABS: Tab[] = ['OVERVIEW', 'HOSPITALS', 'USERS', 'REQUESTS']
+type Tab = 'OVERVIEW' | 'HOSPITALS' | 'USERS' | 'REQUESTS' | 'SHORTAGE'
+const TABS: Tab[] = ['OVERVIEW', 'HOSPITALS', 'USERS', 'REQUESTS', 'SHORTAGE']
 
 export default function AdminDashboard() {
   const { user } = useAuthStore()
@@ -91,6 +91,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('OVERVIEW')
   const [verifyingId, setVerifyingId] = useState<string | null>(null)
+  const [predictions, setPredictions] = useState<any[]>([])
 
   useEffect(() => {
     if (!user) { router.push('/login'); return }
@@ -100,16 +101,18 @@ export default function AdminDashboard() {
 
   const fetchAll = async () => {
     try {
-      const [statsRes, hospitalsRes, usersRes, requestsRes] = await Promise.all([
+      const [statsRes, hospitalsRes, usersRes, requestsRes, shortageRes] = await Promise.all([
         api.get('/api/admin/stats'),
         api.get('/api/admin/hospitals'),
         api.get('/api/admin/users'),
         api.get('/api/admin/requests'),
+        api.get('/api/map/shortage')
       ])
       setStats(statsRes.data.stats)
       setHospitals(hospitalsRes.data.hospitals)
       setUsers(usersRes.data.users)
       setRequests(requestsRes.data.requests)
+      setPredictions(shortageRes.data.predictions)
     } catch (err) {
       console.error(err)
     } finally {
@@ -272,6 +275,37 @@ export default function AdminDashboard() {
                   {req.units} unit{req.units > 1 ? 's' : ''} · {req.matches.length} match{req.matches.length !== 1 ? 'es' : ''} · {new Date(req.createdAt).toLocaleDateString()}
                 </p>
               </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Shortage tab */}
+      {activeTab === 'SHORTAGE' && (
+        <div className="space-y-3">
+          {predictions.map((pred) => (
+            <div key={pred.bloodGroup} className="bg-[#141414] border border-[#222] rounded-xl p-5 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/20 flex items-center justify-center">
+                  <span className="text-[#DC2626] font-bold text-lg">
+                    {bloodGroupLabels[pred.bloodGroup]}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-white font-semibold">{bloodGroupLabels[pred.bloodGroup]}</p>
+                  <p className="text-[#6B7280] text-xs mt-0.5">
+                    {pred.requestCount} requests · {pred.donorCount} donors · ratio {pred.ratio}
+                  </p>
+                </div>
+              </div>
+              <span className={`text-xs px-3 py-1.5 rounded-full border font-semibold ${
+                pred.risk === 'CRITICAL' ? 'text-red-400 bg-red-400/10 border-red-400/20' :
+                pred.risk === 'HIGH' ? 'text-orange-400 bg-orange-400/10 border-orange-400/20' :
+                pred.risk === 'MODERATE' ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' :
+                'text-green-400 bg-green-400/10 border-green-400/20'
+              }`}>
+                {pred.risk}
+              </span>
             </div>
           ))}
         </div>

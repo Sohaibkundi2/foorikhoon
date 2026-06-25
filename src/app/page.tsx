@@ -124,10 +124,22 @@ function StatBlock({
 export default function LandingPage() {
   const [visible, setVisible] = useState(false)
   const { stats, status } = useStats()
+  const [shortage, setShortage] = useState<any[]>([])
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 80)
     return () => clearTimeout(t)
+  }, [])
+
+  useEffect(()=>{
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/map/shortage`)
+          .then(res => res.json())
+          .then(data => setShortage(
+            data.predictions
+              .filter((p: any) => p.risk === 'CRITICAL' || p.risk === 'HIGH')
+              .slice(0, 3)
+          ))
+          .catch(console.error)
   }, [])
 
   const loading = status === 'loading'
@@ -207,6 +219,32 @@ export default function LandingPage() {
           )}
         </div>
       </div>
+          {/* Shortage  */}
+        {shortage.length > 0 && (
+        <div className="border-t border-[#1A1A1A]">
+          <div className="max-w-6xl mx-auto px-8 py-8">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-2 h-2 rounded-full bg-[#DC2626] animate-pulse" />
+              <p className="text-[#DC2626] text-xs font-medium uppercase tracking-widest">Shortage Alert</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {shortage.map(pred => (
+                <div key={pred.bloodGroup} className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-semibold ${
+                  pred.risk === 'CRITICAL'
+                    ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                    : 'bg-orange-500/10 border-orange-500/20 text-orange-400'
+                }`}>
+                  <span>{ pred.bloodGroup}</span> 
+                  <span className="text-xs font-normal opacity-70">{pred.risk}</span>
+                </div>
+              ))}
+              <Link href="/register" className="flex items-center gap-2 px-4 py-2 rounded-full border border-[#2A2A2A] text-sm text-[#9CA3AF] hover:text-white transition-colors">
+                Donate now →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Weekly Heroes */}
       <section className="py-16 max-w-6xl mx-auto px-8">
