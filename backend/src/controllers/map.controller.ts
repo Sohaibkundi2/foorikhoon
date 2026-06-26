@@ -113,5 +113,36 @@ const getShortagePrediiction = async (req: Request, res: Response) => {
   }
 }
 
-export { getMapStats, getPublicStats, getWeeklyHeroes, getShortagePrediiction }
+const getLeaderboard = async (req: Request, res: Response) => {
+  try {
+    const donors = await prisma.donor.findMany({
+      where: {
+        commitmentScore: { gt: 0 }
+      },
+      include: {
+        user: true,
+        matches: {
+          where: { status: 'ACCEPTED' }
+        }
+      },
+      orderBy: { commitmentScore: 'desc' },
+      take: 20
+    })
+
+    const leaderboard = donors.map((donor, index) => ({
+      rank: index + 1,
+      name: donor.user.name || 'Anonymous',
+      city: donor.user.city,
+      bloodGroup: donor.bloodGroup,
+      commitmentScore: donor.commitmentScore,
+      totalDonations: donor.matches.length
+    }))
+
+    res.status(200).json({ leaderboard })
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}
+
+export { getMapStats, getPublicStats, getWeeklyHeroes, getShortagePrediiction, getLeaderboard }
 
