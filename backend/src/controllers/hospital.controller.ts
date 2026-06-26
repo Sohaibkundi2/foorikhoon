@@ -159,11 +159,65 @@ const createHospitalProfile = async (req: Request, res: Response) => {
   }
 }
 
-export {
-    getProfile,
-    updateProfile,
-    getInventory,
-    updateInventory,
-    getRequests,   
-    createHospitalProfile
+const getAnalytics = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId
+    if (!userId) return res.status(400).json({ message: 'Invalid user ID' })
+
+    const hospital = await prisma.hospital.findUnique({ where: { userId } })
+    if (!hospital) return res.status(404).json({ message: 'Hospital not found' })
+
+    const startOfMonth = new Date()
+    startOfMonth.setDate(1)
+    startOfMonth.setHours(0, 0, 0, 0)
+
+    const [allRequests, monthRequests, inventory] = await Promise.all([
+      prisma.bloodRequest.findMany({
+        where: { hospitalId: hospital.id }
+      }),
+      prisma.bloodRequest.findMany({
+        where: {
+          hospitalId: hospital.id,
+          createdAt: { gte: startOfMonth }
+        }
+      }),
+      prisma.inventory.findMany({
+        where: { hospitalId: hospital.id }
+      })
+    ])
+
+    // most requested blood group
+    const bloodGroupCount: Record<string, number> = {}
+    allRequests.forEach(r => {
+      bloodGroupCount[r.bloodGroup] = (bloodGroupCount[r.bloodGroup] || 0) + 1
+    })
+    const mostRequested = Object.entries(bloodGroupCount)
+      .sort((a, b) => b[1] - a[1])[0]?.[0] || null
+
+    // fulfillment rate
+    const fulfilled = allRequests.filter(r => r.status === 'FULFILLED').length
+    const fulfillmentRate = allRequests.length > 0
+      ? Math.round((fulfilled / allRequests.length) * 100)
+      : 0
+
+    // low stock — units < 5
+    const lowStock = inventory.filter(i => i.units < 5)
+
+    res.status(200).json({
+      analytics: {
+        mostRequested,
+        totalRequestsThisMonth: monthRequests.length,
+        fulfillmentRate,
+        totalRequests: allRequests.length,
+        fulfilled,
+        lowStock,
+        inventory
+      }
+    })
+
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' })
+  }
 }
+
+export { getProfile, updateProfile, getInventory, updateInventory, getRequests, createHospitalProfile, getAnalytics }

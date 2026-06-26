@@ -135,6 +135,9 @@ useEffect(() => {
           </div>
         </div>
         <div className="flex gap-3">
+          <Link href="/hospital/analytics" className="text-sm border border-[#2A2A2A] hover:border-[#3A3A3A] text-[#9CA3AF] hover:text-white px-4 py-2 rounded-md transition-all duration-150">
+  Analytics
+</Link>
           <Link
             href="/hospital/profile"
             className="text-sm border border-[#2A2A2A] hover:border-[#3A3A3A] text-[#9CA3AF] hover:text-white px-4 py-2 rounded-md transition-all duration-150"

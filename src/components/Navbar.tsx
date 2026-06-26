@@ -32,6 +32,7 @@ export default function Navbar() {
     { href: '/hospital/requests', label: 'Requests' },
     { href: '/hospital/inventory', label: 'Inventory' },
     { href: '/hospital/request/new', label: 'New Request' },
+    { href: '/hospital/analytics', label: 'Analytics' },
   ]
 
   const adminLinks = [

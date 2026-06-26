@@ -113,10 +113,6 @@ const getRequests = async (req: Request, res: Response) => {
 const getRequestById = async (req: Request, res: Response) => {
 
     try {
-        const userId = req.user?.userId
-        if (!userId) {
-            return res.status(400).json({ message: 'Invalid user ID' })
-        }
 
         const id = req.params.id as string
 
