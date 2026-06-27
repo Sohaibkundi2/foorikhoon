@@ -1,6 +1,6 @@
 # ForiKhoon — Emergency Blood Network
 
-A full-stack blood donation platform connecting donors with hospitals across Pakistan in real time.
+A full-stack blood donation platform connecting donors with hospitals across Pakistan in real time. Built as a Final Year Project at Gomal University, D.I. Khan.
 
 ---
 
@@ -12,11 +12,13 @@ Finding blood in an emergency in Pakistan is still largely word-of-mouth. Hospit
 
 ForiKhoon bridges that gap with a platform that handles the full lifecycle of a blood donation request — from the moment a hospital posts a need, to matching the right donor using AI, to tracking whether the donation happened.
 
-**For donors** — register once, set your blood group and availability, get notified when someone nearby needs your blood type, and build a commitment score over time.
+**For donors** — register once, set your blood group and availability, get notified when someone nearby needs your blood type, earn badges for milestones, and build a commitment score over time.
 
-**For hospitals** — post emergency requests, track responses in real time, manage blood inventory, and get matched with the most reliable donors first.
+**For hospitals** — post emergency requests, track responses in real time, manage blood inventory, view analytics, and get matched with the most reliable donors first.
 
-**For administrators** — monitor donation activity across cities, verify hospitals, and view live stats and shortage trends.
+**For administrators** — monitor donation activity across cities, verify hospitals, view live stats, shortage predictions, and manage all users.
+
+**For the public** — view active blood requests, filter by city and blood group, share requests, and see the donor leaderboard.
 
 ---
 
@@ -25,13 +27,18 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 - Role-based access for donors, hospitals, and admins
 - AI-powered donor matching using Python Flask microservice
 - Donors ranked by blood compatibility, location, availability, and commitment score
-- Escalation system — requests auto-expire after 24 hours
-- Commitment scoring — donors earn points for accepting, lose points for declining
-- Badge system — donors earn badges for milestones (First Blood, Lifesaver, Hero)
+- Shortage prediction — predicts which blood groups will run low based on 30-day history
+- Escalation system — requests auto-expire after 24 hours via background job
+- Commitment scoring — donors earn/lose points based on response behavior
+- Badge system — donors earn badges (First Blood, Lifesaver, Hero etc)
 - City-level heatmap showing blood demand across Pakistan
 - Live public stats on landing page
-- Admin dashboard with hospital verification, user management, and request monitoring
-- Background jobs using node-cron for auto-expiry
+- Weekly heroes slider — showcases donors who donated this week
+- Donor leaderboard with city filter
+- Public blood request board with filters
+- Hospital analytics — most requested blood group, fulfillment rate, inventory status
+- Admin dashboard with hospital verification, user management, shortage alerts
+- Mobile responsive with hamburger menu
 
 ---
 
@@ -47,6 +54,8 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 | State | Zustand with persistence |
 | Maps | Leaflet.js, React Leaflet |
 | Background Jobs | node-cron |
+| HTTP Client | Axios |
+| Date Handling | Day.js |
 | Infrastructure | Docker (docker-compose) |
 
 ---
@@ -72,48 +81,50 @@ PostgreSQL (Neon)     Python Flask AI Engine (port 5001)
 ```
 foorikhoon/
 ├── frontend/                  Next.js app
-│   ├── src/
-│   │   ├── app/               Pages (App Router)
-│   │   │   ├── page.tsx       Landing page with heatmap
-│   │   │   ├── login/
-│   │   │   ├── register/
-│   │   │   ├── donor/
-│   │   │   │   ├── dashboard/
-│   │   │   │   ├── profile/
-│   │   │   │   └── matches/
-│   │   │   ├── hospital/
-│   │   │   │   ├── dashboard/
-│   │   │   │   ├── profile/
-│   │   │   │   ├── requests/
-│   │   │   │   ├── inventory/
-│   │   │   │   └── request/new/
-│   │   │   └── admin/
-│   │   │       └── dashboard/
-│   │   ├── components/
-│   │   │   ├── Navbar.tsx
-│   │   │   ├── Map.tsx
-│   │   │   └── BadgePopup.tsx
-│   │   ├── store/
-│   │   │   └── authStore.ts   Zustand auth store
-│   │   └── lib/
-│   │       └── api.ts         Axios instance
+│   └── src/
+│       ├── app/
+│       │   ├── page.tsx               Landing page
+│       │   ├── login/
+│       │   ├── register/
+│       │   ├── requests/
+│       │   │   ├── page.tsx           Public request board
+│       │   │   └── [id]/page.tsx      Request detail
+│       │   ├── leaderboard/
+│       │   ├── donor/
+│       │   │   ├── dashboard/
+│       │   │   ├── profile/
+│       │   │   └── matches/
+│       │   ├── hospital/
+│       │   │   ├── dashboard/
+│       │   │   ├── profile/
+│       │   │   ├── analytics/
+│       │   │   ├── requests/
+│       │   │   ├── inventory/
+│       │   │   └── request/new/
+│       │   └── admin/dashboard/
+│       ├── components/
+│       │   ├── Navbar.tsx
+│       │   ├── Map.tsx
+│       │   ├── BadgePopup.tsx
+│       │   └── WeeklyHeroes.tsx
+│       ├── store/authStore.ts
+│       └── lib/api.ts
 │
-├── backend/                   Node.js + Express API
-│   ├── src/
-│   │   ├── index.ts           Entry point
-│   │   ├── routes/            Auth, Donor, Hospital, Request, Admin, Map
-│   │   ├── controllers/       Business logic
-│   │   ├── middleware/        Auth + Role middleware
-│   │   ├── jobs/              Expiry job (node-cron)
-│   │   └── lib/
-│   │       └── prisma.ts      Prisma client
+├── backend/
+│   └── src/
+│       ├── index.ts
+│       ├── routes/
+│       ├── controllers/
+│       ├── middleware/
+│       ├── jobs/
+│       │   └── expiry.job.ts
+│       └── lib/prisma.ts
 │   └── prisma/
-│       ├── schema.prisma      Database models
-│       ├── migrations/
-│       └── seed.ts            Seed data (50 donors, 5 hospitals, 25 requests)
+│       ├── schema.prisma
+│       └── seed.ts
 │
-├── ai-engine/                 Python Flask microservice
-│   └── app.py                 Donor scoring + ranking endpoint
+├── ai-engine/
+│   └── app.py
 │
 └── docker-compose.yml
 ```
@@ -123,12 +134,12 @@ foorikhoon/
 ## Database Models
 
 ```
-User        — base model for all roles (DONOR, HOSPITAL, ADMIN)
-Donor       — blood group, availability, commitment score, badges
-Hospital    — name, address, license, verified status
+User         — base model (DONOR, HOSPITAL, ADMIN)
+Donor        — blood group, availability, commitment score
+Hospital     — name, address, license, verified
 BloodRequest — blood group, units, urgency, status, expiry
-Match       — links donor to request, tracks response
-Inventory   — hospital blood stock per blood group
+Match        — links donor to request, tracks response
+Inventory    — hospital blood stock per blood group
 ```
 
 ---
@@ -136,58 +147,64 @@ Inventory   — hospital blood stock per blood group
 ## API Endpoints
 
 ```
-AUTH
-POST  /api/auth/register
-POST  /api/auth/login
+AUTH          POST /api/auth/register, /api/auth/login
 
-DONOR
-POST  /api/donor/profile
-GET   /api/donor/profile
-PUT   /api/donor/profile
-PUT   /api/donor/availability
-GET   /api/donor/matches
-PUT   /api/donor/matches/:id
+DONOR         POST/GET/PUT /api/donor/profile
+              PUT /api/donor/availability
+              GET /api/donor/matches
+              PUT /api/donor/matches/:id
 
-HOSPITAL
-POST  /api/hospital/profile
-GET   /api/hospital/profile
-PUT   /api/hospital/profile
-GET   /api/hospital/inventory
-PUT   /api/hospital/inventory
-GET   /api/hospital/requests
+HOSPITAL      POST/GET/PUT /api/hospital/profile
+              GET/PUT /api/hospital/inventory
+              GET /api/hospital/requests
+              GET /api/hospital/analytics
 
-REQUESTS
-POST  /api/requests
-GET   /api/requests
-GET   /api/requests/:id
-PUT   /api/requests/:id
+REQUESTS      POST/GET /api/requests
+              GET/PUT /api/requests/:id
 
-ADMIN
-GET   /api/admin/stats
-GET   /api/admin/hospitals
-PUT   /api/admin/hospitals/:id/verify
-GET   /api/admin/users
-GET   /api/admin/requests
+ADMIN         GET /api/admin/stats
+              GET /api/admin/hospitals
+              PUT /api/admin/hospitals/:id/verify
+              GET /api/admin/users
+              GET /api/admin/requests
 
-MAP
-GET   /api/map/stats
-GET   /api/map/public-stats
+MAP           GET /api/map/stats
+              GET /api/map/public-stats
+              GET /api/map/weekly-heroes
+              GET /api/map/leaderboard
+              GET /api/map/shortage
 ```
 
 ---
 
-## AI Matching Algorithm
+## AI Engine Endpoints
 
-When a hospital posts a blood request, Node.js calls the Python Flask AI engine with the list of eligible donors. Each donor is scored:
+```
+POST /ai/match    — scores and ranks donors for a blood request
+POST /ai/predict  — predicts blood group shortage based on 30-day history
+```
+
+### Matching Algorithm
 
 ```
 Blood group match  → +50 points
 City match         → +30 points
 Is available       → +20 points
-Commitment score   → score × 0.5 bonus points
+Commitment score   → score × 0.5 bonus
 ```
 
-Donors are ranked by score. Only the top 3 are matched and notified.
+Top 3 ranked donors are matched and notified.
+
+### Shortage Prediction
+
+```
+ratio = requestCount / donorCount (last 30 days)
+
+ratio >= 0.8  → CRITICAL
+ratio >= 0.5  → HIGH
+ratio >= 0.3  → MODERATE
+ratio < 0.3   → LOW
+```
 
 ---
 
@@ -196,22 +213,20 @@ Donors are ranked by score. Only the top 3 are matched and notified.
 ### Prerequisites
 - Node.js 20+
 - Python 3.11+
-- PostgreSQL (or Neon DB account)
+- PostgreSQL (Neon DB free tier works)
 
 ### Backend
-
 ```bash
 cd backend
 npm install
 cp .env.example .env
-# Add DATABASE_URL and JWT_SECRET to .env
+# Add DATABASE_URL and JWT_SECRET
 npx prisma migrate dev
 npx ts-node prisma/seed.ts
 npm run dev
 ```
 
 ### Frontend
-
 ```bash
 cd frontend
 npm install
@@ -220,18 +235,15 @@ npm run dev
 ```
 
 ### AI Engine
-
 ```bash
 cd ai-engine
 pip install flask flask-cors
 python app.py
 ```
 
-### Docker (all services)
-
+### Docker
 ```bash
 cp .env.example .env
-# Fill in DATABASE_URL and JWT_SECRET
 docker-compose up --build
 ```
 
@@ -242,14 +254,35 @@ docker-compose up --build
 ```
 Donor:    donor1@foorikhoon.com  / 123456
 Hospital: hospital1@foorikhoon.com / 123456
-Admin:    (create via seed script or update role manually)
+Admin:    update any user role via seed script
 ```
 
 ---
 
+## Pages
+
+| Page | Access |
+|---|---|
+| / | Public |
+| /login | Public |
+| /register | Public |
+| /requests | Public |
+| /requests/:id | Public |
+| /leaderboard | Public |
+| /donor/dashboard | Donor |
+| /donor/profile | Donor |
+| /donor/matches | Donor |
+| /hospital/dashboard | Hospital |
+| /hospital/profile | Hospital |
+| /hospital/analytics | Hospital |
+| /hospital/requests | Hospital |
+| /hospital/inventory | Hospital |
+| /hospital/request/new | Hospital |
+| /admin/dashboard | Admin |
+
+---
 
 ## Author
 
 Sohaib Khan
-github.com/sohaibkundi2
-sohaibkhan.me
+github.com/sohaibkundi2 · sohaibkhan.me
