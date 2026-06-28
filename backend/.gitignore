@@ -6,3 +6,5 @@ node_modules
 
 
 */seed.ts
+
+prisma/generated/
