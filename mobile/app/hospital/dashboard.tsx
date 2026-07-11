@@ -43,20 +43,28 @@ const bloodGroupLabels: Record<string, string> = {
 
 type PillStyle = { bg: string; border: string; text: string }
 
-const urgencyStyle: Record<string, PillStyle> = {
-  CRITICAL: { bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)', text: '#F87171' },
-  URGENT:   { bg: 'rgba(251,146,60,0.1)',  border: 'rgba(251,146,60,0.2)',  text: '#FB923C' },
-  NORMAL:   { bg: 'rgba(74,222,128,0.1)',  border: 'rgba(74,222,128,0.2)',  text: '#4ADE80' },
+const urgencyStyle: Record<string, PillStyle & { bar: string }> = {
+  CRITICAL: { bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.25)', text: '#F87171', bar: '#F87171' },
+  URGENT:   { bg: 'rgba(251,146,60,0.08)',  border: 'rgba(251,146,60,0.25)',  text: '#FB923C', bar: '#FB923C' },
+  NORMAL:   { bg: 'rgba(74,222,128,0.08)',  border: 'rgba(74,222,128,0.25)',  text: '#4ADE80', bar: '#4ADE80' },
 }
 
-const statusStyle: Record<string, PillStyle> = {
-  PENDING:   { bg: 'rgba(250,204,21,0.1)', border: 'rgba(250,204,21,0.2)', text: '#FACC15' },
-  MATCHED:   { bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.2)', text: '#60A5FA' },
-  FULFILLED: { bg: 'rgba(74,222,128,0.1)', border: 'rgba(74,222,128,0.2)', text: '#4ADE80' },
-  EXPIRED:   { bg: 'rgba(107,114,128,0.1)',border: 'rgba(107,114,128,0.2)',text: '#6B7280' },
+const urgencyRank: Record<string, number> = { CRITICAL: 0, URGENT: 1, NORMAL: 2 }
+
+const statusDot: Record<string, string> = {
+  PENDING: '#FACC15',
+  MATCHED: '#60A5FA',
+  FULFILLED: '#4ADE80',
+  EXPIRED: '#6B7280',
 }
 
-// Simple relative time without dayjs
+// Inventory stock level thresholds
+function stockLevel(units: number): { label: string; color: string } {
+  if (units <= 4) return { label: 'Low', color: '#F87171' }
+  if (units <= 14) return { label: 'OK', color: '#FACC15' }
+  return { label: 'Good', color: '#4ADE80' }
+}
+
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins  = Math.floor(diff / 60000)
@@ -102,9 +110,12 @@ export default function HospitalDashboard() {
     }
   }
 
-  const activeRequests = requests.filter(r => r.status === 'PENDING' || r.status === 'MATCHED')
+  const activeRequests = requests
+    .filter(r => r.status === 'PENDING' || r.status === 'MATCHED')
+    .sort((a, b) => (urgencyRank[a.urgency] ?? 2) - (urgencyRank[b.urgency] ?? 2))
   const pastRequests   = requests.filter(r => r.status === 'FULFILLED' || r.status === 'EXPIRED')
-  const fulfilledCount = requests.filter(r => r.status === 'FULFILLED').length
+  const criticalCount  = activeRequests.filter(r => r.urgency === 'CRITICAL').length
+  const lowStockCount  = inventory.filter(i => i.units <= 4).length
 
   if (loading) {
     return (
@@ -117,37 +128,43 @@ export default function HospitalDashboard() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
 
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.eyebrow}>HOSPITAL DASHBOARD</Text>
-          {/* Action buttons row */}
-          <View style={styles.headerActions}>
-            <Link href="/hospital/analytics" asChild>
-              <TouchableOpacity style={styles.outlineBtn} activeOpacity={0.8}>
-                <Text style={styles.outlineBtnText}>Analytics</Text>
-              </TouchableOpacity>
-            </Link>
-            <Link href="/hospital/profile" asChild>
-              <TouchableOpacity style={styles.outlineBtn} activeOpacity={0.8}>
-                <Text style={styles.outlineBtnText}>Edit Profile</Text>
-              </TouchableOpacity>
-            </Link>
+      {/* Header */}
+      <View style={styles.headerRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title} numberOfLines={1}>{hospital?.name}</Text>
+          <View style={styles.headerMeta}>
+            <Text style={styles.city}>{hospital?.user.city}</Text>
+            <View style={styles.metaDot} />
+            {hospital?.verified ? (
+              <Text style={styles.verifiedText}>Verified</Text>
+            ) : (
+              <Text style={styles.pendingText}>Pending verification</Text>
+            )}
           </View>
         </View>
+        <Link href="/hospital/profile" asChild>
+          <TouchableOpacity style={styles.editBtn} activeOpacity={0.7}>
+            <Text style={styles.editBtnText}>Edit</Text>
+          </TouchableOpacity>
+        </Link>
+      </View>
 
-        <Text style={styles.title}>{hospital?.name}</Text>
-
-        <View style={styles.headerMeta}>
-          <Text style={styles.city}>{hospital?.user.city}</Text>
-          {hospital?.verified ? (
-            <Pill s={{ bg: 'rgba(74,222,128,0.1)', border: 'rgba(74,222,128,0.2)', text: '#4ADE80' }} label="Verified" />
-          ) : (
-            <Pill s={{ bg: 'rgba(250,204,21,0.1)', border: 'rgba(250,204,21,0.2)', text: '#FACC15' }} label="Pending Verification" />
-          )}
+      {/* Hero: what needs attention right now */}
+      <View style={[styles.hero, criticalCount > 0 && styles.heroAlert]}>
+        <View style={styles.heroTextWrap}>
+          <Text style={styles.heroStatus}>
+            {criticalCount > 0
+              ? `${criticalCount} critical request${criticalCount > 1 ? 's' : ''} need attention`
+              : activeRequests.length > 0
+                ? `${activeRequests.length} active request${activeRequests.length > 1 ? 's' : ''}`
+                : 'No active requests'}
+          </Text>
+          <Text style={styles.heroSub}>
+            {lowStockCount > 0
+              ? `${lowStockCount} blood type${lowStockCount > 1 ? 's' : ''} running low in your inventory.`
+              : 'Inventory levels look healthy.'}
+          </Text>
         </View>
-
-        {/* New Request — full width CTA */}
         <Link href="/hospital/request/new" asChild>
           <TouchableOpacity style={styles.newRequestBtn} activeOpacity={0.85}>
             <Text style={styles.newRequestText}>+ New Request</Text>
@@ -155,23 +172,20 @@ export default function HospitalDashboard() {
         </Link>
       </View>
 
-      {/* ── Stats ── */}
-      <View style={styles.statsRow}>
-        <StatCard label="Total" value={requests.length} color="#FFFFFF" />
-        <StatCard label="Active" value={activeRequests.length} color="#DC2626" />
-        <StatCard label="Fulfilled" value={fulfilledCount} color="#4ADE80" />
-      </View>
+      {/* Inventory shelf */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Blood inventory</Text>
+          <Link href="/hospital/inventory" asChild>
+            <TouchableOpacity>
+              <Text style={styles.sectionAction}>Manage →</Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
 
-      {/* ── Inventory ── */}
-      <Section
-        title="BLOOD INVENTORY"
-        action={<Link href="/hospital/inventory" asChild>
-          <TouchableOpacity><Text style={styles.sectionAction}>Manage →</Text></TouchableOpacity>
-        </Link>}
-      >
         {inventory.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>No inventory added yet.</Text>
+            <Text style={styles.emptyTitle}>No inventory added yet</Text>
             <Link href="/hospital/inventory" asChild>
               <TouchableOpacity>
                 <Text style={styles.emptyLink}>Add inventory</Text>
@@ -179,33 +193,46 @@ export default function HospitalDashboard() {
             </Link>
           </View>
         ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.inventoryRow}>
-              {inventory.map((item) => (
-                <View key={item.id} style={styles.inventoryCard}>
-                  <Text style={styles.inventoryBlood}>
-                    {bloodGroupLabels[item.bloodGroup] || item.bloodGroup}
-                  </Text>
-                  <Text style={styles.inventoryUnits}>{item.units}</Text>
-                  <Text style={styles.inventoryLabel}>units</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelfRow}>
+            {inventory.map((item) => {
+              const level = stockLevel(item.units)
+              const fillPct = Math.max(6, Math.min(100, (item.units / 20) * 100))
+              return (
+                <View key={item.id} style={styles.shelfCard}>
+                  <Text style={styles.shelfBlood}>{bloodGroupLabels[item.bloodGroup] || item.bloodGroup}</Text>
+                  <View style={styles.shelfTrack}>
+                    <View style={[styles.shelfFill, { height: `${fillPct}%`, backgroundColor: level.color }]} />
+                  </View>
+                  <Text style={styles.shelfUnits}>{item.units}</Text>
+                  <Text style={[styles.shelfLevel, { color: level.color }]}>{level.label}</Text>
                 </View>
-              ))}
-            </View>
+              )
+            })}
           </ScrollView>
         )}
-      </Section>
+      </View>
 
-      {/* ── Active Requests ── */}
-      <Section
-        title="ACTIVE REQUESTS"
-        count={activeRequests.length}
-        action={<Link href="/hospital/requests" asChild>
-          <TouchableOpacity><Text style={styles.sectionAction}>View all →</Text></TouchableOpacity>
-        </Link>}
-      >
+      {/* Active requests */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeaderRow}>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>Active requests</Text>
+            {activeRequests.length > 0 && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>{activeRequests.length}</Text>
+              </View>
+            )}
+          </View>
+          <Link href="/hospital/requests" asChild>
+            <TouchableOpacity>
+              <Text style={styles.sectionAction}>View all →</Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
+
         {activeRequests.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>No active requests.</Text>
+            <Text style={styles.emptyTitle}>No active requests</Text>
             <Link href="/hospital/request/new" asChild>
               <TouchableOpacity>
                 <Text style={styles.emptyLink}>Post a new request</Text>
@@ -214,201 +241,172 @@ export default function HospitalDashboard() {
           </View>
         ) : (
           activeRequests.map((req) => {
-            const up = urgencyStyle[req.urgency] ?? urgencyStyle.NORMAL
-            const sp = statusStyle[req.status]  ?? statusStyle.PENDING
+            const urg = urgencyStyle[req.urgency] ?? urgencyStyle.NORMAL
+            const matchCount = req.matches?.length ?? 0
             return (
-              <View key={req.id} style={styles.requestCard}>
-                {/* Top row: blood group + pills */}
+              <View key={req.id} style={[styles.requestCard, { borderLeftColor: urg.bar }]}>
                 <View style={styles.requestTopRow}>
                   <Text style={styles.requestBlood}>
                     {bloodGroupLabels[req.bloodGroup] || req.bloodGroup}
                   </Text>
-                  <View style={styles.pillRow}>
-                    <Pill s={up} label={req.urgency} />
-                    <Pill s={sp} label={req.status} />
+                  <View style={[styles.pill, { backgroundColor: urg.bg, borderColor: urg.border }]}>
+                    <Text style={[styles.pillText, { color: urg.text }]}>{req.urgency}</Text>
                   </View>
                 </View>
-                {/* Details */}
                 <Text style={styles.requestDetail}>
                   {req.units} unit{req.units > 1 ? 's' : ''} needed
                   {req.notes ? ` · ${req.notes}` : ''}
                 </Text>
-                <Text style={styles.requestMeta}>
-                  {req.matches?.length} donor{req.matches?.length !== 1 ? 's' : ''} matched · {timeAgo(req.createdAt)}
-                </Text>
+                <View style={styles.requestFooterRow}>
+                  <Text style={styles.requestMeta}>
+                    {matchCount} donor{matchCount !== 1 ? 's' : ''} matched
+                  </Text>
+                  <Text style={styles.requestMeta}>{timeAgo(req.createdAt)}</Text>
+                </View>
               </View>
             )
           })
         )}
-      </Section>
+      </View>
 
-      {/* ── Past Requests ── */}
+      {/* History */}
       {pastRequests.length > 0 && (
-        <Section title="REQUEST HISTORY">
-          {pastRequests.map((req) => {
-            const sp = statusStyle[req.status] ?? statusStyle.EXPIRED
-            return (
-              <View key={req.id} style={styles.historyCard}>
-                <View>
-                  <Text style={styles.historyTitle}>
-                    {bloodGroupLabels[req.bloodGroup]} · {req.units} unit{req.units > 1 ? 's' : ''}
-                  </Text>
-                  <Text style={styles.requestMeta}>{timeAgo(req.createdAt)}</Text>
-                </View>
-                <Pill s={sp} label={req.status} />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>History</Text>
+          {pastRequests.map((req) => (
+            <View key={req.id} style={styles.historyRow}>
+              <View style={[styles.historyDot, { backgroundColor: statusDot[req.status] ?? '#6B7280' }]} />
+              <View style={styles.historyTextWrap}>
+                <Text style={styles.historyTitle} numberOfLines={1}>
+                  {bloodGroupLabels[req.bloodGroup]} · {req.units} unit{req.units > 1 ? 's' : ''}
+                </Text>
+                <Text style={styles.historyMeta}>{timeAgo(req.createdAt)}</Text>
               </View>
-            )
-          })}
-        </Section>
+              <Text style={styles.historyStatus}>{req.status}</Text>
+            </View>
+          ))}
+        </View>
       )}
+
+      {/* Quick link to analytics — low emphasis, secondary */}
+      <Link href="/hospital/analytics" asChild>
+        <TouchableOpacity style={styles.analyticsLink} activeOpacity={0.7}>
+          <Text style={styles.analyticsLinkText}>View detailed analytics →</Text>
+        </TouchableOpacity>
+      </Link>
 
     </ScrollView>
   )
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <View style={styles.statCard}>
-      <Text style={styles.statLabel}>{label.toUpperCase()}</Text>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-    </View>
-  )
-}
-
-function Pill({ s, label }: { s: PillStyle; label: string }) {
-  return (
-    <View style={[styles.pill, { backgroundColor: s.bg, borderColor: s.border }]}>
-      <Text style={[styles.pillText, { color: s.text }]}>{label}</Text>
-    </View>
-  )
-}
-
-function Section({
-  title, count, action, children
-}: {
-  title: string
-  count?: number
-  action?: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionTitleRow}>
-          <Text style={styles.sectionTitle}>{title}</Text>
-          {count != null && count > 0 && (
-            <View style={styles.countBadge}>
-              <Text style={styles.countText}>{count}</Text>
-            </View>
-          )}
-        </View>
-        {action}
-      </View>
-      <View style={styles.sectionBody}>{children}</View>
-    </View>
-  )
-}
-
-// ── Styles ────────────────────────────────────────────────────────────────────
+// ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   screen:  { flex: 1, backgroundColor: '#0A0A0A' },
-  content: { padding: 20, paddingBottom: 60 },
+  content: { padding: 20, paddingBottom: 48 },
   center:  { flex: 1, backgroundColor: '#0A0A0A', alignItems: 'center', justifyContent: 'center' },
 
   // Header
-  header:        { marginBottom: 20 },
-  headerTop:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
-  eyebrow:       { color: '#6B7280', fontSize: 10, letterSpacing: 2 },
-  headerActions: { flexDirection: 'row', gap: 8 },
-  title:         { color: '#FFFFFF', fontSize: 24, fontWeight: '700', marginBottom: 8 },
-  headerMeta:    { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
-  city:          { color: '#9CA3AF', fontSize: 13 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  title: { color: '#FFFFFF', fontSize: 22, fontWeight: '700' },
+  headerMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
+  city: { color: '#6B7280', fontSize: 13 },
+  metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#4B5563', marginHorizontal: 7 },
+  verifiedText: { color: '#4ADE80', fontSize: 12.5, fontWeight: '600' },
+  pendingText: { color: '#FACC15', fontSize: 12.5, fontWeight: '600' },
+  editBtn: { borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
+  editBtnText: { color: '#D1D5DB', fontSize: 13, fontWeight: '500' },
 
-  // Buttons
-  outlineBtn:      { borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
-  outlineBtnText:  { color: '#9CA3AF', fontSize: 12 },
-  newRequestBtn:   { backgroundColor: '#DC2626', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
-  newRequestText:  { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
-
-  // Stats
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
-  statCard: {
-    flex: 1,
+  // Hero
+  hero: {
     backgroundColor: '#141414',
     borderWidth: 1,
     borderColor: '#222',
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
   },
-  statLabel: { color: '#6B7280', fontSize: 10, letterSpacing: 1.5, marginBottom: 6 },
-  statValue: { fontSize: 26, fontWeight: '700' },
+  heroAlert: { borderColor: 'rgba(248,113,113,0.3)' },
+  heroTextWrap: { marginBottom: 14 },
+  heroStatus: { color: '#FFFFFF', fontSize: 17, fontWeight: '700', marginBottom: 4 },
+  heroSub: { color: '#9CA3AF', fontSize: 12.5, lineHeight: 18 },
+  newRequestBtn: { backgroundColor: '#DC2626', borderRadius: 10, paddingVertical: 13, alignItems: 'center' },
+  newRequestText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
 
-  // Section
-  section:        { marginBottom: 28 },
-  sectionHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitleRow:{ flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionTitle:   { color: '#FFFFFF', fontSize: 11, fontWeight: '600', letterSpacing: 2 },
-  sectionAction:  { color: '#9CA3AF', fontSize: 12 },
-  sectionBody:    { gap: 10 },
-  countBadge:     { backgroundColor: '#DC2626', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  countText:      { color: '#FFFFFF', fontSize: 11, fontWeight: '600' },
+  // Sections
+  section: { marginBottom: 24 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionTitle: { color: '#E5E7EB', fontSize: 15, fontWeight: '700' },
+  sectionAction: { color: '#9CA3AF', fontSize: 12.5 },
+  countBadge: { backgroundColor: '#DC2626', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  countBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
 
-  // Inventory
-  inventoryRow: { flexDirection: 'row', gap: 10, paddingBottom: 4 },
-  inventoryCard: {
-    width: 72,
+  // Inventory shelf
+  shelfRow: { flexDirection: 'row', gap: 10, paddingBottom: 4 },
+  shelfCard: {
+    width: 68,
     backgroundColor: '#141414',
     borderWidth: 1,
     borderColor: '#222',
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  shelfBlood: { color: '#F87171', fontSize: 13, fontWeight: '700', marginBottom: 8 },
+  shelfTrack: {
+    width: 20,
+    height: 56,
+    backgroundColor: '#1A1A1A',
     borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+    marginBottom: 8,
   },
-  inventoryBlood: { color: '#DC2626', fontSize: 13, fontWeight: '700' },
-  inventoryUnits: { color: '#FFFFFF', fontSize: 18, fontWeight: '700', marginTop: 4 },
-  inventoryLabel: { color: '#6B7280', fontSize: 10, marginTop: 2 },
-
-  // Request card
-  requestCard: {
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 12,
-    padding: 16,
-  },
-  requestTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  requestBlood:  { color: '#DC2626', fontSize: 20, fontWeight: '700' },
-  pillRow:       { flexDirection: 'row', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' },
-  requestDetail: { color: '#9CA3AF', fontSize: 13, marginBottom: 4 },
-  requestMeta:   { color: '#6B7280', fontSize: 12 },
-
-  // History card
-  historyCard: {
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 12,
-    padding: 14,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  historyTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '500', marginBottom: 3 },
+  shelfFill: { width: '100%', borderRadius: 10 },
+  shelfUnits: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  shelfLevel: { fontSize: 10, fontWeight: '600', marginTop: 2 },
 
   // Empty state
   emptyCard: {
     backgroundColor: '#141414',
     borderWidth: 1,
     borderColor: '#222',
-    borderRadius: 12,
-    padding: 28,
-    alignItems: 'center',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'flex-start',
   },
-  emptyTitle: { color: '#6B7280', fontSize: 14, marginBottom: 6 },
-  emptyLink:  { color: '#DC2626', fontSize: 12 },
+  emptyTitle: { color: '#D1D5DB', fontSize: 14, fontWeight: '600', marginBottom: 6 },
+  emptyLink: { color: '#F87171', fontSize: 12.5, fontWeight: '600' },
+
+  // Request card
+  requestCard: {
+    backgroundColor: '#141414',
+    borderWidth: 1,
+    borderColor: '#222',
+    borderLeftWidth: 3,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 10,
+  },
+  requestTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  requestBlood: { color: '#FFFFFF', fontSize: 19, fontWeight: '700' },
+  requestDetail: { color: '#9CA3AF', fontSize: 13, marginBottom: 8 },
+  requestFooterRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  requestMeta: { color: '#6B7280', fontSize: 12 },
 
   // Pill
-  pill:     { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
-  pillText: { fontSize: 11, fontWeight: '500' },
+  pill: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  pillText: { fontSize: 10.5, fontWeight: '600' },
+
+  // History
+  historyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1A1A1A', gap: 10 },
+  historyDot: { width: 7, height: 7, borderRadius: 4 },
+  historyTextWrap: { flex: 1 },
+  historyTitle: { color: '#FFFFFF', fontSize: 13.5, fontWeight: '600' },
+  historyMeta: { color: '#6B7280', fontSize: 11.5, marginTop: 2 },
+  historyStatus: { color: '#6B7280', fontSize: 11, fontWeight: '600' },
+
+  // Analytics link
+  analyticsLink: { alignItems: 'center', paddingVertical: 14 },
+  analyticsLinkText: { color: '#6B7280', fontSize: 13, fontWeight: '500' },
 })

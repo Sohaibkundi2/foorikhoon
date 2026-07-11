@@ -2,6 +2,7 @@ import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
 import { useAuthStore } from '../src/store/authStore'
+import Navbar from '../src/components/Navbar'
 
 export default function RootLayout() {
   const { loadAuth } = useAuthStore()
@@ -15,9 +16,7 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: '#0A0A0A' },
-          headerTintColor: '#ffffff',
-          headerTitleStyle: { fontWeight: 'bold' },
+          header: () => <Navbar />,
           contentStyle: { backgroundColor: '#0A0A0A' },
         }}
       />
