@@ -6,7 +6,7 @@ import {
 import { Link } from 'expo-router'
 import api from '../src/lib/api'
 import WeeklyHeroes from '../src/components/WeeklyHeroes'
-// import CityStats from '../src/components/CityStats'
+import CityStats from '../src/components/CityStats'
 
 const bloodGroups = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−']
 
@@ -203,10 +203,10 @@ export default function LandingScreen() {
       </View>
 
       {/* City activity */}
-      {/* <View style={styles.section}>
+      <View style={styles.section}>
         <Text style={styles.eyebrow}>Live city activity</Text>
         <CityStats />
-      </View> */}
+      </View>
 
       {/* How it works */}
       <View style={styles.section}>
