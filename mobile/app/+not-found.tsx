@@ -37,4 +37,4 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
   },
   btnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-}),
+})
