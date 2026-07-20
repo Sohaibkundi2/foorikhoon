@@ -1,6 +1,12 @@
 import { Request, Response } from "express"
 import prisma from "../lib/prisma"
 import axios from "axios"
+import { sendPushNotification } from '../services/notification.service'
+
+const bloodGroupLabels: Record<string, string> = {
+  A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
+  AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
+}
 
 const createRequest = async (req: Request, res: Response) => {
 
@@ -65,17 +71,31 @@ const createRequest = async (req: Request, res: Response) => {
 
         const topDonors = rankedDonors.slice(0, 3)
 
-        // create match for each donor
-        const matches = await Promise.all(
-            topDonors.map((ranked: any) =>
-                prisma.match.create({
-                    data: {
-                        requestId: newRequest.id,
-                        donorId: ranked.donorId
-                    }
-                })
-            )
-        )
+const matches = await Promise.all(
+  topDonors.map(async (ranked: any) => {
+    const match = await prisma.match.create({
+      data: {
+        requestId: newRequest.id,
+        donorId: ranked.donorId
+      }
+    })
+
+    const donor = await prisma.donor.findUnique({
+      where: { id: ranked.donorId }
+    })
+
+    if (donor?.pushToken) {
+      await sendPushNotification(
+        donor.pushToken,
+        '🩸 Blood Needed Urgently',
+        `${hospital.name} needs ${bloodGroupLabels[bloodGroup]} blood in ${hospital.user.city}`,
+        { requestId: newRequest.id }
+      )
+    }
+
+    return match
+  })
+)
 
         res.status(201).json({
             message: 'Request created and donors matched',
@@ -107,8 +127,6 @@ const getRequests = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Internal server error' })
   }
 }
-
-
 
 const getRequestById = async (req: Request, res: Response) => {
 

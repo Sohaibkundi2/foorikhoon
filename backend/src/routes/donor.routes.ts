@@ -7,7 +7,8 @@ import {
   updateAvailability,
   getMatches,
   respondToMatch,
-  createDonorProfile
+  createDonorProfile,
+  savePushToken
 } from '../controllers/donor.controller'
 
 const router = Router()
@@ -18,5 +19,6 @@ router.put('/availability', authenticate, authorize('DONOR'), updateAvailability
 router.get('/matches', authenticate, authorize('DONOR'), getMatches)
 router.put('/matches/:id', authenticate, authorize('DONOR'), respondToMatch)
 router.post('/profile', authenticate, authorize('DONOR'), createDonorProfile)
+router.put('/push-token', authenticate, authorize('DONOR'), savePushToken)
 
 export default router

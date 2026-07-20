@@ -173,7 +173,6 @@ const respondToMatch = async (req: Request, res: Response) => {
   }
 }
 
-// donor.controller.ts
 const createDonorProfile = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.userId
@@ -196,11 +195,30 @@ const createDonorProfile = async (req: Request, res: Response) => {
   }
 }
 
+const savePushToken = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId
+    if (!userId) return res.status(400).json({ message: 'Invalid user ID' })
+
+    const { pushToken } = req.body
+
+    const donor = await prisma.donor.update({
+      where: { userId },
+      data: { pushToken }
+    })
+
+    res.status(200).json({ message: 'Push token saved', donor })
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}
+
 export {
   getProfile,
   updateProfile,
   updateAvailability,
   getMatches,
   respondToMatch,
-  createDonorProfile
+  createDonorProfile,
+  savePushToken
 }

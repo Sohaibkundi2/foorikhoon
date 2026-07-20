@@ -7,6 +7,7 @@ import { Link } from 'expo-router'
 import api from '../src/lib/api'
 import WeeklyHeroes from '../src/components/WeeklyHeroes'
 import CityStats from '../src/components/CityStats'
+import { registerForPushNotifications, savePushTokenToBackend } from '../src/lib/notifications'
 
 const bloodGroups = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−']
 
@@ -95,6 +96,13 @@ export default function LandingScreen() {
         setShortage(predictions)
       })
       .catch(console.error)
+  }, [])
+
+    useEffect(() => {
+    // register for push notifications
+    registerForPushNotifications().then(token => {
+      if (token) savePushTokenToBackend(token)
+    })
   }, [])
 
   const loadingStats = statsStatus === 'loading'
