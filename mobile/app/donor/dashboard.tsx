@@ -8,6 +8,7 @@ import { router, Link } from 'expo-router'
 import Svg, { Circle } from 'react-native-svg'
 import { useAuthStore } from '../../src/store/authStore'
 import api from '../../src/lib/api'
+import BadgePopup from '../../src/components/Badges'
 
 import { useNetwork } from '../../src/hooks/useNetwork'
 import { saveCache, loadCache } from '../../src/lib/cache'
@@ -165,6 +166,8 @@ const fetchData = async () => {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
 
       {!isOnline && <OfflineBanner lastUpdated={cacheTime} />}
+      {/* Badges Card, show one time */}
+      {donor && <BadgePopup badges={badges} donorId={donor.id} />}
 
       {/* Header */}
       <View style={styles.headerRow}>
