@@ -12,6 +12,9 @@ import {
 import { useRouter } from 'expo-router'
 import { useAuthStore } from '../../src/store/authStore'
 import api from '../../src/lib/api'
+import { useNetwork } from '../../src/hooks/useNetwork'
+import { saveCache, loadCache } from '../../src/lib/cache'
+import OfflineBanner from '../../src/components/OfflineBanner'
 
 interface Match {
   id: string
@@ -59,6 +62,9 @@ export default function DonorMatchesScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('ALL')
   const [respondingId, setRespondingId] = useState<string | null>(null)
 
+  const { isOnline } = useNetwork()
+  const [cacheTime, setCacheTime] = useState<number | null>(null)
+
   useEffect(() => {
     if (!user) {
       router.replace('/login')
@@ -72,9 +78,27 @@ export default function DonorMatchesScreen() {
   }, [user])
 
   const fetchMatches = async () => {
+    if (!isOnline) {
+      const cachedMatches = await loadCache('donor_matches')
+
+      if (cachedMatches) {
+        setMatches(cachedMatches.data)
+        setCacheTime(cachedMatches.time)
+      }
+
+      setLoading(false)
+      setRefreshing(false)
+      return
+    }
+
     try {
       const res = await api.get('/api/donor/matches')
+
       setMatches(res.data.matches)
+
+      // Save latest matches
+      await saveCache('donor_matches', res.data.matches)
+      setCacheTime(Date.now())
     } catch (err) {
       console.error(err)
     } finally {
@@ -113,6 +137,9 @@ export default function DonorMatchesScreen() {
 
   return (
     <View style={styles.screen}>
+      
+      {!isOnline && <OfflineBanner lastUpdated={cacheTime} />}
+      
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.eyebrow}>DONOR</Text>

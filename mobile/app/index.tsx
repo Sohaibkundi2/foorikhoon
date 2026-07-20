@@ -9,6 +9,10 @@ import WeeklyHeroes from '../src/components/WeeklyHeroes'
 import CityStats from '../src/components/CityStats'
 import { registerForPushNotifications, savePushTokenToBackend } from '../src/lib/notifications'
 
+import { useNetwork } from '../src/hooks/useNetwork'
+import { saveCache, loadCache } from '../src/lib/cache'
+import OfflineBanner from '../src/components/OfflineBanner'
+
 const bloodGroups = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−']
 
 const steps = [
@@ -64,15 +68,36 @@ export default function LandingScreen() {
   const [shortage, setShortage] = useState<ShortagePrediction[]>([])
   const pulse = usePulse()
 
+  const { isOnline } = useNetwork()
+  const [cacheTime, setCacheTime] = useState<number | null>(null)
+
   useEffect(() => {
     let cancelled = false
 
     async function fetchStats() {
+      if (!isOnline) {
+        const cachedStats = await loadCache('public_stats')
+
+        if (cachedStats) {
+          setStats(cachedStats.data)
+          setStatsStatus('ready')
+          setCacheTime(cachedStats.time)
+        } else {
+          setStatsStatus('error')
+        }
+
+        return
+      }
+
       try {
         const res = await api.get('/api/map/public-stats')
+
         if (!cancelled) {
           setStats(res.data)
           setStatsStatus('ready')
+
+          await saveCache('public_stats', res.data)
+          setCacheTime(Date.now())
         }
       } catch (err) {
         if (!cancelled) {
@@ -88,17 +113,39 @@ export default function LandingScreen() {
   }, [])
 
   useEffect(() => {
-    api.get('/api/map/shortage')
-      .then(res => {
-        const predictions = res.data.predictions
-          .filter((p: ShortagePrediction) => p.risk === 'CRITICAL' || p.risk === 'HIGH')
-          .slice(0, 3)
-        setShortage(predictions)
-      })
-      .catch(console.error)
-  }, [])
+    async function fetchShortage() {
+      if (!isOnline) {
+        const cached = await loadCache('public_shortage')
 
-    useEffect(() => {
+        if (cached) {
+          setShortage(cached.data)
+        }
+
+        return
+      }
+
+      try {
+        const res = await api.get('/api/map/shortage')
+
+        const predictions = res.data.predictions
+          .filter(
+            (p: ShortagePrediction) =>
+              p.risk === 'CRITICAL' || p.risk === 'HIGH'
+          )
+          .slice(0, 3)
+
+        setShortage(predictions)
+
+        await saveCache('public_shortage', predictions)
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
+    fetchShortage()
+  }, [isOnline])
+
+  useEffect(() => {
     // register for push notifications
     registerForPushNotifications().then(token => {
       if (token) savePushTokenToBackend(token)
@@ -109,6 +156,8 @@ export default function LandingScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+
+      {!isOnline && <OfflineBanner lastUpdated={cacheTime} />}
 
       {/* Hero */}
       <View style={styles.hero}>
@@ -173,8 +222,10 @@ export default function LandingScreen() {
                   key={pred.bloodGroup}
                   style={[
                     styles.shortagePill,
-                    { backgroundColor: critical ? 'rgba(248,113,113,0.1)' : 'rgba(251,146,60,0.1)',
-                      borderColor: critical ? 'rgba(248,113,113,0.25)' : 'rgba(251,146,60,0.25)' },
+                    {
+                      backgroundColor: critical ? 'rgba(248,113,113,0.1)' : 'rgba(251,146,60,0.1)',
+                      borderColor: critical ? 'rgba(248,113,113,0.25)' : 'rgba(251,146,60,0.25)'
+                    },
                   ]}
                 >
                   <Text style={[styles.shortagePillGroup, { color: critical ? '#F87171' : '#FB923C' }]}>

@@ -8,6 +8,10 @@ import api from '../../src/lib/api'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
+import { useNetwork } from '../../src/hooks/useNetwork'
+import { saveCache, loadCache } from '../../src/lib/cache'
+import OfflineBanner from '../../src/components/OfflineBanner'
+
 dayjs.extend(relativeTime)
 
 interface BloodRequest {
@@ -34,8 +38,8 @@ const bloodGroupLabels: Record<string, string> = {
 
 const urgencyStyle: Record<string, { bg: string; border: string; text: string }> = {
   CRITICAL: { bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.25)', text: '#F87171' },
-  URGENT:   { bg: 'rgba(251,146,60,0.1)',  border: 'rgba(251,146,60,0.25)',  text: '#FB923C' },
-  NORMAL:   { bg: 'rgba(74,222,128,0.1)',  border: 'rgba(74,222,128,0.25)', text: '#4ADE80' },
+  URGENT: { bg: 'rgba(251,146,60,0.1)', border: 'rgba(251,146,60,0.25)', text: '#FB923C' },
+  NORMAL: { bg: 'rgba(74,222,128,0.1)', border: 'rgba(74,222,128,0.25)', text: '#4ADE80' },
 }
 
 const urgencyOrder: Record<string, number> = { CRITICAL: 0, URGENT: 1, NORMAL: 2 }
@@ -52,12 +56,39 @@ export default function RequestsScreen() {
   const [urgencyFilter, setUrgencyFilter] = useState('ALL')
   const [activeFilter, setActiveFilter] = useState<'city' | 'blood' | 'urgency' | null>(null)
 
+  const { isOnline } = useNetwork()
+  const [cacheTime, setCacheTime] = useState<number | null>(null)
+
   useEffect(() => {
-    api.get('/api/requests')
-      .then(res => setRequests(res.data.requests))
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
+    const fetchRequests = async () => {
+      if (!isOnline) {
+        const cached = await loadCache('public_requests')
+
+        if (cached) {
+          setRequests(cached.data)
+          setCacheTime(cached.time)
+        }
+
+        setLoading(false)
+        return
+      }
+
+      try {
+        const res = await api.get('/api/requests')
+
+        setRequests(res.data.requests)
+
+        await saveCache('public_requests', res.data.requests)
+        setCacheTime(Date.now())
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchRequests()
+  }, [isOnline])
 
   const filtered = requests
     .filter(req => {
@@ -114,6 +145,8 @@ export default function RequestsScreen() {
 
   return (
     <View style={styles.screen}>
+
+      {!isOnline && <OfflineBanner lastUpdated={cacheTime} />}
 
       {/* Header */}
       <View style={styles.header}>

@@ -15,6 +15,9 @@ import { router } from 'expo-router'
 import { useAuthStore } from '../../src/store/authStore'
 import api from '../../src/lib/api'
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker'
+import { useNetwork } from '../../src/hooks/useNetwork'
+import { saveCache, loadCache } from '../../src/lib/cache'
+import OfflineBanner from '../../src/components/OfflineBanner'
 
 const bloodGroups = ['A_POS', 'A_NEG', 'B_POS', 'B_NEG', 'AB_POS', 'AB_NEG', 'O_POS', 'O_NEG']
 const bloodGroupLabels: Record<string, string> = {
@@ -38,6 +41,9 @@ export default function DonorProfileScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [isAvailable, setIsAvailable] = useState(true)
 
+  const { isOnline } = useNetwork()
+  const [cacheTime, setCacheTime] = useState<number | null>(null)
+
   useEffect(() => {
     if (!user) {
       router.replace('/login')
@@ -51,15 +57,44 @@ export default function DonorProfileScreen() {
   }, [user])
 
   const fetchProfile = async () => {
+    if (!isOnline) {
+      const cachedProfile = await loadCache('donor_profile')
+
+      if (cachedProfile) {
+        const donor = cachedProfile.data
+
+        setName(donor.user.name || '')
+        setPhone(donor.user.phone || '')
+        setCity(donor.user.city || '')
+        setBloodGroup(donor.bloodGroup || '')
+        setLastDonated(
+          donor.lastDonated ? new Date(donor.lastDonated) : null
+        )
+        setIsAvailable(donor.isAvailable)
+
+        setCacheTime(cachedProfile.time)
+      }
+
+      setLoading(false)
+      return
+    }
+
     try {
       const res = await api.get('/api/donor/profile')
       const { donor } = res.data
+
       setName(donor.user.name || '')
       setPhone(donor.user.phone || '')
       setCity(donor.user.city || '')
       setBloodGroup(donor.bloodGroup || '')
-      setLastDonated(donor.lastDonated ? new Date(donor.lastDonated) : null)
+      setLastDonated(
+        donor.lastDonated ? new Date(donor.lastDonated) : null
+      )
       setIsAvailable(donor.isAvailable)
+
+      // Save latest profile
+      await saveCache('donor_profile', donor)
+      setCacheTime(Date.now())
     } catch (err) {
       console.error(err)
     } finally {
@@ -101,6 +136,9 @@ export default function DonorProfileScreen() {
       style={{ flex: 1, backgroundColor: '#0F0F0F' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+
+      {!isOnline && <OfflineBanner lastUpdated={cacheTime} />}
+
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {/* Header */}
         <TouchableOpacity onPress={() => router.push('/donor/dashboard')} style={styles.backLink}>

@@ -9,6 +9,10 @@ import Svg, { Circle } from 'react-native-svg'
 import { useAuthStore } from '../../src/store/authStore'
 import api from '../../src/lib/api'
 
+import { useNetwork } from '../../src/hooks/useNetwork'
+import { saveCache, loadCache } from '../../src/lib/cache'
+import OfflineBanner from '../../src/components/OfflineBanner'
+
 // ── Types ────────────────────────────────────────────────────────────────────
 interface DonorProfile {
   id: string
@@ -64,6 +68,8 @@ export default function DonorDashboard() {
   const [badges, setBadges] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState(false)
+  const { isOnline } = useNetwork()
+  const [cacheTime, setCacheTime] = useState<number | null>(null)
 
   useEffect(() => {
     if (!user) { router.replace('/login'); return }
@@ -73,21 +79,41 @@ export default function DonorDashboard() {
     fetchData()
   }, [user])
 
-  const fetchData = async () => {
-    try {
-      const [profileRes, matchesRes] = await Promise.all([
-        api.get('/api/donor/profile'),
-        api.get('/api/donor/matches'),
-      ])
-      setDonor(profileRes.data.donor)
-      setMatches(matchesRes.data.matches)
-      setBadges(profileRes.data.badges)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
+const fetchData = async () => {
+  if (!isOnline) {
+    // load from cache
+    const cachedProfile = await loadCache('donor_profile')
+    const cachedMatches = await loadCache('donor_matches')
+    if (cachedProfile) {
+      setDonor(cachedProfile.data)
+      setCacheTime(cachedProfile.time)
     }
+    if (cachedMatches) {
+      setMatches(cachedMatches.data)
+    }
+    setLoading(false)
+    return
   }
+
+  try {
+    const [profileRes, matchesRes] = await Promise.all([
+      api.get('/api/donor/profile'),
+      api.get('/api/donor/matches')
+    ])
+    setDonor(profileRes.data.donor)
+    setMatches(matchesRes.data.matches)
+    setBadges(profileRes.data.badges)
+
+    // save to cache
+    await saveCache('donor_profile', profileRes.data.donor)
+    await saveCache('donor_matches', matchesRes.data.matches)
+    setCacheTime(Date.now())
+  } catch (err) {
+    console.error(err)
+  } finally {
+    setLoading(false)
+  }
+}
 
   const toggleAvailability = async () => {
     if (!donor) return
@@ -137,6 +163,8 @@ export default function DonorDashboard() {
   // ── Main render ──────────────────────────────────────────────────────────
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+
+      {!isOnline && <OfflineBanner lastUpdated={cacheTime} />}
 
       {/* Header */}
       <View style={styles.headerRow}>

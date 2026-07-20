@@ -149,7 +149,7 @@ const respondToMatch = async (req: Request, res: Response) => {
     if (status === 'ACCEPTED') {
       await prisma.donor.update({
         where: { id: updatedMatch.donorId },
-        data: { commitmentScore: { increment: 10 } }
+        data: { commitmentScore: { increment: 10 }, lastDonated: new Date() }
       })
     } else if (status === 'DECLINED') {
       await prisma.donor.update({
