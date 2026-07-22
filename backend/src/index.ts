@@ -1,4 +1,5 @@
 import express from 'express'
+import rateLimit from 'express-rate-limit'
 import cors from 'cors'
 import dotenv from 'dotenv'
 dotenv.config()
@@ -19,12 +20,29 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
-app.use('/api/auth', authRouter)
-app.use('/api/hospital', hospitalRouter)
-app.use('/api/donor', donorRouter)  
-app.use('/api/requests', requestRouter)
-app.use('/api/admin', adminRouter)
-app.use('/api/map', mapRouter)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later.' }
+})
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10, // stricter for auth
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many login attempts, please try again later.' }
+})
+
+app.use('/api/auth', authLimiter, authRouter)
+
+app.use('/api/hospital', limiter, hospitalRouter)
+app.use('/api/donor', limiter, donorRouter)
+app.use('/api/requests', limiter, requestRouter)
+app.use('/api/admin', limiter, adminRouter)
+app.use('/api/map', limiter, mapRouter)
 
 app.get('/', (req, res) => {
   res.json({ message: 'ForiKhoon API running' })

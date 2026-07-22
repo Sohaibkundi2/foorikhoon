@@ -64,10 +64,24 @@ export default function HospitalRequestsPage() {
     }
   }
 
-  const handleStatusUpdate = async (id: string, newStatus: string) => {
+  // Handler for fulfilling a request (MATCHED -> FULFILLED)
+  const handleFulfill = async (id: string) => {
     setUpdatingId(id)
     try {
-      await api.put(`/api/requests/${id}`, { newStatus })
+      await api.put(`/api/hospital/requests/${id}/fulfill`)
+      await fetchRequests()
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  // Handler for cancelling/expiring a request (PENDING or MATCHED -> EXPIRED)
+  const handleCancel = async (id: string) => {
+    setUpdatingId(id)
+    try {
+      await api.put(`/api/requests/${id}`, { status: 'EXPIRED' })
       await fetchRequests()
     } catch (err) {
       console.error(err)
@@ -155,24 +169,29 @@ export default function HospitalRequestsPage() {
               </div>
 
               {/* Actions */}
-              {(req.status === 'PENDING' || req.status === 'MATCHED') && (
-                <div className="flex gap-2 shrink-0">
+              <div className="flex gap-2 shrink-0">
+                {/* Fulfill button - ONLY for MATCHED requests */}
+                {req.status === 'MATCHED' && (
                   <button
-                    onClick={() => handleStatusUpdate(req.id, 'FULFILLED')}
+                    onClick={() => handleFulfill(req.id)}
                     disabled={updatingId === req.id}
                     className="text-xs bg-green-400/10 hover:bg-green-400/20 text-green-400 border border-green-400/20 px-3 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-50"
                   >
-                    Mark Fulfilled
+                    {updatingId === req.id ? 'Processing...' : 'Mark Fulfilled'}
                   </button>
+                )}
+
+                {/* Cancel button - for PENDING and MATCHED requests */}
+                {(req.status === 'PENDING' || req.status === 'MATCHED') && (
                   <button
-                    onClick={() => handleStatusUpdate(req.id, 'EXPIRED')}
+                    onClick={() => handleCancel(req.id)}
                     disabled={updatingId === req.id}
                     className="text-xs bg-[#6B7280]/10 hover:bg-[#6B7280]/20 text-[#6B7280] border border-[#6B7280]/20 px-3 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-50"
                   >
-                    Cancel
+                    {updatingId === req.id ? 'Processing...' : 'Cancel'}
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           ))}
         </div>

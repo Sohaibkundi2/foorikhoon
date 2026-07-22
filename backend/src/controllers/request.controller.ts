@@ -119,7 +119,8 @@ const getRequests = async (req: Request, res: Response) => {
           }
         },
         matches: true
-      }
+      },
+        orderBy: { createdAt: 'asc' }
     })
 
     res.status(200).json({ requests: pendingRequests })

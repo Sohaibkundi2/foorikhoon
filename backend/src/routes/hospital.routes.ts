@@ -2,7 +2,7 @@
 import { Router } from 'express'
 import { authenticate } from '../middleware/auth.middleware'
 import { authorize } from '../middleware/role.middleware'
-import { getProfile, updateProfile, getInventory, updateInventory, getRequests, createHospitalProfile, getAnalytics} from '../controllers/hospital.controller'
+import { getProfile, updateProfile, getInventory, updateInventory, getRequests, createHospitalProfile, getAnalytics, fulfillRequest} from '../controllers/hospital.controller'
 
 const router = Router()
 
@@ -13,5 +13,6 @@ router.put('/inventory', authenticate, authorize('HOSPITAL'), updateInventory)
 router.get('/requests', authenticate, authorize('HOSPITAL'), getRequests)
 router.post('/profile', authenticate, authorize('HOSPITAL'), createHospitalProfile)
 router.get('/analytics', authenticate, authorize('HOSPITAL'), getAnalytics)
+router.put('/requests/:id/fulfill', authenticate, authorize('HOSPITAL'), fulfillRequest)
 
 export default router

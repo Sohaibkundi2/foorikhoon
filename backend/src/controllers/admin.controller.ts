@@ -99,6 +99,23 @@ const getRequests = async (req: Request, res: Response) => {
   }
 }
 
+const deleteHospital = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string }
+
+    // delete related data first
+    await prisma.inventory.deleteMany({ where: { hospitalId: id } })
+    await prisma.match.deleteMany({
+      where: { request: { hospitalId: id } }
+    })
+    await prisma.bloodRequest.deleteMany({ where: { hospitalId: id } })
+    await prisma.hospital.delete({ where: { id } })
+
+    res.status(200).json({ message: 'Hospital deleted successfully' })
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}
 
 export { 
   getStats, 
@@ -106,4 +123,5 @@ export {
   verifyHospital, 
   getUsers, 
   getRequests, 
+  deleteHospital
  }

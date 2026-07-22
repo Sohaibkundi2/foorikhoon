@@ -134,6 +134,16 @@ export default function AdminDashboard() {
     }
   }
 
+  const deleteHospital = async (id: string) => {
+    if (!confirm('Are you sure? This will delete all requests and data for this hospital.')) return
+    try {
+      await api.delete(`/api/admin/hospitals/${id}`)
+      setHospitals(hospitals.filter(h => h.id !== id))
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
@@ -215,6 +225,10 @@ export default function AdminDashboard() {
                   License: {hospital.licenseNo} · {hospital.user.city} · {hospital.requests.length} requests
                 </p>
               </div>
+              <button onClick={() => deleteHospital(hospital.id)}
+                className="text-xs px-4 py-2 rounded-md border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-colors duration-150">
+                Delete
+              </button>
               <button
                 onClick={() => toggleVerify(hospital.id)}
                 disabled={verifyingId === hospital.id}

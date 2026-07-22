@@ -6,17 +6,18 @@ import {
   getHospitals,
   verifyHospital,
   getUsers,
-  getRequests
+  getRequests,
+  deleteHospital
 } from '../controllers/admin.controller'
 
 const router = Router()
 
 router.use(authenticate, authorize('ADMIN'))
 
+router.delete('/hospitals/:id', deleteHospital)
 router.get('/stats', getStats)
 router.get('/hospitals', getHospitals)
 router.put('/hospitals/:id/verify', verifyHospital)
 router.get('/users', getUsers)
 router.get('/requests', getRequests)
-
 export default router
