@@ -14,7 +14,7 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 
 **For donors** — register once, set your blood group and availability, get notified when someone nearby needs your blood type, earn badges for milestones, and build a commitment score over time.
 
-**For hospitals** — post emergency requests, track responses in real time, manage blood inventory, view analytics, and get matched with the most reliable donors first.
+**For hospitals** — post emergency requests, track donor responses in real time, manage blood inventory, view analytics, and get matched with the most reliable donors first.
 
 **For administrators** — monitor donation activity across cities, verify hospitals, view live stats, shortage predictions, and manage all users.
 
@@ -26,9 +26,12 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 
 - Role-based access for donors, hospitals, and admins
 - AI-powered donor matching using Python Flask microservice
+- **Medically correct blood-compatibility matching** — donors ranked using the full compatible-donor matrix (e.g. O− as universal donor), not just exact blood-group match
+- **Rarity-aware reservation logic** — for scarce types (O−, AB−), the system tries an exact-type match first and only widens to other compatible donors when no exact match is available, so rare donors aren't burned on requests that don't need them
+- **Emergency override** — the rarity reservation penalty is lifted for CRITICAL-urgency requests, so scarce donors are still surfaced when truly needed
 - Donors ranked by blood compatibility, location, availability, and commitment score
 - Shortage prediction — predicts which blood groups will run low based on 30-day history
-- Escalation system — requests auto-expire after 24 hours via background job
+- Request auto-expiry — PENDING requests expire after 24 hours via background job
 - Commitment scoring — donors earn/lose points based on response behavior
 - Badge system — donors earn badges (First Blood, Lifesaver, Hero etc)
 - City-level heatmap showing blood demand across Pakistan
@@ -37,8 +40,10 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 - Donor leaderboard with city filter
 - Public blood request board with filters
 - Hospital analytics — most requested blood group, fulfillment rate, inventory status
-- Admin dashboard with hospital verification, user management, shortage alerts
-- Mobile responsive with hamburger menu
+- Admin dashboard with hospital verification, shortage alerts, user management
+- Push notifications via Expo Push Service (production ready)
+- Offline support with cached data on mobile
+- Mobile responsive web + React Native mobile app
 
 ---
 
@@ -46,13 +51,18 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 15, TypeScript, Tailwind CSS v4 |
+| Web Frontend | Next.js 15, TypeScript, Tailwind CSS v4 |
+| Mobile App | React Native, Expo SDK 54, Expo Router |
 | Backend | Node.js, Express, TypeScript |
 | Database | PostgreSQL (Neon), Prisma ORM v7 |
 | AI Engine | Python 3, Flask |
 | Auth | JWT (jsonwebtoken, bcryptjs) |
-| State | Zustand with persistence |
+| Mobile Auth | Expo SecureStore |
+| State (Web) | Zustand with persistence |
+| State (Mobile) | Zustand + AsyncStorage |
 | Maps | Leaflet.js, React Leaflet |
+| Push Notifications | Expo Push Service (FCM) |
+| Offline Cache | AsyncStorage + NetInfo |
 | Background Jobs | node-cron |
 | HTTP Client | Axios |
 | Date Handling | Day.js |
@@ -63,15 +73,17 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 ## Architecture
 
 ```
-Next.js Frontend (port 3000)
-        |
-        | REST API
-        |
-Node.js + Express Backend (port 5000)
-        |                    |
-        | Prisma ORM          | HTTP
-        |                    |
-PostgreSQL (Neon)     Python Flask AI Engine (port 5001)
+Next.js Web App (port 3000)          React Native Mobile App
+        |                                      |
+        |         HTTPS / REST API             |
+        └──────────────┬───────────────────────┘
+                       |
+         Node.js + Express Backend (port 5000)
+                  |              |
+            Prisma ORM        HTTP POST
+                  |              |
+          PostgreSQL        Python Flask
+           (Neon DB)        AI Engine (port 5001)
 ```
 
 ---
@@ -80,28 +92,17 @@ PostgreSQL (Neon)     Python Flask AI Engine (port 5001)
 
 ```
 foorikhoon/
-├── frontend/                  Next.js app
+├── frontend/                  Next.js web app
 │   └── src/
-│       ├── app/
-│       │   ├── page.tsx               Landing page
+│       ├── app/               Pages (App Router)
+│       │   ├── page.tsx       Landing page
 │       │   ├── login/
 │       │   ├── register/
 │       │   ├── requests/
-│       │   │   ├── page.tsx           Public request board
-│       │   │   └── [id]/page.tsx      Request detail
 │       │   ├── leaderboard/
 │       │   ├── donor/
-│       │   │   ├── dashboard/
-│       │   │   ├── profile/
-│       │   │   └── matches/
 │       │   ├── hospital/
-│       │   │   ├── dashboard/
-│       │   │   ├── profile/
-│       │   │   ├── analytics/
-│       │   │   ├── requests/
-│       │   │   ├── inventory/
-│       │   │   └── request/new/
-│       │   └── admin/dashboard/
+│       │   └── admin/
 │       ├── components/
 │       │   ├── Navbar.tsx
 │       │   ├── Map.tsx
@@ -110,12 +111,42 @@ foorikhoon/
 │       ├── store/authStore.ts
 │       └── lib/api.ts
 │
+├── mobile/                    React Native app (Expo)
+│   └── app/
+│       ├── index.tsx          Landing screen
+│       ├── login.tsx
+│       ├── register.tsx
+│       ├── donor/
+│       │   ├── dashboard.tsx
+│       │   ├── matches.tsx
+│       │   └── profile.tsx
+│       ├── hospital/
+│       │   ├── dashboard.tsx
+│       │   └── new-request.tsx
+│       ├── requests/
+│       │   ├── index.tsx
+│       │   └── [id].tsx
+│       └── leaderboard.tsx
+│   └── src/
+│       ├── components/
+│       │   ├── WeeklyHeroes.tsx
+│       │   ├── CityStats.tsx
+│       │   └── OfflineBanner.tsx
+│       ├── hooks/useNetwork.ts
+│       ├── lib/
+│       │   ├── api.ts
+│       │   ├── cache.ts
+│       │   └── notifications.ts
+│       └── store/authStore.ts
+│
 ├── backend/
 │   └── src/
 │       ├── index.ts
 │       ├── routes/
 │       ├── controllers/
 │       ├── middleware/
+│       ├── services/
+│       │   └── notification.service.ts
 │       ├── jobs/
 │       │   └── expiry.job.ts
 │       └── lib/prisma.ts
@@ -134,8 +165,8 @@ foorikhoon/
 ## Database Models
 
 ```
-User         — base model (DONOR, HOSPITAL, ADMIN)
-Donor        — blood group, availability, commitment score
+User         — base model (DONOR, HOSPITAL, ADMIN), city trimmed on write
+Donor        — blood group, availability, commitment score, pushToken, latitude/longitude
 Hospital     — name, address, license, verified
 BloodRequest — blood group, units, urgency, status, expiry
 Match        — links donor to request, tracks response
@@ -147,53 +178,78 @@ Inventory    — hospital blood stock per blood group
 ## API Endpoints
 
 ```
-AUTH          POST /api/auth/register, /api/auth/login
+AUTH
+POST  /api/auth/register
+POST  /api/auth/login
 
-DONOR         POST/GET/PUT /api/donor/profile
-              PUT /api/donor/availability
-              GET /api/donor/matches
-              PUT /api/donor/matches/:id
+DONOR
+POST  /api/donor/profile
+GET   /api/donor/profile        → includes badges
+PUT   /api/donor/profile
+PUT   /api/donor/availability
+PUT   /api/donor/push-token
+GET   /api/donor/matches
+PUT   /api/donor/matches/:id    → updates commitment score + lastDonated
 
-HOSPITAL      POST/GET/PUT /api/hospital/profile
-              GET/PUT /api/hospital/inventory
-              GET /api/hospital/requests
-              GET /api/hospital/analytics
+HOSPITAL
+POST  /api/hospital/profile
+GET   /api/hospital/profile
+PUT   /api/hospital/profile
+GET   /api/hospital/inventory
+PUT   /api/hospital/inventory
+GET   /api/hospital/requests
+GET   /api/hospital/analytics
+PUT   /api/hospital/requests/:id/fulfill
 
-REQUESTS      POST/GET /api/requests
-              GET/PUT /api/requests/:id
+REQUESTS
+POST  /api/requests             → creates request + AI matching + push notifications
+GET   /api/requests             → public, sorted ascending
+GET   /api/requests/:id
+PUT   /api/requests/:id
 
-ADMIN         GET /api/admin/stats
-              GET /api/admin/hospitals
-              PUT /api/admin/hospitals/:id/verify
-              GET /api/admin/users
-              GET /api/admin/requests
+ADMIN
+GET   /api/admin/stats
+GET   /api/admin/hospitals
+PUT   /api/admin/hospitals/:id/verify
+GET   /api/admin/users
+GET   /api/admin/requests
 
-MAP           GET /api/map/stats
-              GET /api/map/public-stats
-              GET /api/map/weekly-heroes
-              GET /api/map/leaderboard
-              GET /api/map/shortage
+MAP
+GET   /api/map/stats
+GET   /api/map/public-stats
+GET   /api/map/weekly-heroes
+GET   /api/map/leaderboard
+GET   /api/map/shortage
 ```
 
 ---
 
-## AI Engine Endpoints
+## AI Engine
 
 ```
 POST /ai/match    — scores and ranks donors for a blood request
 POST /ai/predict  — predicts blood group shortage based on 30-day history
 ```
 
-### Matching Algorithm
+### Matching Algorithm (Reliability-Weighted Donor Prioritization)
 
 ```
-Blood group match  → +50 points
-City match         → +30 points
-Is available       → +20 points
-Commitment score   → score × 0.5 bonus
+Exact blood-group match         → +50 points
+Compatible (non-exact) match    → +35 points
+City match                      → +30 points
+Is available                    → +20 points
+Commitment score                → score × 0.5 bonus
+Rare donor type (O−/AB−),
+non-exact match, non-CRITICAL   → −25 points (reservation penalty)
 ```
 
-Top 3 ranked donors are matched and notified.
+**Two-stage donor lookup for rare requested types (O−, AB−):**
+1. Search for an exact blood-group match first
+2. Only if no exact match is available, widen the pool to other medically compatible donors
+
+This prevents scarce donor types from being matched away on requests that could be filled by a more common compatible type, while still guaranteeing a match is found when one exists. The reservation penalty is lifted entirely for CRITICAL-urgency requests.
+
+Top 3 ranked donors are matched and notified via push notification.
 
 ### Shortage Prediction
 
@@ -203,7 +259,42 @@ ratio = requestCount / donorCount (last 30 days)
 ratio >= 0.8  → CRITICAL
 ratio >= 0.5  → HIGH
 ratio >= 0.3  → MODERATE
-ratio < 0.3   → LOW
+ratio <  0.3  → LOW
+```
+
+---
+
+## Request Lifecycle
+
+```
+PENDING   → request posted, matching donors notified
+MATCHED   → donor accepted, on their way
+FULFILLED → hospital marks complete after blood collected
+EXPIRED   → no donor responded within 24 hours (auto by cron job)
+```
+
+---
+
+## Commitment Score System
+
+```
+Donor accepts match   → +10 points
+Donor declines match  → -5 points
+Score range: 0 - 100
+Higher score = ranked higher in future AI matching
+```
+
+---
+
+## Badge System
+
+```
+First Step   → joined ForiKhoon
+First Blood  → accepted first match
+Reliable     → commitment score > 50
+Dedicated    → commitment score > 80
+Lifesaver    → accepted 5+ matches
+Hero         → accepted 10+ matches
 ```
 
 ---
@@ -213,20 +304,21 @@ ratio < 0.3   → LOW
 ### Prerequisites
 - Node.js 20+
 - Python 3.11+
-- PostgreSQL (Neon DB free tier works)
+- PostgreSQL (Neon DB free tier)
+- Expo Go app (for mobile development)
 
 ### Backend
 ```bash
 cd backend
 npm install
 cp .env.example .env
-# Add DATABASE_URL and JWT_SECRET
+# Add DATABASE_URL and JWT_SECRET to .env
 npx prisma migrate dev
 npx ts-node prisma/seed.ts
 npm run dev
 ```
 
-### Frontend
+### Web Frontend
 ```bash
 cd frontend
 npm install
@@ -241,7 +333,15 @@ pip install flask flask-cors
 python app.py
 ```
 
-### Docker
+### Mobile App
+```bash
+cd mobile
+yarn install
+# Add EXPO_PUBLIC_API_URL=http://<your-local-ip>:5000 to .env
+yarn expo start --go
+```
+
+### Docker (all services)
 ```bash
 cp .env.example .env
 docker-compose up --build
@@ -254,35 +354,60 @@ docker-compose up --build
 ```
 Donor:    donor1@foorikhoon.com  / 123456
 Hospital: hospital1@foorikhoon.com / 123456
-Admin:    update any user role via seed script
+Admin:    update role via seed script
 ```
 
 ---
 
-## Pages
+## Mobile App Features
 
-| Page | Access |
-|---|---|
-| / | Public |
-| /login | Public |
-| /register | Public |
-| /requests | Public |
-| /requests/:id | Public |
-| /leaderboard | Public |
-| /donor/dashboard | Donor |
-| /donor/profile | Donor |
-| /donor/matches | Donor |
-| /hospital/dashboard | Hospital |
-| /hospital/profile | Hospital |
-| /hospital/analytics | Hospital |
-| /hospital/requests | Hospital |
-| /hospital/inventory | Hospital |
-| /hospital/request/new | Hospital |
-| /admin/dashboard | Admin |
+- Full donor and hospital flows
+- Push notifications (production via Expo Push Service + FCM)
+- Offline support with cached data and "Last updated X ago" banner
+- City stats, weekly heroes, public request board
+- Leaderboard with city filter
+- Secure token storage via Expo SecureStore
 
 ---
 
+## Roadmap — Planned Features
+
+### In progress
+- **Geolocation-based matching** — replace city-string matching with lat/lng + Haversine distance, radius escalation (10km → 25km → 50km → 100km). Hospitals geocoded to an exact point (verified institutions); donors geocoded to an area/neighborhood center only, to preserve location privacy. Addresses geocoded via Nominatim (OpenStreetMap).
+
+### Planned
+- Twilio SMS notifications for donors without smartphones
+- Full escalation system — auto-expand search radius / notify next donor batch if no response within 30 minutes
+- Hero certificate / shareable donation card (PNG export, WhatsApp/Instagram sharing)
+- Chart.js analytics for admin and hospital dashboards
+- Real-time updates via WebSockets (Socket.io)
+- Redis caching for public stats, leaderboard, heatmap
+- Photo verification of blood donation (Cloudinary)
+- Urdu language support (i18n) for web and mobile
+- Blood drive event scheduling
+- Hospital-to-hospital inventory transfer
+- Donor health eligibility checklist before match acceptance
+- Streak & achievement system
+- Trained ML model (logistic regression) replacing rule-based scoring, once sufficient real/synthetic data is available
+- Unit + integration tests (Jest, Cypress), CI/CD via GitHub Actions
+- AWS deployment (EC2, S3, RDS, CloudWatch)
+- RWDP simulation study — synthetic donor-behavior dataset compared against random-matching baseline
+- Small-scale user study (SUS usability testing) for FYP evaluation
+- Google Play Store release
+
+---
+
+## Research Contribution
+
+This project proposes a **Reliability-Weighted Donor Prioritization (RWDP)** framework for emergency blood donation. Unlike existing blood bank directories that treat all available donors equally, RWDP ranks donors using a composite score combining blood compatibility, geographic proximity, real-time availability, and longitudinal commitment history. The commitment score updates dynamically after each interaction, creating a self-improving prioritization system that favors historically reliable donors in future matches. A planned simulation study will compare RWDP against random-baseline matching to quantify improvement in donation fulfillment rates.
+
+---
+
+## Status
+
+Active development. Final Year Project — Gomal University, D.I. Khan (2023–2027).
+
 ## Author
 
-Sohaib Khan
+Sohaib Khan · BSCS · Gomal University, D.I. Khan
 github.com/sohaibkundi2 · sohaibkhan.me
