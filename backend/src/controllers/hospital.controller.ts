@@ -43,7 +43,7 @@ const updateProfile = async (req: Request, res: Response) => {
 
         await prisma.user.update({
             where: { id: userId },
-            data: { phone, city }
+            data: { phone, city: city.trim() }
         })
 
         res.status(200).json({ message: "hospital updated successfully", updatedHospital })

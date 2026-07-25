@@ -1,11 +1,23 @@
 import { Request, Response } from "express"
 import prisma from "../lib/prisma"
 import axios from "axios"
+import { Donor, User, BloodGroup } from "../../prisma/generated"
 import { sendPushNotification } from '../services/notification.service'
 
 const bloodGroupLabels: Record<string, string> = {
   A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
   AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
+}
+
+const COMPATIBLE_DONOR_GROUPS: Record<string, BloodGroup[]> = {
+  A_POS:  [BloodGroup.A_POS, BloodGroup.A_NEG, BloodGroup.O_POS, BloodGroup.O_NEG],
+  A_NEG:  [BloodGroup.A_NEG, BloodGroup.O_NEG],
+  B_POS:  [BloodGroup.B_POS, BloodGroup.B_NEG, BloodGroup.O_POS, BloodGroup.O_NEG],
+  B_NEG:  [BloodGroup.B_NEG, BloodGroup.O_NEG],
+  AB_POS: [BloodGroup.A_POS, BloodGroup.A_NEG, BloodGroup.B_POS, BloodGroup.B_NEG, BloodGroup.AB_POS, BloodGroup.AB_NEG, BloodGroup.O_POS, BloodGroup.O_NEG],
+  AB_NEG: [BloodGroup.A_NEG, BloodGroup.B_NEG, BloodGroup.AB_NEG, BloodGroup.O_NEG],
+  O_POS:  [BloodGroup.O_POS, BloodGroup.O_NEG],
+  O_NEG:  [BloodGroup.O_NEG],
 }
 
 const createRequest = async (req: Request, res: Response) => {
@@ -41,16 +53,36 @@ const createRequest = async (req: Request, res: Response) => {
             }
         })
 
-        const matchingDonors = await prisma.donor.findMany({
+        const RARE_GROUPS = ['O_NEG', 'AB_NEG']
+
+        const isRareRequest = RARE_GROUPS.includes(bloodGroup)
+
+        // Stage 1: exact blood-group match only for rare requests,
+        // full compatible list for common ones
+
+        let matchingDonors = await prisma.donor.findMany({
             where: {
-                bloodGroup: bloodGroup,
+                bloodGroup: isRareRequest
+                    ? bloodGroup
+                    : { in: COMPATIBLE_DONOR_GROUPS[bloodGroup] ?? [bloodGroup] },
                 isAvailable: true,
-                user: {
-                    city: hospital.user.city  // match hospital's city
-                }
+                user: { city: hospital.user.city }
             },
             include: { user: true }
         })
+
+        // Stage 2: only for rare requests with zero exact-match donors,
+        // widen to other compatible donors
+        if (isRareRequest && matchingDonors.length === 0) {
+            matchingDonors = await prisma.donor.findMany({
+                where: {
+                    bloodGroup: { in: COMPATIBLE_DONOR_GROUPS[bloodGroup] ?? [bloodGroup] },
+                    isAvailable: true,
+                    user: { city: hospital.user.city }
+                },
+                include: { user: true }
+            })
+        }
 
         const aiResponse = await axios.post('http://localhost:5001/ai/match', {
             donors: matchingDonors.map(d => ({
