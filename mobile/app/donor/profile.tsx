@@ -40,6 +40,7 @@ export default function DonorProfileScreen() {
   const [lastDonated, setLastDonated] = useState<Date | null>(null)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [isAvailable, setIsAvailable] = useState(true)
+  const [area, setArea] = useState('')
 
   const { isOnline } = useNetwork()
   const [cacheTime, setCacheTime] = useState<number | null>(null)
@@ -67,6 +68,7 @@ export default function DonorProfileScreen() {
         setPhone(donor.user.phone || '')
         setCity(donor.user.city || '')
         setBloodGroup(donor.bloodGroup || '')
+        setArea(donor.area || '')
         setLastDonated(
           donor.lastDonated ? new Date(donor.lastDonated) : null
         )
@@ -87,6 +89,7 @@ export default function DonorProfileScreen() {
       setPhone(donor.user.phone || '')
       setCity(donor.user.city || '')
       setBloodGroup(donor.bloodGroup || '')
+      setArea(donor.area || '')
       setLastDonated(
         donor.lastDonated ? new Date(donor.lastDonated) : null
       )
@@ -112,6 +115,7 @@ export default function DonorProfileScreen() {
         phone,
         city,
         bloodGroup,
+        area,
         lastDonated: lastDonated ? lastDonated.toISOString().split('T')[0] : null,
       })
       setSuccess(true)
@@ -192,6 +196,16 @@ export default function DonorProfileScreen() {
             style={styles.input}
             placeholderTextColor="#6B7280"
           />
+
+          <Text style={styles.label}>Area / neighborhood</Text>
+          <TextInput
+            value={area}
+            onChangeText={setArea}
+            placeholder="Hayatabad, Peshawar"
+            style={styles.input}
+            placeholderTextColor="#6B7280"
+          />
+          <Text style={styles.helperTextArea}>Leave blank to keep your current saved location.</Text>
         </View>
 
         {/* Donation info */}
@@ -337,6 +351,8 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     justifyContent: 'center',
   },
+
+  helperTextArea: { color: '#6B7280', fontSize: 11, marginTop: -8, marginBottom: 14 },
 
   bloodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   bloodButton: {

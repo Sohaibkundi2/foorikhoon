@@ -122,7 +122,10 @@ useEffect(() => {
           <p className="text-[#6B7280] text-xs uppercase tracking-widest mb-2">Hospital Dashboard</p>
           <h1 className="text-3xl font-bold text-white">{hospital?.name}</h1>
           <div className="flex items-center gap-3 mt-2">
-            <p className="text-[#9CA3AF] text-sm">{hospital?.user.city}</p>
+            <p className="text-[#9CA3AF] text-sm">
+              {hospital?.user.city}
+              {hospital?.address && <span className="text-[#6B7280]"> · {hospital.address}</span>}
+            </p>
             {hospital?.verified ? (
               <span className="text-xs text-green-400 bg-green-400/10 border border-green-400/20 px-2 py-0.5 rounded-full">
                 Verified
@@ -134,6 +137,7 @@ useEffect(() => {
             )}
           </div>
         </div>
+        
         <div className="flex gap-3">
           <Link href="/hospital/analytics" className="text-sm border border-[#2A2A2A] hover:border-[#3A3A3A] text-[#9CA3AF] hover:text-white px-4 py-2 rounded-md transition-all duration-150">
   Analytics

@@ -20,6 +20,7 @@ interface DonorProfile {
   bloodGroup: string | null
   isAvailable: boolean
   commitmentScore: number
+  area: string | null
   lastDonated: string | null
   user: { name: string; email: string; city: string; phone: string | null }
 }
@@ -171,12 +172,20 @@ const fetchData = async () => {
 
       {/* Header */}
       <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.greeting}>
-            Hi, {donor?.user.name?.split(' ')[0] || 'Donor'}
-          </Text>
-          <Text style={styles.city}>{donor?.user.city}</Text>
-        </View>
+      <View>
+        <Text style={styles.greeting}>
+          Hi, {donor?.user.name?.split(' ')[0] || 'Donor'}
+        </Text>
+        <Text style={styles.city}>
+          {donor?.user.city}
+          {donor?.area ? ` · ${donor.area}` : ''}
+        </Text>
+        {!donor?.area && (
+          <TouchableOpacity onPress={() => router.push('/donor/profile')}>
+            <Text style={styles.areaWarning}>⚠️ Add your area to get matched with nearby requests</Text>
+          </TouchableOpacity>
+        )}
+      </View>
         <Link href="/donor/profile" asChild>
           <TouchableOpacity style={styles.editBtn} activeOpacity={0.7}>
             <Text style={styles.editBtnText}>Edit</Text>
@@ -369,6 +378,7 @@ const styles = StyleSheet.create({
   editBtn: { borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
   editBtnText: { color: '#D1D5DB', fontSize: 13, fontWeight: '500' },
 
+  areaWarning: { color: '#DC2626', fontSize: 12, marginTop: 4 },
   // Hero
   hero: {
     flexDirection: 'row',

@@ -28,6 +28,7 @@ model Donor {
   lastDonated     DateTime?
   isAvailable     Boolean    @default(true)
   commitmentScore Int        @default(0)
+  area            String?
   latitude        Float?
   longitude       Float?
   user            User       @relation(fields: [userId], references: [id])
@@ -40,6 +41,8 @@ model Hospital {
   userId    String         @unique
   name      String
   address   String
+  latitude  Float?
+  longitude Float?
   licenseNo String         @unique
   verified  Boolean        @default(false)
   requests  BloodRequest[]

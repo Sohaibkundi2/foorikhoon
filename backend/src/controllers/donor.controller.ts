@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import prisma from '../lib/prisma'
+import { geocodeAddress } from "../lib/geocode"
 
 
 const getProfile = async (req: Request, res: Response) => {
@@ -44,34 +45,40 @@ const getProfile = async (req: Request, res: Response) => {
 
 
 const updateProfile = async (req: Request, res: Response) => {
-
   try {
-
-    const userId = req.user?.userId;
-
+    const userId = req.user?.userId
     if (!userId) {
       return res.status(400).json({ message: 'Invalid user ID' })
     }
 
-    const { name, bloodGroup, city, phone } = req.body
+    const { name, bloodGroup, city, phone, area } = req.body
+
+    let coords = null
+    if (area && area.trim()) {
+      coords = await geocodeAddress(area.trim())
+    }
 
     const updatedUser = await prisma.donor.update({
       where: { userId },
-      data: { bloodGroup }
+      data: {
+        bloodGroup,
+        ...(area && area.trim() && { area: area.trim() }),
+        ...(coords && {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        })
+      }
     })
 
     await prisma.user.update({
       where: { id: userId },
-      data: { name, city, phone }
+      data: { name, city: city?.trim(), phone }
     })
 
     res.status(200).json({ message: "profile updated successfully", updatedUser })
-
   } catch (error) {
-    res.status(500).json({ message: "interval server error" })
+    res.status(500).json({ message: "internal server error" })
   }
-
-
 }
 const updateAvailability = async (req: Request, res: Response) => {
 
@@ -89,7 +96,7 @@ const updateAvailability = async (req: Request, res: Response) => {
     res.status(200).json({ message: "availability updated successfully", updatedDoner })
 
   } catch (error) {
-    res.status(500).json({ message: "interval server error" })
+    res.status(500).json({ message: "internal server error" })
   }
 
 }
@@ -175,21 +182,33 @@ const createDonorProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid user ID' })
     }
 
-    const { bloodGroup } = req.body
+    const { bloodGroup, area } = req.body
+
+    let coords = null
+    if (area && area.trim()) {
+      coords = await geocodeAddress(area.trim())
+    }
 
     const donor = await prisma.donor.create({
       data: {
         userId,
-        bloodGroup
+        bloodGroup,
+        area: area?.trim() || null,
+        latitude: coords?.latitude ?? null,
+        longitude: coords?.longitude ?? null,
       }
     })
 
-    res.status(201).json({ message: 'Donor profile created', donor })
+    res.status(201).json({
+      message: coords
+        ? 'Donor profile created'
+        : 'Donor profile created, but area could not be located — you may not appear in nearby matches until this is updated',
+      donor
+    })
   } catch (error) {
     res.status(500).json({ message: 'Internal server error' })
   }
 }
-
 const savePushToken = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.userId

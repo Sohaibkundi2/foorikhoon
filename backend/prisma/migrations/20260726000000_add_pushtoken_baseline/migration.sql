@@ -1,0 +1,1 @@
+ALTER TABLE "Donor" ADD COLUMN "pushToken" TEXT;

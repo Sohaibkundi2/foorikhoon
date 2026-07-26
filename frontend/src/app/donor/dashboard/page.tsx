@@ -14,6 +14,9 @@ interface DonorProfile {
   isAvailable: boolean
   commitmentScore: number
   lastDonated: string | null
+  area: string | null
+  latitude: number | null
+  longitude: number | null
   user: {
     name: string
     email: string
@@ -147,7 +150,15 @@ useEffect(() => {
           <h1 className="text-3xl font-bold text-white">
             Welcome, {donor?.user.name?.split(' ')[0] || 'Donor'}
           </h1>
-          <p className="text-[#9CA3AF] text-sm mt-1">{donor?.user.city}</p>
+          <p className="text-[#9CA3AF] text-sm mt-1">
+            {donor?.user.city}
+            {donor?.area && <span className="text-[#6B7280]"> · {donor.area}</span>}
+          </p>
+          {!donor?.area && (
+            <Link href="/donor/profile" className="text-xs text-[#DC2626] hover:text-[#B91C1C] transition-colors mt-1 inline-block">
+              ⚠️ Add your area to get matched with nearby requests
+            </Link>
+          )}
         </div>
         <Link
           href="/donor/profile"

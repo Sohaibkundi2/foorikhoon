@@ -129,9 +129,11 @@ export default function HospitalDashboard() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
 
       {/* Header */}
+{/* Header */}
       <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title} numberOfLines={1}>{hospital?.name}</Text>
+        <View style={styles.headerInfo}>
+          <Text style={styles.title} numberOfLines={2}>{hospital?.name}</Text>
+
           <View style={styles.headerMeta}>
             <Text style={styles.city}>{hospital?.user.city}</Text>
             <View style={styles.metaDot} />
@@ -141,7 +143,12 @@ export default function HospitalDashboard() {
               <Text style={styles.pendingText}>Pending verification</Text>
             )}
           </View>
+
+          {hospital?.address && (
+            <Text style={styles.address} numberOfLines={1}>{hospital.address}</Text>
+          )}
         </View>
+
         <Link href="/hospital/profile" asChild>
           <TouchableOpacity style={styles.editBtn} activeOpacity={0.7}>
             <Text style={styles.editBtnText}>Edit</Text>
@@ -306,15 +313,58 @@ const styles = StyleSheet.create({
   center:  { flex: 1, backgroundColor: '#0A0A0A', alignItems: 'center', justifyContent: 'center' },
 
   // Header
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  title: { color: '#FFFFFF', fontSize: 22, fontWeight: '700' },
-  headerMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
+      headerRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        marginBottom: 24,
+        gap: 12,
+      },
+      headerInfo: {
+        flex: 1,
+        minWidth: 0, // allows text truncation to work correctly inside flex row on RN
+      },
+      title: {
+        color: '#FFFFFF',
+        fontSize: 22,
+        fontWeight: '700',
+        lineHeight: 28,
+        marginBottom: 6,
+      },
+      headerMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        rowGap: 4,
+      },
+      metaDot: {
+        width: 3,
+        height: 3,
+        borderRadius: 999,
+        backgroundColor: '#4B5563',
+        marginHorizontal: 8,
+      },
+      address: {
+        color: '#6B7280',
+        fontSize: 12,
+        marginTop: 4,
+      },
+      editBtn: {
+        borderWidth: 1,
+        borderColor: 'rgba(248,113,113,0.3)',
+        borderRadius: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        flexShrink: 0, 
+      },
+      editBtnText: {
+        color: '#9CA3AF',
+        fontSize: 13,
+        fontWeight: '500',
+      },
   city: { color: '#6B7280', fontSize: 13 },
-  metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#4B5563', marginHorizontal: 7 },
   verifiedText: { color: '#4ADE80', fontSize: 12.5, fontWeight: '600' },
   pendingText: { color: '#FACC15', fontSize: 12.5, fontWeight: '600' },
-  editBtn: { borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
-  editBtnText: { color: '#D1D5DB', fontSize: 13, fontWeight: '500' },
 
   // Hero
   hero: {

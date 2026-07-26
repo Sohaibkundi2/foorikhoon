@@ -21,6 +21,7 @@ export default function RegisterPage() {
   const [hospitalName, setHospitalName] = useState('')
   const [address, setAddress] = useState('')
   const [licenseNo, setLicenseNo] = useState('')
+  const [area, setArea] = useState('')
 
   const { setAuth } = useAuthStore()
   const router = useRouter()
@@ -45,6 +46,16 @@ export default function RegisterPage() {
       return
     }
 
+    if (role === 'HOSPITAL' && (!hospitalName || !address || !licenseNo)) {
+  setError('Please fill in all hospital details')
+  return
+}
+
+  if (role === 'DONOR' && !area) {
+    setError('Please enter your area or neighborhood')
+    return
+  }
+
     try {
       setLoading(true)
       await api.post('/api/auth/register', { email, password, name, phone, city, role })
@@ -53,7 +64,7 @@ export default function RegisterPage() {
       setAuth(user, token)
 
       if (role === 'DONOR') {
-        await api.post('/api/donor/profile', { bloodGroup })
+        await api.post('/api/donor/profile', { bloodGroup, area })
         router.push('/donor/dashboard')
       } else if (role === 'HOSPITAL') {
         await api.post('/api/hospital/profile', { name: hospitalName, address, licenseNo })
@@ -156,6 +167,12 @@ export default function RegisterPage() {
 
               {role === 'DONOR' && (
                 <div>
+                    <div>
+                      <label className="block text-sm text-[#9CA3AF] mb-1.5">Area / neighborhood</label>
+                      <input type="text" value={area} onChange={(e) => setArea(e.target.value)} placeholder="Hayatabad, Peshawar"
+                        className="w-full bg-[#141414] border border-[#2A2A2A] focus:border-[#DC2626] text-white placeholder:text-[#6B7280] rounded-md px-4 py-2.5 text-sm outline-none transition-colors" />
+                      <p className="text-xs text-[#6B7280] mt-1">Used to match you with nearby requests — not your exact address.</p>
+                    </div>
                 <label className="block text-sm text-[#9CA3AF] mb-2">
                     Blood group <span className="text-[#6B7280]">(optional)</span>
                   </label>

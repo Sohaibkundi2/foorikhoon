@@ -1,5 +1,6 @@
 import { Request, Response } from "express"
 import prisma from "../lib/prisma"
+import { geocodeAddress } from "../lib/geocode"
 
 const getProfile = async (req: Request, res: Response) => {
 
@@ -36,20 +37,32 @@ const updateProfile = async (req: Request, res: Response) => {
 
         const { name, address, phone, city } = req.body
 
+        let coords = null
+        if (address && address.trim()) {
+            coords = await geocodeAddress(address.trim())
+        }
+
         const updatedHospital = await prisma.hospital.update({
             where: { userId },
-            data: { name, address }
+            data: {
+                name,
+                address,
+                ...(coords && {
+                    latitude: coords.latitude,
+                    longitude: coords.longitude,
+                })
+            }
         })
 
         await prisma.user.update({
             where: { id: userId },
-            data: { phone, city: city.trim() }
+            data: { phone, ...(city && { city: city.trim() }) }
         })
 
         res.status(200).json({ message: "hospital updated successfully", updatedHospital })
 
-
     } catch (error) {
+        console.error('Hospital profile error:', error)
         res.status(500).json({ message: 'Internal server error' })
     }
 }
@@ -146,17 +159,31 @@ const createHospitalProfile = async (req: Request, res: Response) => {
 
         const { name, address, licenseNo } = req.body
 
+        if (!address || !address.trim()) {
+            return res.status(400).json({ message: 'Address is required' })
+        }
+
+        const coords = await geocodeAddress(address.trim())
+
         const hospital = await prisma.hospital.create({
             data: {
                 userId,
                 name,
-                address,
-                licenseNo
+                address: address.trim(),
+                licenseNo,
+                latitude: coords?.latitude ?? null,
+                longitude: coords?.longitude ?? null,
             }
         })
 
-        res.status(201).json({ message: 'Hospital profile created', hospital })
+        res.status(201).json({
+            message: coords
+                ? 'Hospital profile created'
+                : 'Hospital profile created, but address could not be located — matching by distance will be unavailable until this is corrected',
+            hospital
+        })
     } catch (error) {
+        console.error('Hospital profile error:', error)
         res.status(500).json({ message: 'Internal server error' })
     }
 }

@@ -27,6 +27,7 @@ export default function DonorProfilePage() {
   const [bloodGroup, setBloodGroup] = useState('')
   const [lastDonated, setLastDonated] = useState('')
   const [isAvailable, setIsAvailable] = useState(true)
+  const [area, setArea] = useState('')
 
   useEffect(() => {
     if (!user) { router.push('/login'); return }
@@ -44,6 +45,7 @@ export default function DonorProfilePage() {
       setBloodGroup(donor.bloodGroup || '')
       setLastDonated(donor.lastDonated ? donor.lastDonated.split('T')[0] : '')
       setIsAvailable(donor.isAvailable)
+      setArea(donor.area || '')
     } catch (err) {
       console.error(err)
     } finally {
@@ -59,7 +61,7 @@ export default function DonorProfilePage() {
     try {
       setSaving(true)
       await api.put('/api/donor/profile', {
-        name, phone, city, bloodGroup,
+        name, phone, city, bloodGroup,area,
         lastDonated: lastDonated || null
       })
       setSuccess(true)
@@ -137,6 +139,19 @@ export default function DonorProfilePage() {
                 onChange={(e) => setCity(e.target.value)}
                 className="w-full bg-[#0F0F0F] border border-[#2A2A2A] focus:border-[#DC2626] rounded-md px-4 py-2.5 text-white text-sm outline-none transition-colors"
               />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm text-[#9CA3AF] mb-1.5">
+                Area / neighborhood <span className="text-[#6B7280]">(update to refresh your match location)</span>
+              </label>
+              <input
+                type="text"
+                value={area}
+                onChange={(e) => setArea(e.target.value)}
+                placeholder="Hayatabad, Peshawar"
+                className="w-full bg-[#0F0F0F] border border-[#2A2A2A] focus:border-[#DC2626] rounded-md px-4 py-2.5 text-white text-sm outline-none transition-colors placeholder:text-[#6B7280]"
+              />
+            <p className="text-xs text-[#6B7280] mt-1">Leave blank to keep your current saved location.</p>
             </div>
           </div>
         </div>

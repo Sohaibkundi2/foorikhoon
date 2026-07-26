@@ -29,6 +29,7 @@ export default function Register() {
   const [hospitalName, setHospitalName] = useState('')
   const [address, setAddress] = useState('')
   const [licenseNo, setLicenseNo] = useState('')
+  const [area, setArea] = useState('')
 
   const { setAuth } = useAuthStore()
 
@@ -43,6 +44,14 @@ export default function Register() {
       setError('Please fill in all hospital details')
       return
     }
+    if (role === 'HOSPITAL' && (!hospitalName || !address || !licenseNo)) {
+      setError('Please fill in all hospital details')
+      return
+    }
+    if (role === 'DONOR' && !area) {
+      setError('Please enter your area or neighborhood')
+      return
+    }
 
     try {
       setLoading(true)
@@ -52,7 +61,7 @@ export default function Register() {
       setAuth(user, token)
 
       if (role === 'DONOR') {
-        await api.post('/api/donor/profile', { bloodGroup })
+        await api.post('/api/donor/profile', { bloodGroup, area })
         router.push('/donor/dashboard')
       } else if (role === 'HOSPITAL') {
         await api.post('/api/hospital/profile', { name: hospitalName, address, licenseNo })
@@ -203,6 +212,14 @@ export default function Register() {
                 I don't know my blood group
               </Text>
             </TouchableOpacity>
+
+            <Field label="Area / neighborhood">
+              <TextInput
+                style={styles.input} placeholderTextColor="#6B7280"
+                placeholder="Hayatabad, Peshawar" value={area} onChangeText={setArea}
+              />
+              <Text style={styles.helperText}>Used to match you with nearby requests — not your exact address.</Text>
+            </Field>
           </View>
         )}
 
@@ -337,6 +354,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   row: { flexDirection: 'row' },
+
+  helperText: { color: '#6B7280', fontSize: 11, marginTop: 4 },
 
   // Blood group grid
   bloodGrid: {
