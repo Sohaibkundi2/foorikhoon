@@ -11,45 +11,35 @@ app = Flask(__name__)
 CORS(app)
 
 
-# Recipient blood group -> donor blood groups that can safely donate to them
 COMPATIBLE_DONORS = {
-    'A_POS':  ['A_POS', 'A_NEG', 'O_POS', 'O_NEG'],
-    'A_NEG':  ['A_NEG', 'O_NEG'],
-    'B_POS':  ['B_POS', 'B_NEG', 'O_POS', 'O_NEG'],
-    'B_NEG':  ['B_NEG', 'O_NEG'],
-    'AB_POS': ['A_POS', 'A_NEG', 'B_POS', 'B_NEG', 'AB_POS', 'AB_NEG', 'O_POS', 'O_NEG'],  # universal recipient
-    'AB_NEG': ['A_NEG', 'B_NEG', 'AB_NEG', 'O_NEG'],
-    'O_POS':  ['O_POS', 'O_NEG'],
-    'O_NEG':  ['O_NEG'],  # universal donor, but only receives from O_NEG
+    'A_POS':  ['A_POS', 'A_NEG'],
+    'A_NEG':  ['A_NEG'],
+    'B_POS':  ['B_POS', 'B_NEG'],
+    'B_NEG':  ['B_NEG'],
+    'AB_POS': ['A_POS', 'A_NEG', 'B_POS', 'B_NEG', 'AB_POS', 'AB_NEG'],
+    'AB_NEG': ['A_NEG', 'B_NEG', 'AB_NEG'],
+    'O_POS':  ['O_POS'],
+    'O_NEG':  ['O_NEG'],
 }
-
-RARE_DONOR_TYPES = {'O_NEG', 'AB_NEG'}
-
 
 def calculate_score(donor, blood_request):
     score = 0
     requested_group = blood_request['bloodGroup']
-    is_emergency = blood_request.get('urgency') in ('CRITICAL')
 
     if donor['bloodGroup'] == requested_group:
         score += 50
     elif donor['bloodGroup'] in COMPATIBLE_DONORS.get(requested_group, []):
-        score += 35   # compatible but not exact type — ranked slightly lower
+        score += 35
 
-    if donor['city'] == blood_request['city']:
-        score += 30
+    max_radius = 100
+    distance = donor.get('distanceKm', max_radius)
+    proximity_score = max(0, 30 * (1 - distance / max_radius))
+    score += proximity_score
 
     if donor['isAvailable']:
         score += 20
 
     score += donor['commitmentScore'] * 0.5
-
-    # Reservation layer: don't burn rare donors on non-emergency requests
-    # they aren't an exact match for
-    if (donor['bloodGroup'] in RARE_DONOR_TYPES
-            and donor['bloodGroup'] != requested_group
-            and not is_emergency):
-        score -= 25
 
     return score
 

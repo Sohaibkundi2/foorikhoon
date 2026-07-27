@@ -31,6 +31,7 @@ model Donor {
   area            String?
   latitude        Float?
   longitude       Float?
+  @@index([latitude, longitude])
   user            User       @relation(fields: [userId], references: [id])
   matches         Match[]
   pushToken String?

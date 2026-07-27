@@ -26,10 +26,10 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 
 - Role-based access for donors, hospitals, and admins
 - AI-powered donor matching using Python Flask microservice
-- **Medically correct blood-compatibility matching** — donors ranked using the full compatible-donor matrix (e.g. O− as universal donor), not just exact blood-group match
-- **Rarity-aware reservation logic** — for scarce types (O−, AB−), the system tries an exact-type match first and only widens to other compatible donors when no exact match is available, so rare donors aren't burned on requests that don't need them
-- **Emergency override** — the rarity reservation penalty is lifted for CRITICAL-urgency requests, so scarce donors are still surfaced when truly needed
-- Donors ranked by blood compatibility, location, availability, and commitment score
+- **Medically correct blood-compatibility matching** — donors ranked using a compatible-donor matrix per blood group
+- **Strict rare-type reservation** — scarce types (O−, AB−) are matched only against requests for their own exact type; they are never used as cross-type substitutes for other blood groups, regardless of urgency
+- **Geolocation-based matching** — donors and hospitals are geocoded (via Nominatim/OpenStreetMap) to real coordinates; requests search a widening radius (10km → 25km → 50km → 100km), stopping at the first tier with a qualifying donor, instead of relying on exact city-name matches
+- Donors ranked by blood compatibility, proximity, availability, and commitment score
 - Shortage prediction — predicts which blood groups will run low based on 30-day history
 - Request auto-expiry — PENDING requests expire after 24 hours via background job
 - Commitment scoring — donors earn/lose points based on response behavior
@@ -166,8 +166,8 @@ foorikhoon/
 
 ```
 User         — base model (DONOR, HOSPITAL, ADMIN), city trimmed on write
-Donor        — blood group, availability, commitment score, pushToken, latitude/longitude
-Hospital     — name, address, license, verified
+Donor        — blood group, availability, commitment score, pushToken, area, latitude/longitude
+Hospital     — name, address, latitude/longitude, license, verified
 BloodRequest — blood group, units, urgency, status, expiry
 Match        — links donor to request, tracks response
 Inventory    — hospital blood stock per blood group
@@ -236,20 +236,16 @@ POST /ai/predict  — predicts blood group shortage based on 30-day history
 ```
 Exact blood-group match         → +50 points
 Compatible (non-exact) match    → +35 points
-City match                      → +30 points
+Proximity (gradient, 0-100km)   → up to +30 points, fading to 0 at 100km
 Is available                    → +20 points
 Commitment score                → score × 0.5 bonus
-Rare donor type (O−/AB−),
-non-exact match, non-CRITICAL   → −25 points (reservation penalty)
 ```
 
-**Two-stage donor lookup for rare requested types (O−, AB−):**
-1. Search for an exact blood-group match first
-2. Only if no exact match is available, widen the pool to other medically compatible donors
+**Rare blood types (O−, AB−) are excluded from every other group's compatible-donor list.** They are only ever considered for requests of their own exact type — never surfaced as a cross-type substitute for another blood group, even under CRITICAL urgency. This keeps scarce donors reserved for the patients who specifically need them.
 
-This prevents scarce donor types from being matched away on requests that could be filled by a more common compatible type, while still guaranteeing a match is found when one exists. The reservation penalty is lifted entirely for CRITICAL-urgency requests.
+**Radius escalation:** for a given request, the compatible donor pool is searched at increasing radii — 10km, then 25km, 50km, 100km — using a bounding-box pre-filter (cheap, indexable) followed by precise Haversine distance on the much smaller candidate set. The search stops at the first radius tier with any qualifying donor, so nearby donors are always preferred over farther ones. This is designed to stay reasonably efficient even with a large donor base, since the database — not the application — narrows the candidate set before distance is calculated.
 
-Top 3 ranked donors are matched and notified via push notification.
+Top 3 ranked donors (from the winning radius tier) are matched and notified via push notification.
 
 ### Shortage Prediction
 
@@ -372,8 +368,12 @@ Admin:    update role via seed script
 
 ## Roadmap — Planned Features
 
-### In progress
-- **Geolocation-based matching** — replace city-string matching with lat/lng + Haversine distance, radius escalation (10km → 25km → 50km → 100km). Hospitals geocoded to an exact point (verified institutions); donors geocoded to an area/neighborhood center only, to preserve location privacy. Addresses geocoded via Nominatim (OpenStreetMap).
+### Recently completed
+- **Geolocation-based matching** — lat/lng + Haversine distance with radius escalation (10km → 25km → 50km → 100km), replacing city-string matching. Hospitals geocoded to an exact point (verified institutions); donors geocoded to an area/neighborhood center only, to preserve location privacy. Addresses geocoded via Nominatim (OpenStreetMap).
+- **Strict rare-type reservation policy** — O−/AB− donors are reserved exclusively for exact-type requests, never used as cross-type substitutes.
+
+### Known limitation
+- The radius query currently pulls candidates per tier from Postgres using a lat/lng bounding-box filter, then computes precise distance in the application layer. This is efficient enough for the project's current scale, but a production deployment with a very large donor base would benefit from a PostGIS spatial index (`ST_DWithin`) to push distance filtering fully into the database.
 
 ### Planned
 - Twilio SMS notifications for donors without smartphones
