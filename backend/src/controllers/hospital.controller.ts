@@ -40,13 +40,19 @@ const updateProfile = async (req: Request, res: Response) => {
         let coords = null
         if (address && address.trim()) {
             coords = await geocodeAddress(address.trim())
+
+            if (!coords) {
+                return res.status(400).json({
+                    message: "We couldn't find that address. Please be more specific (e.g. add a well-known landmark or the city name)."
+                })
+            }
         }
 
         const updatedHospital = await prisma.hospital.update({
             where: { userId },
             data: {
                 name,
-                address,
+                ...(address && address.trim() && { address: address.trim() }),
                 ...(coords && {
                     latitude: coords.latitude,
                     longitude: coords.longitude,
@@ -165,23 +171,24 @@ const createHospitalProfile = async (req: Request, res: Response) => {
 
         const coords = await geocodeAddress(address.trim())
 
+        if (!coords) {
+            return res.status(400).json({
+                message: "We couldn't find that address. Please be more specific (e.g. add a well-known landmark or the city name)."
+            })
+        }
+
         const hospital = await prisma.hospital.create({
             data: {
                 userId,
                 name,
                 address: address.trim(),
                 licenseNo,
-                latitude: coords?.latitude ?? null,
-                longitude: coords?.longitude ?? null,
+                latitude: coords.latitude,
+                longitude: coords.longitude,
             }
         })
 
-        res.status(201).json({
-            message: coords
-                ? 'Hospital profile created'
-                : 'Hospital profile created, but address could not be located — matching by distance will be unavailable until this is corrected',
-            hospital
-        })
+        res.status(201).json({ message: 'Hospital profile created', hospital })
     } catch (error) {
         console.error('Hospital profile error:', error)
         res.status(500).json({ message: 'Internal server error' })

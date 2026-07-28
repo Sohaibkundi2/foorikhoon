@@ -1,7 +1,10 @@
 import { Request, Response } from 'express'
 import prisma from '../lib/prisma'
 import { geocodeAddress } from "../lib/geocode"
-
+import { COMPATIBLE_DONOR_GROUPS } from "../lib/compatibility"
+import { haversineDistance, getBoundingBox, RADIUS_TIERS_KM } from "../lib/distance"
+import axios from "axios"
+import { sendPushNotification } from '../services/notification.service'
 
 const getProfile = async (req: Request, res: Response) => {
   try {
@@ -43,7 +46,6 @@ const getProfile = async (req: Request, res: Response) => {
   }
 }
 
-
 const updateProfile = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.userId
@@ -56,6 +58,12 @@ const updateProfile = async (req: Request, res: Response) => {
     let coords = null
     if (area && area.trim()) {
       coords = await geocodeAddress(area.trim())
+
+      if (!coords) {
+        return res.status(400).json({
+          message: "We couldn't find that location. Please be more specific (e.g. add your city or a well-known landmark)."
+        })
+      }
     }
 
     const updatedUser = await prisma.donor.update({
@@ -130,9 +138,10 @@ const getMatches = async (req: Request, res: Response) => {
     res.status(200).json({ matches: matchedDonor })
 
   } catch (error) {
-    res.status(500).json({ message: "interval server error" })
+    res.status(500).json({ message: "internal server error" })
   }
 }
+
 const respondToMatch = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.userId
@@ -143,24 +152,21 @@ const respondToMatch = async (req: Request, res: Response) => {
     const matchId = req.params.id as string
     const { status } = req.body
 
-    // update match
     const updatedMatch = await prisma.match.update({
       where: { id: matchId },
-      data: {
-        status,
-        respondedAt: new Date()
-      }
+      data: { status, respondedAt: new Date() }
     })
 
-    // update commitment score
-      if (status === 'DECLINED') {
+    if (status === 'DECLINED') {
       await prisma.donor.update({
         where: { id: updatedMatch.donorId },
         data: { commitmentScore: { decrement: 5 } }
       })
+
+      // Immediately try to find a replacement donor — don't wait for a timeout
+      await escalateAfterDecline(updatedMatch.requestId)
     }
 
-    // if accepted → mark request as MATCHED
     if (status === 'ACCEPTED') {
       await prisma.bloodRequest.update({
         where: { id: updatedMatch.requestId },
@@ -169,10 +175,78 @@ const respondToMatch = async (req: Request, res: Response) => {
     }
 
     res.status(200).json({ message: 'Match updated', match: updatedMatch })
-
   } catch (error) {
     res.status(500).json({ message: 'Internal server error' })
   }
+}
+
+async function escalateAfterDecline(requestId: string) {
+  const request = await prisma.bloodRequest.findUnique({
+    where: { id: requestId },
+    include: { hospital: true, matches: true }
+  })
+
+  if (!request || request.status !== 'PENDING') return // already matched/fulfilled/expired, nothing to do
+
+  const alreadyTriedDonorIds = request.matches.map(m => m.donorId)
+  const allowedGroups = COMPATIBLE_DONOR_GROUPS[request.bloodGroup] ?? [request.bloodGroup]
+
+  for (const radiusKm of RADIUS_TIERS_KM) {
+    const box = getBoundingBox(request.hospital.latitude!, request.hospital.longitude!, radiusKm)
+
+    const candidates = await prisma.donor.findMany({
+      where: {
+        bloodGroup: { in: allowedGroups },
+        isAvailable: true,
+        id: { notIn: alreadyTriedDonorIds },
+        latitude: { gte: box.minLat, lte: box.maxLat },
+        longitude: { gte: box.minLon, lte: box.maxLon },
+      },
+      include: { user: true }
+    })
+
+    if (candidates.length === 0) continue
+
+    const withinRadius = candidates
+      .map(d => ({
+        donor: d,
+        distanceKm: haversineDistance(request.hospital.latitude!, request.hospital.longitude!, d.latitude!, d.longitude!)
+      }))
+      .filter(d => d.distanceKm <= radiusKm)
+
+    if (withinRadius.length === 0) continue
+
+    const aiResponse = await axios.post('http://localhost:5001/ai/match', {
+      donors: withinRadius.map(w => ({
+        id: w.donor.id,
+        bloodGroup: w.donor.bloodGroup,
+        distanceKm: w.distanceKm,
+        commitmentScore: w.donor.commitmentScore,
+        isAvailable: w.donor.isAvailable
+      })),
+      request: { bloodGroup: request.bloodGroup, urgency: request.urgency }
+    })
+
+    const nextDonor = aiResponse.data.matches[0] // replace just the one who declined, not a whole new batch of 3
+    if (!nextDonor) continue
+
+    await prisma.match.create({
+      data: { requestId: request.id, donorId: nextDonor.donorId }
+    })
+
+    const donor = await prisma.donor.findUnique({ where: { id: nextDonor.donorId } })
+    if (donor?.pushToken) {
+      await sendPushNotification(
+        donor.pushToken,
+        '🩸 Blood Needed Urgently',
+        `${request.hospital.name} needs blood — please respond`,
+        { requestId: request.id }
+      )
+    }
+
+    return // found a replacement, done
+  }
+  // if we reach here, no replacement was found at any radius tier — request stays PENDING with fewer active matches
 }
 
 const createDonorProfile = async (req: Request, res: Response) => {
@@ -184,27 +258,29 @@ const createDonorProfile = async (req: Request, res: Response) => {
 
     const { bloodGroup, area } = req.body
 
-    let coords = null
-    if (area && area.trim()) {
-      coords = await geocodeAddress(area.trim())
+    if (!area || !area.trim()) {
+      return res.status(400).json({ message: 'Area is required' })
+    }
+
+    const coords = await geocodeAddress(area.trim())
+
+    if (!coords) {
+      return res.status(400).json({
+        message: "We couldn't find that location. Please be more specific (e.g. add your city or a well-known landmark)."
+      })
     }
 
     const donor = await prisma.donor.create({
       data: {
         userId,
         bloodGroup,
-        area: area?.trim() || null,
-        latitude: coords?.latitude ?? null,
-        longitude: coords?.longitude ?? null,
+        area: area.trim(),
+        latitude: coords.latitude,
+        longitude: coords.longitude,
       }
     })
 
-    res.status(201).json({
-      message: coords
-        ? 'Donor profile created'
-        : 'Donor profile created, but area could not be located — you may not appear in nearby matches until this is updated',
-      donor
-    })
+    res.status(201).json({ message: 'Donor profile created', donor })
   } catch (error) {
     res.status(500).json({ message: 'Internal server error' })
   }

@@ -5,6 +5,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 import { startExpiryJob } from './jobs/expiry.job'
+import { startEscalationJob } from './jobs/escalation.job'
 import prisma from './lib/prisma'
 import authRouter from './routes/auth.routes'
 
@@ -52,6 +53,7 @@ prisma.$connect()
   .then(() => {
     console.log('Database connected')
     startExpiryJob()
+    startEscalationJob()
   })
   .catch((err: Error) => console.error('Database connection failed', err))
 

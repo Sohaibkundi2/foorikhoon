@@ -4,26 +4,22 @@ import axios from "axios"
 import { BloodGroup } from "../../prisma/generated"
 import { sendPushNotification } from '../services/notification.service'
 import { haversineDistance, getBoundingBox, RADIUS_TIERS_KM } from "../lib/distance"
+import { COMPATIBLE_DONOR_GROUPS } from "../lib/compatibility"
 
 const bloodGroupLabels: Record<string, string> = {
   A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
   AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
 }
 
-const COMPATIBLE_DONOR_GROUPS: Record<string, BloodGroup[]> = {
-  A_POS:  [BloodGroup.A_POS, BloodGroup.A_NEG],
-  A_NEG:  [BloodGroup.A_NEG],
-  B_POS:  [BloodGroup.B_POS, BloodGroup.B_NEG],
-  B_NEG:  [BloodGroup.B_NEG],
-  AB_POS: [BloodGroup.A_POS, BloodGroup.A_NEG, BloodGroup.B_POS, BloodGroup.B_NEG, BloodGroup.AB_POS, BloodGroup.AB_NEG],
-  AB_NEG: [BloodGroup.A_NEG, BloodGroup.B_NEG, BloodGroup.AB_NEG],
-  O_POS:  [BloodGroup.O_POS],
-  O_NEG:  [BloodGroup.O_NEG],
-}
 
 async function findDonorsWithinRadius(hospitalLat: number, hospitalLon: number, allowedGroups: BloodGroup[]) {
+  console.log('=== ESCALATION DEBUG ===')
+  console.log('Hospital coords:', hospitalLat, hospitalLon)
+  console.log('Allowed groups:', allowedGroups)
+
   for (const radiusKm of RADIUS_TIERS_KM) {
     const box = getBoundingBox(hospitalLat, hospitalLon, radiusKm)
+    console.log(`Radius ${radiusKm}km box:`, box)
 
     const candidates = await prisma.donor.findMany({
       where: {
@@ -35,6 +31,10 @@ async function findDonorsWithinRadius(hospitalLat: number, hospitalLon: number, 
       include: { user: true }
     })
 
+    console.log(`Candidates in ${radiusKm}km box (before precise distance filter):`,
+      candidates.map(d => ({ id: d.id, bloodGroup: d.bloodGroup, lat: d.latitude, lon: d.longitude }))
+    )
+
     if (candidates.length === 0) continue
 
     const withinRadius = candidates
@@ -43,6 +43,10 @@ async function findDonorsWithinRadius(hospitalLat: number, hospitalLon: number, 
         distanceKm: haversineDistance(hospitalLat, hospitalLon, d.latitude!, d.longitude!)
       }))
       .filter(d => d.distanceKm <= radiusKm)
+
+    console.log(`Donors within actual ${radiusKm}km distance:`,
+      withinRadius.map(w => ({ id: w.donor.id, distanceKm: w.distanceKm }))
+    )
 
     if (withinRadius.length > 0) {
       return { matches: withinRadius, radiusUsed: radiusKm }
