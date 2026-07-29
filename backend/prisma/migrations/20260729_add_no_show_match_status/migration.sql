@@ -1,0 +1,3 @@
+-- Active: 1753882822374@@127.0.0.1@5432
+-- AlterEnum
+ALTER TYPE "MatchStatus" ADD VALUE 'NO_SHOW';

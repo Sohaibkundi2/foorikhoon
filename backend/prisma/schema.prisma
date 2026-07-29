@@ -122,4 +122,5 @@ enum MatchStatus {
   ACCEPTED
   DECLINED
   COMPLETED
+  NO_SHOW
 }

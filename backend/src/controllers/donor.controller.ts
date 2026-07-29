@@ -180,7 +180,7 @@ const respondToMatch = async (req: Request, res: Response) => {
   }
 }
 
-async function escalateAfterDecline(requestId: string) {
+export async function escalateAfterDecline(requestId: string) {
   const request = await prisma.bloodRequest.findUnique({
     where: { id: requestId },
     include: { hospital: true, matches: true }
