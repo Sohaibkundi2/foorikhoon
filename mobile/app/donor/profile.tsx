@@ -41,6 +41,7 @@ export default function DonorProfileScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [isAvailable, setIsAvailable] = useState(true)
   const [area, setArea] = useState('')
+  const [shareContactInfo, setShareContactInfo] = useState(false)
 
   const { isOnline } = useNetwork()
   const [cacheTime, setCacheTime] = useState<number | null>(null)
@@ -73,6 +74,7 @@ export default function DonorProfileScreen() {
           donor.lastDonated ? new Date(donor.lastDonated) : null
         )
         setIsAvailable(donor.isAvailable)
+        setShareContactInfo(donor.shareContactInfo ?? false)
 
         setCacheTime(cachedProfile.time)
       }
@@ -94,6 +96,7 @@ export default function DonorProfileScreen() {
         donor.lastDonated ? new Date(donor.lastDonated) : null
       )
       setIsAvailable(donor.isAvailable)
+      setShareContactInfo(donor.shareContactInfo ?? false)
 
       // Save latest profile
       await saveCache('donor_profile', donor)
@@ -126,6 +129,15 @@ export default function DonorProfileScreen() {
       setSaving(false)
     }
   }
+
+  const toggleShareContactInfo = async () => {
+  try {
+    await api.put('/api/donor/profile', { shareContactInfo: !shareContactInfo })
+    setShareContactInfo(!shareContactInfo)
+  } catch (err) {
+    console.error(err)
+  }
+}
 
   if (loading) {
     return (
@@ -272,6 +284,23 @@ export default function DonorProfileScreen() {
             />
           </View>
         </View>
+
+        <View style={styles.card}>
+        <View style={styles.availabilityRow}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={styles.cardTitle}>Share Contact Info</Text>
+            <Text style={styles.availabilitySubtext}>
+              If enabled, the hospital can see your name and phone number when you accept their request, to help coordinate the donation.
+            </Text>
+          </View>
+          <Switch
+            value={shareContactInfo}
+            onValueChange={toggleShareContactInfo}
+            trackColor={{ false: '#333', true: '#22C55E' }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+      </View>
 
         {/* Save */}
         <View style={styles.footerRow}>

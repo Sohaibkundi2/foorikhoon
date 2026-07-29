@@ -6,6 +6,11 @@ import axios from "axios"
 import { sendPushNotification } from '../services/notification.service'
 import { findEligibleDonors } from '../lib/donorMatching'
 
+const bloodGroupLabels: Record<string, string> = {
+  A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
+  AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
+}
+
 const getProfile = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.userId
@@ -53,7 +58,7 @@ const updateProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid user ID' })
     }
 
-    const { name, bloodGroup, city, phone, area } = req.body
+    const { name, bloodGroup, city, phone, area, shareContactInfo } = req.body
 
     let coords = null
     if (area && area.trim()) {
@@ -74,7 +79,8 @@ const updateProfile = async (req: Request, res: Response) => {
         ...(coords && {
           latitude: coords.latitude,
           longitude: coords.longitude,
-        })
+        }),
+        ...(typeof shareContactInfo === 'boolean' && { shareContactInfo })
       }
     })
 
@@ -174,10 +180,29 @@ const respondToMatch = async (req: Request, res: Response) => {
     }
 
     if (status === 'ACCEPTED') {
-      await prisma.bloodRequest.update({
-        where: { id: updatedMatch.requestId },
-        data: { status: 'MATCHED' }
-      })
+        const request = await prisma.bloodRequest.update({
+            where: { id: updatedMatch.requestId },
+            data: { status: 'MATCHED' },
+            include: { hospital: true }
+        })
+
+        const donor = await prisma.donor.findUnique({
+            where: { id: updatedMatch.donorId },
+            include: { user: true }
+        })
+
+        if (request.hospital.pushToken) {
+            const contactHint = donor?.shareContactInfo
+                ? `${donor.user.name} · ${donor.user.phone ?? 'no phone on file'}`
+                : 'Contact info not shared — check in-app for updates'
+
+            await sendPushNotification(
+                request.hospital.pushToken,
+                '✅ Donor Accepted',
+                `A donor accepted your ${bloodGroupLabels[request.bloodGroup] ?? request.bloodGroup} request. ${contactHint}`,
+                { requestId: request.id }
+            )
+        }
     }
 
     res.status(200).json({ message: 'Match updated', match: updatedMatch })

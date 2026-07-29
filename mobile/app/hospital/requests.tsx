@@ -12,6 +12,7 @@ interface Match {
   id: string
   donorId: string
   status: string
+  donorContact?: { name: string; phone: string | null } | null
 }
 
 interface BloodRequest {
@@ -117,6 +118,9 @@ const handleNoShow = async (matchId: string) => {
 const getAcceptedMatch = (req: BloodRequest) =>
   req.matches?.find(m => m.status === 'ACCEPTED')
 
+const getAcceptedContact = (req: BloodRequest) =>
+req.matches?.find(m => m.status === 'ACCEPTED')?.donorContact
+
   const filteredRequests = activeTab === 'ALL'
     ? requests
     : requests.filter(r => r.status === activeTab)
@@ -179,6 +183,8 @@ const getAcceptedMatch = (req: BloodRequest) =>
           const urg = urgencyStyle[req.urgency] ?? urgencyStyle.NORMAL
           const st = statusStyle[req.status] ?? statusStyle.PENDING
           const canAct = req.status === 'PENDING' || req.status === 'MATCHED'
+          const acceptedMatch = getAcceptedMatch(req)
+          const acceptedContact = getAcceptedContact(req)
           return (
             <View style={styles.card}>
               <View style={styles.topRow}>
@@ -203,6 +209,19 @@ const getAcceptedMatch = (req: BloodRequest) =>
                 {req.matches?.length ?? 0} donor{req.matches?.length !== 1 ? 's' : ''} matched ·{' '}
                 {new Date(req.createdAt).toLocaleDateString()}
               </Text>
+
+                    {req.status === 'MATCHED' && acceptedMatch && (
+                      acceptedContact ? (
+                        <Text style={styles.acceptedContact}>
+                          ✓ Accepted by {acceptedContact.name}
+                          {acceptedContact.phone ? ` · ${acceptedContact.phone}` : ''}
+                        </Text>
+                      ) : (
+                        <Text style={styles.acceptedNoContact}>
+                          ✓ Accepted — contact info not shared
+                        </Text>
+                      )
+                    )}
 
               {canAct && (
                 <View style={styles.actionsRow}>
@@ -293,6 +312,9 @@ const styles = StyleSheet.create({
 
   detail: { color: '#9CA3AF', fontSize: 13, marginBottom: 4 },
   meta: { color: '#6B7280', fontSize: 12, marginBottom: 10 },
+
+  acceptedContact: { color: '#4ADE80', fontSize: 12, marginBottom: 10 },
+  acceptedNoContact: { color: '#6B7280', fontSize: 12, marginBottom: 10 },
 
   actionsRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   actionBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },

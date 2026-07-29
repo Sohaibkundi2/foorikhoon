@@ -60,3 +60,12 @@ export async function savePushTokenToBackend(token: string) {
     console.error('Failed to save push token:', err)
   }
 }
+
+export async function saveHospitalPushTokenToBackend(token: string) {
+  try {
+    await api.put('/api/hospital/push-token', { pushToken: token })
+    console.log('Push token saved to backend')
+  } catch (err) {
+    console.error('Failed to save push token:', err)
+  }
+}

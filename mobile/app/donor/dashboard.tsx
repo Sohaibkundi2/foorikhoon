@@ -9,7 +9,7 @@ import Svg, { Circle } from 'react-native-svg'
 import { useAuthStore } from '../../src/store/authStore'
 import api from '../../src/lib/api'
 import BadgePopup from '../../src/components/Badges'
-
+import { registerForPushNotifications, savePushTokenToBackend } from '../../src/lib/notifications'
 import { useNetwork } from '../../src/hooks/useNetwork'
 import { saveCache, loadCache } from '../../src/lib/cache'
 import OfflineBanner from '../../src/components/OfflineBanner'
@@ -80,6 +80,13 @@ export default function DonorDashboard() {
     if (user.role !== 'DONOR')    { router.replace('/'); return }
     fetchData()
   }, [user])
+
+  // new effect, added to the donor dashboard component:
+  useEffect(() => {
+    registerForPushNotifications().then(token => {
+      if (token) savePushTokenToBackend(token)
+    })
+  }, [])
 
 const fetchData = async () => {
   if (!isOnline) {

@@ -1,0 +1,2 @@
+ALTER TABLE "Donor" ADD COLUMN "shareContactInfo" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Hospital" ADD COLUMN "pushToken" TEXT;

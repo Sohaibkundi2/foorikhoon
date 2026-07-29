@@ -2,7 +2,7 @@
 import { Router } from 'express'
 import { authenticate } from '../middleware/auth.middleware'
 import { authorize } from '../middleware/role.middleware'
-import { getProfile, updateProfile, getInventory, updateInventory, getRequests, createHospitalProfile, getAnalytics, fulfillRequest, reportNoShow} from '../controllers/hospital.controller'
+import { getProfile, updateProfile, getInventory, updateInventory, getRequests, createHospitalProfile, getAnalytics, fulfillRequest, reportNoShow, savePushToken} from '../controllers/hospital.controller'
 
 const router = Router()
 
@@ -15,5 +15,6 @@ router.post('/profile', authenticate, authorize('HOSPITAL'), createHospitalProfi
 router.get('/analytics', authenticate, authorize('HOSPITAL'), getAnalytics)
 router.put('/requests/:id/fulfill', authenticate, authorize('HOSPITAL'), fulfillRequest)
 router.patch('/matches/:id/no-show', authenticate, authorize('HOSPITAL'), reportNoShow)
+router.put('/push-token', authenticate, authorize('HOSPITAL'), savePushToken)
 
 export default router

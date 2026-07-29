@@ -7,7 +7,6 @@ import { Link } from 'expo-router'
 import api from '../src/lib/api'
 import WeeklyHeroes from '../src/components/WeeklyHeroes'
 import CityStats from '../src/components/CityStats'
-import { registerForPushNotifications, savePushTokenToBackend } from '../src/lib/notifications'
 
 import { useNetwork } from '../src/hooks/useNetwork'
 import { saveCache, loadCache } from '../src/lib/cache'
@@ -144,13 +143,6 @@ export default function LandingScreen() {
 
     fetchShortage()
   }, [isOnline])
-
-  useEffect(() => {
-    // register for push notifications
-    registerForPushNotifications().then(token => {
-      if (token) savePushTokenToBackend(token)
-    })
-  }, [])
 
   const loadingStats = statsStatus === 'loading'
 

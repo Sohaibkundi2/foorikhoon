@@ -34,6 +34,7 @@ model Donor {
   user            User       @relation(fields: [userId], references: [id])
   matches         Match[]
   pushToken       String?
+  shareContactInfo Boolean @default(false)
 }
 
 model Hospital {
@@ -48,6 +49,7 @@ model Hospital {
   requests  BloodRequest[]
   user      User           @relation(fields: [userId], references: [id])
   inventory Inventory[]
+  pushToken String?
 }
 
 model BloodRequest {

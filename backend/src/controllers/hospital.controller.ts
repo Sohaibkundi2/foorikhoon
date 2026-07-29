@@ -146,11 +146,40 @@ const getRequests = async (req: Request, res: Response) => {
 
         const requests = await prisma.bloodRequest.findMany({
             where: { hospitalId: hospital.id },
-            include: { matches: true },
-            orderBy: { createdAt: 'asc' }
+            include: {
+                matches: {
+                    include: {
+                        donor: {
+                            include: { user: true }
+                        }
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
         })
 
-        res.status(200).json({ message: "Requests fetched successfully", requests })
+        // strip donor contact info unless the match is ACCEPTED and the
+        // donor has explicitly opted in to sharing it
+        const sanitized = requests.map(request => ({
+            ...request,
+            matches: request.matches.map(match => {
+                const canShowContact =
+                    match.status === 'ACCEPTED' && match.donor.shareContactInfo
+
+                return {
+                    id: match.id,
+                    status: match.status,
+                    donorId: match.donorId,
+                    createdAt: match.createdAt,
+                    respondedAt: match.respondedAt,
+                    donorContact: canShowContact
+                        ? { name: match.donor.user.name, phone: match.donor.user.phone }
+                        : null
+                }
+            })
+        }))
+
+        res.status(200).json({ message: "Requests fetched successfully", requests: sanitized })
 
     } catch (error) {
         res.status(500).json({ message: 'Internal server error' })
@@ -339,4 +368,22 @@ const reportNoShow = async (req: Request, res: Response) => {
     }
 }
 
-export { getProfile, updateProfile, getInventory, updateInventory, getRequests, createHospitalProfile, getAnalytics, fulfillRequest, reportNoShow }
+const savePushToken = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId
+    if (!userId) return res.status(400).json({ message: 'Invalid user ID' })
+
+    const { pushToken } = req.body
+
+    const hospital = await prisma.hospital.update({
+      where: { userId },
+      data: { pushToken }
+    })
+
+    res.status(200).json({ message: 'Push token saved', hospital })
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}
+
+export { getProfile, updateProfile, getInventory, updateInventory, getRequests, createHospitalProfile, getAnalytics, fulfillRequest, reportNoShow, savePushToken }

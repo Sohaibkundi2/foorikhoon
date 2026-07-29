@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { router, Link } from 'expo-router'
 import { useAuthStore } from '../../src/store/authStore'
 import api from '../../src/lib/api'
+import { registerForPushNotifications, saveHospitalPushTokenToBackend } from '../../src/lib/notifications'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface HospitalProfile {
@@ -93,6 +94,12 @@ export default function HospitalDashboard() {
     fetchData()
   }, [user])
 
+  useEffect(() => {
+    registerForPushNotifications().then(token => {
+      if (token) saveHospitalPushTokenToBackend(token)
+    })
+  }, [])
+  
   const fetchData = async () => {
     try {
       const [profileRes, requestsRes, inventoryRes] = await Promise.all([

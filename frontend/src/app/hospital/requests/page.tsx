@@ -20,6 +20,7 @@ interface Match {
   id: string
   donorId: string
   status: string
+  donorContact?: { name: string; phone: string | null } | null
 }
 
 const bloodGroupLabels: Record<string, string> = {
@@ -73,6 +74,9 @@ export default function HospitalRequestsPage() {
 
   const getAcceptedMatch = (req: BloodRequest) =>
     req.matches?.find(m => m.status === 'ACCEPTED')
+
+  const getAcceptedContact = (req: BloodRequest) =>
+    req.matches?.find(m => m.status === 'ACCEPTED')?.donorContact
 
   const handleFulfill = async (id: string) => {
     setUpdatingKey(`${id}-fulfill`)
@@ -163,64 +167,82 @@ export default function HospitalRequestsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredRequests.map((req) => (
-            <div key={req.id} className="bg-[#141414] border border-[#222] rounded-xl p-5 flex items-center justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[#DC2626] font-bold text-lg">
-                    {bloodGroupLabels[req.bloodGroup] || req.bloodGroup}
-                  </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${urgencyColors[req.urgency]}`}>
-                    {req.urgency}
-                  </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${statusColors[req.status]}`}>
-                    {req.status}
-                  </span>
+          {filteredRequests.map((req) => {
+            const acceptedContact = getAcceptedContact(req)
+            const acceptedMatch = getAcceptedMatch(req)
+
+            return (
+              <div key={req.id} className="bg-[#141414] border border-[#222] rounded-xl p-5 flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[#DC2626] font-bold text-lg">
+                      {bloodGroupLabels[req.bloodGroup] || req.bloodGroup}
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${urgencyColors[req.urgency]}`}>
+                      {req.urgency}
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${statusColors[req.status]}`}>
+                      {req.status}
+                    </span>
+                  </div>
+                  <p className="text-[#9CA3AF] text-xs">
+                    {req.units} unit{req.units > 1 ? 's' : ''} needed
+                    {req.notes && ` · ${req.notes}`}
+                  </p>
+                  <p className="text-[#6B7280] text-xs mt-1">
+                    {req.matches?.length} donor{req.matches?.length !== 1 ? 's' : ''} matched ·{' '}
+                    {new Date(req.createdAt).toLocaleDateString()}
+                  </p>
+
+                  {req.status === 'MATCHED' && acceptedMatch && (
+                    acceptedContact ? (
+                      <p className="text-green-400 text-xs mt-1">
+                        ✓ Accepted by {acceptedContact.name}
+                        {acceptedContact.phone ? ` · ${acceptedContact.phone}` : ''}
+                      </p>
+                    ) : (
+                      <p className="text-[#6B7280] text-xs mt-1">
+                        ✓ Accepted — contact info not shared
+                      </p>
+                    )
+                  )}
                 </div>
-                <p className="text-[#9CA3AF] text-xs">
-                  {req.units} unit{req.units > 1 ? 's' : ''} needed
-                  {req.notes && ` · ${req.notes}`}
-                </p>
-                <p className="text-[#6B7280] text-xs mt-1">
-                  {req.matches?.length} donor{req.matches?.length !== 1 ? 's' : ''} matched ·{' '}
-                  {new Date(req.createdAt).toLocaleDateString()}
-                </p>
+
+                {/* Actions */}
+                <div className="flex gap-2 shrink-0">
+                  {req.status === 'MATCHED' && (
+                    <button
+                      onClick={() => handleFulfill(req.id)}
+                      disabled={updatingKey === `${req.id}-fulfill`}
+                      className="text-xs bg-green-400/10 hover:bg-green-400/20 text-green-400 border border-green-400/20 px-3 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-50"
+                    >
+                      {updatingKey === `${req.id}-fulfill` ? 'Processing...' : 'Mark Fulfilled'}
+                    </button>
+                  )}
+
+                  {req.status === 'MATCHED' && acceptedMatch && (
+                    <button
+                      onClick={() => handleNoShow(acceptedMatch.id)}
+                      disabled={updatingKey === `${acceptedMatch.id}-noshow`}
+                      className="text-xs bg-red-400/10 hover:bg-red-400/20 text-red-400 border border-red-400/20 px-3 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-50"
+                    >
+                      {updatingKey === `${acceptedMatch.id}-noshow` ? 'Processing...' : 'Report No-Show'}
+                    </button>
+                  )}
+
+                  {(req.status === 'PENDING' || req.status === 'MATCHED') && (
+                    <button
+                      onClick={() => handleCancel(req.id)}
+                      disabled={updatingKey === `${req.id}-cancel`}
+                      className="text-xs bg-[#6B7280]/10 hover:bg-[#6B7280]/20 text-[#6B7280] border border-[#6B7280]/20 px-3 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-50"
+                    >
+                      {updatingKey === `${req.id}-cancel` ? 'Processing...' : 'Cancel'}
+                    </button>
+                  )}
+                </div>
               </div>
-
-              {/* Actions */}
-              <div className="flex gap-2 shrink-0">
-                {req.status === 'MATCHED' && (
-                  <button
-                    onClick={() => handleFulfill(req.id)}
-                    disabled={updatingKey === `${req.id}-fulfill`}
-                    className="text-xs bg-green-400/10 hover:bg-green-400/20 text-green-400 border border-green-400/20 px-3 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-50"
-                  >
-                    {updatingKey === `${req.id}-fulfill` ? 'Processing...' : 'Mark Fulfilled'}
-                  </button>
-                )}
-
-                {req.status === 'MATCHED' && getAcceptedMatch(req) && (
-                  <button
-                    onClick={() => handleNoShow(getAcceptedMatch(req)!.id)}
-                    disabled={updatingKey === `${getAcceptedMatch(req)!.id}-noshow`}
-                    className="text-xs bg-red-400/10 hover:bg-red-400/20 text-red-400 border border-red-400/20 px-3 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-50"
-                  >
-                    {updatingKey === `${getAcceptedMatch(req)!.id}-noshow` ? 'Processing...' : 'Report No-Show'}
-                  </button>
-                )}
-
-                {(req.status === 'PENDING' || req.status === 'MATCHED') && (
-                  <button
-                    onClick={() => handleCancel(req.id)}
-                    disabled={updatingKey === `${req.id}-cancel`}
-                    className="text-xs bg-[#6B7280]/10 hover:bg-[#6B7280]/20 text-[#6B7280] border border-[#6B7280]/20 px-3 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-50"
-                  >
-                    {updatingKey === `${req.id}-cancel` ? 'Processing...' : 'Cancel'}
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

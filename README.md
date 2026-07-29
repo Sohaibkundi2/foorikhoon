@@ -47,6 +47,8 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 - Push notifications via Expo Push Service (production ready)
 - Offline support with cached data on mobile
 - Mobile responsive web + React Native mobile app
+- **Donor contact-sharing consent** — donors can opt in to sharing their name and phone number with a hospital once they accept a match, to help coordinate the actual donation. Off by default; contact info is only ever included in the hospital's data when the donor has explicitly enabled it and the match is accepted — never exposed otherwise, enforced server-side
+- **Hospital push notifications** — hospitals are notified the moment a donor accepts their request, including the donor's contact info if shared
 
 ---
 
@@ -175,9 +177,9 @@ foorikhoon/
 
 ```
 User         — base model (DONOR, HOSPITAL, ADMIN), city trimmed on write
-Donor        — blood group, area, latitude/longitude (required, geocoded), lastDonated,
-               isAvailable, commitment score (0-100, clamped), pushToken
-Hospital     — name, address, latitude/longitude (required, geocoded), license, verified
+Donor        — blood group, availability, commitment score (0-100), lastDonated,
+               pushToken, area, latitude/longitude, shareContactInfo (all location fields required)
+Hospital     — name, address, latitude/longitude (required), license, verified, pushToken
 BloodRequest — blood group, units, urgency, status, expiry
 Match        — links donor to request; status: PENDING, ACCEPTED, DECLINED, COMPLETED, NO_SHOW
 Inventory    — hospital blood stock per blood group
@@ -211,6 +213,7 @@ GET   /api/hospital/requests
 GET   /api/hospital/analytics
 PUT   /api/hospital/requests/:id/fulfill   → marks donation complete, rewards donor
 PATCH /api/hospital/matches/:id/no-show    → marks accepted donor as no-show, penalizes, escalates
+PUT   /api/hospital/push-token             → saves hospital's Expo push token
 
 REQUESTS
 POST  /api/requests             → creates request + AI matching + push notifications

@@ -28,6 +28,7 @@ export default function DonorProfilePage() {
   const [lastDonated, setLastDonated] = useState('')
   const [isAvailable, setIsAvailable] = useState(true)
   const [area, setArea] = useState('')
+  const [shareContactInfo, setShareContactInfo] = useState(false)
 
   useEffect(() => {
     if (!user) { router.push('/login'); return }
@@ -46,6 +47,7 @@ export default function DonorProfilePage() {
       setLastDonated(donor.lastDonated ? donor.lastDonated.split('T')[0] : '')
       setIsAvailable(donor.isAvailable)
       setArea(donor.area || '')
+      setShareContactInfo(donor.shareContactInfo ?? false)
     } catch (err) {
       console.error(err)
     } finally {
@@ -61,8 +63,9 @@ export default function DonorProfilePage() {
     try {
       setSaving(true)
       await api.put('/api/donor/profile', {
-        name, phone, city, bloodGroup,area,
-        lastDonated: lastDonated || null
+        name, phone, city, bloodGroup, area,
+        lastDonated: lastDonated || null,
+        shareContactInfo
       })
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
@@ -70,6 +73,15 @@ export default function DonorProfilePage() {
       setError(err?.response?.data?.message || 'Failed to save changes.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const toggleShareContactInfo = async () => {
+    try {
+      await api.put('/api/donor/profile', { shareContactInfo: !shareContactInfo })
+      setShareContactInfo(!shareContactInfo)
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -151,7 +163,7 @@ export default function DonorProfilePage() {
                 placeholder="Hayatabad, Peshawar"
                 className="w-full bg-[#0F0F0F] border border-[#2A2A2A] focus:border-[#DC2626] rounded-md px-4 py-2.5 text-white text-sm outline-none transition-colors placeholder:text-[#6B7280]"
               />
-            <p className="text-xs text-[#6B7280] mt-1">Leave blank to keep your current saved location.</p>
+              <p className="text-xs text-[#6B7280] mt-1">Leave blank to keep your current saved location.</p>
             </div>
           </div>
         </div>
@@ -170,11 +182,10 @@ export default function DonorProfilePage() {
                   key={bg}
                   type="button"
                   onClick={() => setBloodGroup(bloodGroup === bg ? '' : bg)}
-                  className={`py-2.5 rounded-md text-sm font-bold border transition-all duration-150 ${
-                    bloodGroup === bg
+                  className={`py-2.5 rounded-md text-sm font-bold border transition-all duration-150 ${bloodGroup === bg
                       ? 'bg-[#DC2626] border-[#DC2626] text-white'
                       : 'bg-[#0F0F0F] border-[#2A2A2A] text-[#9CA3AF] hover:border-[#DC2626]/40 hover:text-white'
-                  }`}
+                    }`}
                 >
                   {bloodGroupLabels[bg]}
                 </button>
@@ -205,13 +216,32 @@ export default function DonorProfilePage() {
             <button
               type="button"
               onClick={() => setIsAvailable(!isAvailable)}
-              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
-                isAvailable ? 'bg-green-500' : 'bg-[#333]'
-              }`}
+              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${isAvailable ? 'bg-green-500' : 'bg-[#333]'
+                }`}
             >
-              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${
-                isAvailable ? 'translate-x-1' : '-translate-x-4'
-              }`} />
+              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${isAvailable ? 'translate-x-1' : '-translate-x-4'
+                }`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Share contact info */}
+        <div className="bg-[#141414] border border-[#222] rounded-xl p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-white font-semibold">Share Contact Info</h2>
+              <p className="text-[#6B7280] text-sm mt-1">
+                If enabled, the hospital can see your name and phone number when you accept their request, to help coordinate the donation.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={toggleShareContactInfo}
+              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${shareContactInfo ? 'bg-green-500' : 'bg-[#333]'
+                }`}
+            >
+              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${shareContactInfo ? 'translate-x-1' : '-translate-x-4'
+                }`} />
             </button>
           </div>
         </div>
