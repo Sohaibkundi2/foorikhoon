@@ -8,6 +8,12 @@ import { router } from 'expo-router'
 import { useAuthStore } from '../../src/store/authStore'
 import api from '../../src/lib/api'
 
+interface Match {
+  id: string
+  donorId: string
+  status: string
+}
+
 interface BloodRequest {
   id: string
   bloodGroup: string
@@ -16,7 +22,7 @@ interface BloodRequest {
   status: string
   notes: string | null
   createdAt: string
-  matches: { id: string }[]
+  matches: Match[]
 }
 
 const bloodGroupLabels: Record<string, string> = {
@@ -47,7 +53,7 @@ export default function HospitalRequestsScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('ALL')
-  const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [updatingKey, setUpdatingKey] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) { router.replace('/login'); return }
@@ -72,17 +78,44 @@ export default function HospitalRequestsScreen() {
     fetchRequests()
   }, [])
 
-  const handleStatusUpdate = async (id: string, newStatus: string) => {
-    setUpdatingId(id)
-    try {
-      await api.put(`/api/requests/${id}`, { newStatus })
-      await fetchRequests()
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setUpdatingId(null)
-    }
+const handleFulfill = async (requestId: string) => {
+  setUpdatingKey(`${requestId}-fulfill`)
+  try {
+    await api.put(`/api/hospital/requests/${requestId}/fulfill`)
+    await fetchRequests()
+  } catch (err) {
+    console.error(err)
+  } finally {
+    setUpdatingKey(null)
   }
+}
+
+const handleCancel = async (requestId: string) => {
+  setUpdatingKey(`${requestId}-cancel`)
+  try {
+    await api.put(`/api/requests/${requestId}`, { newStatus: 'EXPIRED' })
+    await fetchRequests()
+  } catch (err) {
+    console.error(err)
+  } finally {
+    setUpdatingKey(null)
+  }
+}
+
+const handleNoShow = async (matchId: string) => {
+  setUpdatingKey(`${matchId}-noshow`)
+  try {
+    await api.patch(`/api/hospital/matches/${matchId}/no-show`)
+    await fetchRequests()
+  } catch (err) {
+    console.error(err)
+  } finally {
+    setUpdatingKey(null)
+  }
+}
+
+const getAcceptedMatch = (req: BloodRequest) =>
+  req.matches?.find(m => m.status === 'ACCEPTED')
 
   const filteredRequests = activeTab === 'ALL'
     ? requests
@@ -173,23 +206,44 @@ export default function HospitalRequestsScreen() {
 
               {canAct && (
                 <View style={styles.actionsRow}>
+                  {req.status === 'MATCHED' && (
+                    <TouchableOpacity
+                      onPress={() => handleFulfill(req.id)}
+                      disabled={updatingKey === `${req.id}-fulfill`}
+                      style={[styles.actionBtn, styles.fulfillBtn]}
+                    >
+                      {updatingKey === `${req.id}-fulfill` ? (
+                        <ActivityIndicator size="small" color="#4ADE80" />
+                      ) : (
+                        <Text style={styles.fulfillText}>Mark Fulfilled</Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+
+                  {req.status === 'MATCHED' && getAcceptedMatch(req) && (
+                    <TouchableOpacity
+                      onPress={() => handleNoShow(getAcceptedMatch(req)!.id)}
+                      disabled={updatingKey === `${getAcceptedMatch(req)!.id}-noshow`}
+                      style={[styles.actionBtn, styles.noShowBtn]}
+                    >
+                      {updatingKey === `${getAcceptedMatch(req)!.id}-noshow` ? (
+                        <ActivityIndicator size="small" color="#F87171" />
+                      ) : (
+                        <Text style={styles.noShowText}>Report No-Show</Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+
                   <TouchableOpacity
-                    onPress={() => handleStatusUpdate(req.id, 'FULFILLED')}
-                    disabled={updatingId === req.id}
-                    style={[styles.actionBtn, styles.fulfillBtn]}
-                  >
-                    {updatingId === req.id ? (
-                      <ActivityIndicator size="small" color="#4ADE80" />
-                    ) : (
-                      <Text style={styles.fulfillText}>Mark Fulfilled</Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleStatusUpdate(req.id, 'EXPIRED')}
-                    disabled={updatingId === req.id}
+                    onPress={() => handleCancel(req.id)}
+                    disabled={updatingKey === `${req.id}-cancel`}
                     style={[styles.actionBtn, styles.cancelBtn]}
                   >
-                    <Text style={styles.cancelText}>Cancel</Text>
+                    {updatingKey === `${req.id}-cancel` ? (
+                      <ActivityIndicator size="small" color="#9CA3AF" />
+                    ) : (
+                      <Text style={styles.cancelText}>Cancel</Text>
+                    )}
                   </TouchableOpacity>
                 </View>
               )}
@@ -213,6 +267,8 @@ const styles = StyleSheet.create({
   tabsRow: { borderBottomWidth: 1, borderBottomColor: '#222', flexGrow: 0 },
   tabsContent: { paddingHorizontal: 16, gap: 4 },
   tabButton: { paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  noShowBtn: { backgroundColor: 'rgba(248,113,113,0.1)', borderColor: 'rgba(248,113,113,0.2)' },
+  noShowText: { color: '#F87171', fontSize: 12, fontWeight: '600' },
   tabButtonActive: { borderBottomColor: '#DC2626' },
   tabText: { color: '#6B7280', fontSize: 13, fontWeight: '500' },
   tabTextActive: { color: '#FFFFFF' },

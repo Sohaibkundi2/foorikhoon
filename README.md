@@ -10,11 +10,11 @@ Finding blood in an emergency in Pakistan is still largely word-of-mouth. Hospit
 
 ## What ForiKhoon Does
 
-ForiKhoon bridges that gap with a platform that handles the full lifecycle of a blood donation request — from the moment a hospital posts a need, to matching the right donor using AI, to tracking whether the donation happened.
+ForiKhoon bridges that gap with a platform that handles the full lifecycle of a blood donation request — from the moment a hospital posts a need, to matching the right donor using AI, to tracking whether the donation actually happened, to automatically finding a replacement if it doesn't.
 
-**For donors** — register once, set your blood group and availability, get notified when someone nearby needs your blood type, earn badges for milestones, and build a commitment score over time.
+**For donors** — register once, set your blood group and location, get notified when someone nearby needs your blood type, earn badges for milestones, and build a commitment score based on your actual donation track record.
 
-**For hospitals** — post emergency requests, track donor responses in real time, manage blood inventory, view analytics, and get matched with the most reliable donors first.
+**For hospitals** — post emergency requests, track donor responses in real time, mark a match as fulfilled or as a no-show, manage blood inventory, view analytics, and get matched with the most reliable donors first.
 
 **For administrators** — monitor donation activity across cities, verify hospitals, view live stats, shortage predictions, and manage all users.
 
@@ -28,11 +28,14 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 - AI-powered donor matching using Python Flask microservice
 - **Medically correct blood-compatibility matching** — donors ranked using a compatible-donor matrix per blood group
 - **Strict rare-type reservation** — scarce types (O−, AB−) are matched only against requests for their own exact type; they are never used as cross-type substitutes for other blood groups, regardless of urgency
-- **Geolocation-based matching** — donors and hospitals are geocoded (via Nominatim/OpenStreetMap) to real coordinates; requests search a widening radius (10km → 25km → 50km → 100km), stopping at the first tier with a qualifying donor, instead of relying on exact city-name matches
+- **Geolocation-based matching** — donors and hospitals are geocoded (via Nominatim/OpenStreetMap) to real coordinates, with hardened validation against garbage or misleading geocoding results; requests search a widening radius (10km → 25km → 50km → 100km), stopping at the first tier with a qualifying donor
+- **90-day donor eligibility window** — donors are automatically excluded from matching for 90 days after their last donation, regardless of their manual availability toggle, reflecting the real medical recovery period for whole-blood donation
+- **Escalation on decline or no-show** — if a donor declines, or a hospital reports a no-show after acceptance, the system immediately searches for and notifies a replacement donor, excluding everyone already tried for that request
+- **Escalation on silence** — a background job checks every 5 minutes for requests where no donor has responded within 15 minutes, and escalates to a new batch of donors
+- **Commitment score reflects real outcomes, not just replies** — score increases only when a donor actually completes a donation, and decreases for both declines and no-shows (no-shows penalized more heavily, since they break trust after other donors were already excluded); score is clamped between 0 and 100
 - Donors ranked by blood compatibility, proximity, availability, and commitment score
 - Shortage prediction — predicts which blood groups will run low based on 30-day history
 - Request auto-expiry — PENDING requests expire after 24 hours via background job
-- Commitment scoring — donors earn/lose points based on response behavior
 - Badge system — donors earn badges (First Blood, Lifesaver, Hero etc)
 - City-level heatmap showing blood demand across Pakistan
 - Live public stats on landing page
@@ -148,8 +151,14 @@ foorikhoon/
 │       ├── services/
 │       │   └── notification.service.ts
 │       ├── jobs/
-│       │   └── expiry.job.ts
-│       └── lib/prisma.ts
+│       │   ├── expiry.job.ts
+│       │   └── escalation.job.ts
+│       └── lib/
+│           ├── prisma.ts
+│           ├── geocode.ts
+│           ├── distance.ts
+│           ├── compatibility.ts
+│           └── donorMatching.ts
 │   └── prisma/
 │       ├── schema.prisma
 │       └── seed.ts
@@ -166,10 +175,11 @@ foorikhoon/
 
 ```
 User         — base model (DONOR, HOSPITAL, ADMIN), city trimmed on write
-Donor        — blood group, availability, commitment score, pushToken, area, latitude/longitude
-Hospital     — name, address, latitude/longitude, license, verified
+Donor        — blood group, area, latitude/longitude (required, geocoded), lastDonated,
+               isAvailable, commitment score (0-100, clamped), pushToken
+Hospital     — name, address, latitude/longitude (required, geocoded), license, verified
 BloodRequest — blood group, units, urgency, status, expiry
-Match        — links donor to request, tracks response
+Match        — links donor to request; status: PENDING, ACCEPTED, DECLINED, COMPLETED, NO_SHOW
 Inventory    — hospital blood stock per blood group
 ```
 
@@ -184,12 +194,12 @@ POST  /api/auth/login
 
 DONOR
 POST  /api/donor/profile
-GET   /api/donor/profile        → includes badges
+GET   /api/donor/profile              → includes badges
 PUT   /api/donor/profile
 PUT   /api/donor/availability
 PUT   /api/donor/push-token
 GET   /api/donor/matches
-PUT   /api/donor/matches/:id    → updates commitment score + lastDonated
+PUT   /api/donor/matches/:id          → donor accepts/declines a match
 
 HOSPITAL
 POST  /api/hospital/profile
@@ -199,7 +209,8 @@ GET   /api/hospital/inventory
 PUT   /api/hospital/inventory
 GET   /api/hospital/requests
 GET   /api/hospital/analytics
-PUT   /api/hospital/requests/:id/fulfill
+PUT   /api/hospital/requests/:id/fulfill   → marks donation complete, rewards donor
+PATCH /api/hospital/matches/:id/no-show    → marks accepted donor as no-show, penalizes, escalates
 
 REQUESTS
 POST  /api/requests             → creates request + AI matching + push notifications
@@ -243,9 +254,15 @@ Commitment score                → score × 0.5 bonus
 
 **Rare blood types (O−, AB−) are excluded from every other group's compatible-donor list.** They are only ever considered for requests of their own exact type — never surfaced as a cross-type substitute for another blood group, even under CRITICAL urgency. This keeps scarce donors reserved for the patients who specifically need them.
 
-**Radius escalation:** for a given request, the compatible donor pool is searched at increasing radii — 10km, then 25km, 50km, 100km — using a bounding-box pre-filter (cheap, indexable) followed by precise Haversine distance on the much smaller candidate set. The search stops at the first radius tier with any qualifying donor, so nearby donors are always preferred over farther ones. This is designed to stay reasonably efficient even with a large donor base, since the database — not the application — narrows the candidate set before distance is calculated.
+**Donor eligibility** for any match — initial matching, decline-escalation, or timeout-escalation — requires: matching blood compatibility, `isAvailable = true`, and either no prior donation or at least 90 days since `lastDonated` (the standard whole-blood recovery window). This is enforced by a single shared query (`lib/donorMatching.ts`) used by all three matching entry points, so the rule can't drift out of sync between them.
 
-Top 3 ranked donors (from the winning radius tier) are matched and notified via push notification.
+**Radius escalation:** for a given request, the eligible donor pool is searched at increasing radii — 10km, then 25km, 50km, 100km — using a bounding-box pre-filter (cheap, indexable) followed by precise Haversine distance on the much smaller candidate set. The search stops at the first radius tier with any qualifying donor, so nearby donors are always preferred over farther ones.
+
+**Escalation on decline or no-show:** the moment a donor declines, or a hospital reports an accepted donor as a no-show, the system immediately re-runs the eligibility search — excluding every donor already tried for that request — and notifies a single replacement, rather than waiting for a timeout. The request's status is reset to PENDING at this point, since it no longer has a confirmed donor.
+
+**Escalation on silence:** a background job (`escalation.job.ts`) runs every 5 minutes and finds any PENDING request where every existing match is still PENDING and was created more than 15 minutes ago. It re-runs the same eligibility search (excluding already-tried donors) and notifies a fresh batch of up to 3 donors.
+
+Top 3 ranked donors (from the winning radius tier) are matched and notified via push notification on initial request creation; escalation notifies one donor at a time (decline/no-show) or a fresh batch of 3 (timeout).
 
 ### Shortage Prediction
 
@@ -265,8 +282,22 @@ ratio <  0.3  → LOW
 ```
 PENDING   → request posted, matching donors notified
 MATCHED   → donor accepted, on their way
-FULFILLED → hospital marks complete after blood collected
+FULFILLED → hospital marks complete after blood is actually donated
 EXPIRED   → no donor responded within 24 hours (auto by cron job)
+```
+
+A request can move back from MATCHED to PENDING if the accepted donor is later reported as a no-show — the request isn't considered resolved until a donation is actually marked FULFILLED.
+
+---
+
+## Match Status
+
+```
+PENDING    → donor notified, awaiting response
+ACCEPTED   → donor said yes
+DECLINED   → donor said no — commitment score -5, replacement escalation triggered
+COMPLETED  → donor actually donated — commitment score +10, lastDonated updated
+NO_SHOW    → donor accepted but never donated — commitment score -10, replacement escalation triggered
 ```
 
 ---
@@ -274,11 +305,16 @@ EXPIRED   → no donor responded within 24 hours (auto by cron job)
 ## Commitment Score System
 
 ```
-Donor accepts match   → +10 points
-Donor declines match  → -5 points
-Score range: 0 - 100
+Donor completes a donation (COMPLETED)    → +10 points
+Donor declines a match (DECLINED)         → -5 points
+Donor accepts but never donates (NO_SHOW) → -10 points (penalized more than a decline,
+                                             since it wastes the request's time after
+                                             other donors were already excluded)
+Score range: 0 - 100 (clamped)
 Higher score = ranked higher in future AI matching
 ```
+
+Accepting a match, on its own, no longer changes the score — only a confirmed outcome (an actual donation, or a confirmed no-show) does, since simply saying yes isn't proof of reliability.
 
 ---
 
@@ -366,18 +402,15 @@ Admin:    update role via seed script
 
 ---
 
+## Known Limitation
+
+The radius query currently pulls candidates per tier from Postgres using a lat/lng bounding-box filter, then computes precise distance in the application layer. This is efficient enough for the project's current scale, but a production deployment with a very large donor base would benefit from a PostGIS spatial index (`ST_DWithin`) to push distance filtering fully into the database.
+
+---
+
 ## Roadmap — Planned Features
 
-### Recently completed
-- **Geolocation-based matching** — lat/lng + Haversine distance with radius escalation (10km → 25km → 50km → 100km), replacing city-string matching. Hospitals geocoded to an exact point (verified institutions); donors geocoded to an area/neighborhood center only, to preserve location privacy. Addresses geocoded via Nominatim (OpenStreetMap).
-- **Strict rare-type reservation policy** — O−/AB− donors are reserved exclusively for exact-type requests, never used as cross-type substitutes.
-
-### Known limitation
-- The radius query currently pulls candidates per tier from Postgres using a lat/lng bounding-box filter, then computes precise distance in the application layer. This is efficient enough for the project's current scale, but a production deployment with a very large donor base would benefit from a PostGIS spatial index (`ST_DWithin`) to push distance filtering fully into the database.
-
-### Planned
 - Twilio SMS notifications for donors without smartphones
-- Full escalation system — auto-expand search radius / notify next donor batch if no response within 30 minutes
 - Hero certificate / shareable donation card (PNG export, WhatsApp/Instagram sharing)
 - Chart.js analytics for admin and hospital dashboards
 - Real-time updates via WebSockets (Socket.io)
@@ -394,12 +427,13 @@ Admin:    update role via seed script
 - RWDP simulation study — synthetic donor-behavior dataset compared against random-matching baseline
 - Small-scale user study (SUS usability testing) for FYP evaluation
 - Google Play Store release
+- Automatic (cron-based) no-show detection — currently a hospital must manually report a no-show; a timeout-based auto-flag is a possible future improvement
 
 ---
 
 ## Research Contribution
 
-This project proposes a **Reliability-Weighted Donor Prioritization (RWDP)** framework for emergency blood donation. Unlike existing blood bank directories that treat all available donors equally, RWDP ranks donors using a composite score combining blood compatibility, geographic proximity, real-time availability, and longitudinal commitment history. The commitment score updates dynamically after each interaction, creating a self-improving prioritization system that favors historically reliable donors in future matches. A planned simulation study will compare RWDP against random-baseline matching to quantify improvement in donation fulfillment rates.
+This project proposes a **Reliability-Weighted Donor Prioritization (RWDP)** framework for emergency blood donation. Unlike existing blood bank directories that treat all available donors equally, RWDP ranks donors using a composite score combining blood compatibility, geographic proximity, real-time availability, and longitudinal commitment history. The commitment score updates dynamically based on confirmed donation outcomes — not just replies — creating a self-improving prioritization system that favors historically reliable donors in future matches. A planned simulation study will compare RWDP against random-baseline matching to quantify improvement in donation fulfillment rates.
 
 ---
 

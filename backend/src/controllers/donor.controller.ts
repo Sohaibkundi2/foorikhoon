@@ -2,9 +2,9 @@ import { Request, Response } from 'express'
 import prisma from '../lib/prisma'
 import { geocodeAddress } from "../lib/geocode"
 import { COMPATIBLE_DONOR_GROUPS } from "../lib/compatibility"
-import { haversineDistance, getBoundingBox, RADIUS_TIERS_KM } from "../lib/distance"
 import axios from "axios"
 import { sendPushNotification } from '../services/notification.service'
+import { findEligibleDonors } from '../lib/donorMatching'
 
 const getProfile = async (req: Request, res: Response) => {
   try {
@@ -158,13 +158,19 @@ const respondToMatch = async (req: Request, res: Response) => {
     })
 
     if (status === 'DECLINED') {
-      await prisma.donor.update({
-        where: { id: updatedMatch.donorId },
-        data: { commitmentScore: { decrement: 5 } }
-      })
+        const donor = await prisma.donor.update({
+            where: { id: updatedMatch.donorId },
+            data: { commitmentScore: { decrement: 5 } }
+        })
 
-      // Immediately try to find a replacement donor — don't wait for a timeout
-      await escalateAfterDecline(updatedMatch.requestId)
+        if (donor.commitmentScore < 0) {
+            await prisma.donor.update({
+                where: { id: donor.id },
+                data: { commitmentScore: 0 }
+            })
+        }
+
+        await escalateAfterDecline(updatedMatch.requestId)
     }
 
     if (status === 'ACCEPTED') {
@@ -186,67 +192,62 @@ export async function escalateAfterDecline(requestId: string) {
     include: { hospital: true, matches: true }
   })
 
-  if (!request || request.status !== 'PENDING') return // already matched/fulfilled/expired, nothing to do
+  if (!request) return
+  if (request.status === 'FULFILLED' || request.status === 'EXPIRED') return // already resolved, nothing to do
+
+    if (request.status === 'MATCHED') {
+    await prisma.bloodRequest.update({
+      where: { id: request.id },
+      data: { status: 'PENDING' }
+    })
+  }
 
   const alreadyTriedDonorIds = request.matches.map(m => m.donorId)
   const allowedGroups = COMPATIBLE_DONOR_GROUPS[request.bloodGroup] ?? [request.bloodGroup]
 
-  for (const radiusKm of RADIUS_TIERS_KM) {
-    const box = getBoundingBox(request.hospital.latitude!, request.hospital.longitude!, radiusKm)
+  const { matches, radiusUsed } = await findEligibleDonors(
+    request.hospital.latitude!,
+    request.hospital.longitude!,
+    allowedGroups,
+    alreadyTriedDonorIds
+  )
 
-    const candidates = await prisma.donor.findMany({
-      where: {
-        bloodGroup: { in: allowedGroups },
-        isAvailable: true,
-        id: { notIn: alreadyTriedDonorIds },
-        latitude: { gte: box.minLat, lte: box.maxLat },
-        longitude: { gte: box.minLon, lte: box.maxLon },
-      },
-      include: { user: true }
-    })
+  if (matches.length === 0) return // no replacement found at any radius tier
 
-    if (candidates.length === 0) continue
+  const aiResponse = await axios.post('http://localhost:5001/ai/match', {
+    donors: matches.map(w => ({
+      id: w.donor.id,
+      bloodGroup: w.donor.bloodGroup,
+      distanceKm: w.distanceKm,
+      commitmentScore: w.donor.commitmentScore,
+      isAvailable: w.donor.isAvailable
+    })),
+    request: { bloodGroup: request.bloodGroup, urgency: request.urgency }
+  })
 
-    const withinRadius = candidates
-      .map(d => ({
-        donor: d,
-        distanceKm: haversineDistance(request.hospital.latitude!, request.hospital.longitude!, d.latitude!, d.longitude!)
-      }))
-      .filter(d => d.distanceKm <= radiusKm)
+  const nextDonor = aiResponse.data.matches[0]
+  if (!nextDonor) return
 
-    if (withinRadius.length === 0) continue
+  await prisma.match.create({
+    data: { requestId: request.id, donorId: nextDonor.donorId }
+  })
 
-    const aiResponse = await axios.post('http://localhost:5001/ai/match', {
-      donors: withinRadius.map(w => ({
-        id: w.donor.id,
-        bloodGroup: w.donor.bloodGroup,
-        distanceKm: w.distanceKm,
-        commitmentScore: w.donor.commitmentScore,
-        isAvailable: w.donor.isAvailable
-      })),
-      request: { bloodGroup: request.bloodGroup, urgency: request.urgency }
-    })
+  // a replacement was found — the request is no longer confirmed-matched,
+  // it's back to needing a response
+  await prisma.bloodRequest.update({
+    where: { id: request.id },
+    data: { status: 'PENDING' }
+  })
 
-    const nextDonor = aiResponse.data.matches[0] // replace just the one who declined, not a whole new batch of 3
-    if (!nextDonor) continue
-
-    await prisma.match.create({
-      data: { requestId: request.id, donorId: nextDonor.donorId }
-    })
-
-    const donor = await prisma.donor.findUnique({ where: { id: nextDonor.donorId } })
-    if (donor?.pushToken) {
-      await sendPushNotification(
-        donor.pushToken,
-        '🩸 Blood Needed Urgently',
-        `${request.hospital.name} needs blood — please respond`,
-        { requestId: request.id }
-      )
-    }
-
-    return // found a replacement, done
+  const donor = await prisma.donor.findUnique({ where: { id: nextDonor.donorId } })
+  if (donor?.pushToken) {
+    await sendPushNotification(
+      donor.pushToken,
+      '🩸 Blood Needed Urgently',
+      `${request.hospital.name} needs blood — please respond`,
+      { requestId: request.id }
+    )
   }
-  // if we reach here, no replacement was found at any radius tier — request stays PENDING with fewer active matches
 }
 
 const createDonorProfile = async (req: Request, res: Response) => {

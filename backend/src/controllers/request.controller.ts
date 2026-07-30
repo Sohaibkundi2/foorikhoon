@@ -5,54 +5,11 @@ import { BloodGroup } from "../../prisma/generated"
 import { sendPushNotification } from '../services/notification.service'
 import { haversineDistance, getBoundingBox, RADIUS_TIERS_KM } from "../lib/distance"
 import { COMPATIBLE_DONOR_GROUPS } from "../lib/compatibility"
+import { findEligibleDonors } from '../lib/donorMatching'
 
 const bloodGroupLabels: Record<string, string> = {
   A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
   AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
-}
-
-
-async function findDonorsWithinRadius(hospitalLat: number, hospitalLon: number, allowedGroups: BloodGroup[]) {
-  console.log('=== ESCALATION DEBUG ===')
-  console.log('Hospital coords:', hospitalLat, hospitalLon)
-  console.log('Allowed groups:', allowedGroups)
-
-  for (const radiusKm of RADIUS_TIERS_KM) {
-    const box = getBoundingBox(hospitalLat, hospitalLon, radiusKm)
-    console.log(`Radius ${radiusKm}km box:`, box)
-
-    const candidates = await prisma.donor.findMany({
-      where: {
-        bloodGroup: { in: allowedGroups },
-        isAvailable: true,
-        latitude: { gte: box.minLat, lte: box.maxLat },
-        longitude: { gte: box.minLon, lte: box.maxLon },
-      },
-      include: { user: true }
-    })
-
-    console.log(`Candidates in ${radiusKm}km box (before precise distance filter):`,
-      candidates.map(d => ({ id: d.id, bloodGroup: d.bloodGroup, lat: d.latitude, lon: d.longitude }))
-    )
-
-    if (candidates.length === 0) continue
-
-    const withinRadius = candidates
-      .map(d => ({
-        donor: d,
-        distanceKm: haversineDistance(hospitalLat, hospitalLon, d.latitude!, d.longitude!)
-      }))
-      .filter(d => d.distanceKm <= radiusKm)
-
-    console.log(`Donors within actual ${radiusKm}km distance:`,
-      withinRadius.map(w => ({ id: w.donor.id, distanceKm: w.distanceKm }))
-    )
-
-    if (withinRadius.length > 0) {
-      return { matches: withinRadius, radiusUsed: radiusKm }
-    }
-  }
-  return { matches: [], radiusUsed: null as number | null }
 }
 
 const createRequest = async (req: Request, res: Response) => {
@@ -91,7 +48,7 @@ const createRequest = async (req: Request, res: Response) => {
       }
     })
 
-    const { matches: found, radiusUsed } = await findDonorsWithinRadius(
+    const { matches: found, radiusUsed } = await findEligibleDonors(
       hospital.latitude,
       hospital.longitude,
       COMPATIBLE_DONOR_GROUPS[bloodGroup] ?? [bloodGroup]

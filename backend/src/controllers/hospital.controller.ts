@@ -1,6 +1,7 @@
 import { Request, Response } from "express"
 import prisma from "../lib/prisma"
 import { geocodeAddress } from "../lib/geocode"
+import { escalateAfterDecline } from './donor.controller'
 
 const getProfile = async (req: Request, res: Response) => {
 
@@ -272,12 +273,24 @@ const fulfillRequest = async (req: Request, res: Response) => {
         // reward the donor who actually donated
         const acceptedMatch = request.matches.find(m => m.status === 'ACCEPTED')
         if (acceptedMatch) {
-            await prisma.donor.update({
+            const donor = await prisma.donor.update({
                 where: { id: acceptedMatch.donorId },
                 data: {
                     commitmentScore: { increment: 10 },
                     lastDonated: new Date()
                 }
+            })
+
+            if (donor.commitmentScore > 100) {
+                await prisma.donor.update({
+                    where: { id: donor.id },
+                    data: { commitmentScore: 100 }
+                })
+            }
+
+            await prisma.match.update({
+                where: { id: acceptedMatch.id },
+                data: { status: 'COMPLETED' }
             })
         }
 
@@ -287,4 +300,43 @@ const fulfillRequest = async (req: Request, res: Response) => {
     }
 }
 
-export { getProfile, updateProfile, getInventory, updateInventory, getRequests, createHospitalProfile, getAnalytics, fulfillRequest }
+const reportNoShow = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.userId
+        if (!userId) return res.status(400).json({ message: 'Invalid user ID' })
+
+        const matchId = req.params.id as string
+
+        const match = await prisma.match.findUnique({ where: { id: matchId } })
+        if (!match) return res.status(404).json({ message: 'Match not found' })
+        if (match.status !== 'ACCEPTED') {
+            return res.status(400).json({ message: 'Only an accepted match can be reported as a no-show' })
+        }
+
+        const updatedMatch = await prisma.match.update({
+            where: { id: matchId },
+            data: { status: 'NO_SHOW' }
+        })
+
+        const donor = await prisma.donor.update({
+            where: { id: match.donorId },
+            data: { commitmentScore: { decrement: 10 } }
+        })
+
+        if (donor.commitmentScore < 0) {
+            await prisma.donor.update({
+                where: { id: donor.id },
+                data: { commitmentScore: 0 }
+            })
+        }
+        // the request wasn't actually fulfilled — find a replacement,
+        // same as a decline, since the accepted donor never showed up
+        await escalateAfterDecline(match.requestId)
+
+        res.status(200).json({ message: 'No-show recorded', match: updatedMatch })
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error' })
+    }
+}
+
+export { getProfile, updateProfile, getInventory, updateInventory, getRequests, createHospitalProfile, getAnalytics, fulfillRequest, reportNoShow }

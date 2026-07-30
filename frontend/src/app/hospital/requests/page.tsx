@@ -13,7 +13,13 @@ interface BloodRequest {
   status: string
   notes: string | null
   createdAt: string
-  matches: { id: string }[]
+  matches: Match[]
+}
+
+interface Match {
+  id: string
+  donorId: string
+  status: string
 }
 
 const bloodGroupLabels: Record<string, string> = {
@@ -32,6 +38,7 @@ const statusColors: Record<string, string> = {
   MATCHED: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
   FULFILLED: 'text-green-400 bg-green-400/10 border-green-400/20',
   EXPIRED: 'text-[#6B7280] bg-[#6B7280]/10 border-[#6B7280]/20',
+  NO_SHOW: 'text-[#F87171] bg-[#F87171]/10 border-[#F87171]/20',
 }
 
 type Tab = 'ALL' | 'PENDING' | 'MATCHED' | 'FULFILLED' | 'EXPIRED'
@@ -45,7 +52,7 @@ export default function HospitalRequestsPage() {
   const [requests, setRequests] = useState<BloodRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('ALL')
-  const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [updatingKey, setUpdatingKey] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) { router.push('/login'); return }
@@ -64,29 +71,42 @@ export default function HospitalRequestsPage() {
     }
   }
 
-  // Handler for fulfilling a request (MATCHED -> FULFILLED)
+  const getAcceptedMatch = (req: BloodRequest) =>
+    req.matches?.find(m => m.status === 'ACCEPTED')
+
   const handleFulfill = async (id: string) => {
-    setUpdatingId(id)
+    setUpdatingKey(`${id}-fulfill`)
     try {
       await api.put(`/api/hospital/requests/${id}/fulfill`)
       await fetchRequests()
     } catch (err) {
       console.error(err)
     } finally {
-      setUpdatingId(null)
+      setUpdatingKey(null)
     }
   }
 
-  // Handler for cancelling/expiring a request (PENDING or MATCHED -> EXPIRED)
   const handleCancel = async (id: string) => {
-    setUpdatingId(id)
+    setUpdatingKey(`${id}-cancel`)
     try {
-      await api.put(`/api/requests/${id}`, { status: 'EXPIRED' })
+      await api.put(`/api/requests/${id}`, { newStatus: 'EXPIRED' })
       await fetchRequests()
     } catch (err) {
       console.error(err)
     } finally {
-      setUpdatingId(null)
+      setUpdatingKey(null)
+    }
+  }
+
+  const handleNoShow = async (matchId: string) => {
+    setUpdatingKey(`${matchId}-noshow`)
+    try {
+      await api.patch(`/api/hospital/matches/${matchId}/no-show`)
+      await fetchRequests()
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setUpdatingKey(null)
     }
   }
 
@@ -125,11 +145,10 @@ export default function HospitalRequestsPage() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`text-sm px-4 py-2 border-b-2 transition-colors duration-150 ${
-                activeTab === tab
+              className={`text-sm px-4 py-2 border-b-2 transition-colors duration-150 ${activeTab === tab
                   ? 'border-[#DC2626] text-white'
                   : 'border-transparent text-[#6B7280] hover:text-[#9CA3AF]'
-              }`}
+                }`}
             >
               {tab} {count > 0 && <span className="ml-1 text-xs">({count})</span>}
             </button>
@@ -170,25 +189,33 @@ export default function HospitalRequestsPage() {
 
               {/* Actions */}
               <div className="flex gap-2 shrink-0">
-                {/* Fulfill button - ONLY for MATCHED requests */}
                 {req.status === 'MATCHED' && (
                   <button
                     onClick={() => handleFulfill(req.id)}
-                    disabled={updatingId === req.id}
+                    disabled={updatingKey === `${req.id}-fulfill`}
                     className="text-xs bg-green-400/10 hover:bg-green-400/20 text-green-400 border border-green-400/20 px-3 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-50"
                   >
-                    {updatingId === req.id ? 'Processing...' : 'Mark Fulfilled'}
+                    {updatingKey === `${req.id}-fulfill` ? 'Processing...' : 'Mark Fulfilled'}
                   </button>
                 )}
 
-                {/* Cancel button - for PENDING and MATCHED requests */}
+                {req.status === 'MATCHED' && getAcceptedMatch(req) && (
+                  <button
+                    onClick={() => handleNoShow(getAcceptedMatch(req)!.id)}
+                    disabled={updatingKey === `${getAcceptedMatch(req)!.id}-noshow`}
+                    className="text-xs bg-red-400/10 hover:bg-red-400/20 text-red-400 border border-red-400/20 px-3 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-50"
+                  >
+                    {updatingKey === `${getAcceptedMatch(req)!.id}-noshow` ? 'Processing...' : 'Report No-Show'}
+                  </button>
+                )}
+
                 {(req.status === 'PENDING' || req.status === 'MATCHED') && (
                   <button
                     onClick={() => handleCancel(req.id)}
-                    disabled={updatingId === req.id}
+                    disabled={updatingKey === `${req.id}-cancel`}
                     className="text-xs bg-[#6B7280]/10 hover:bg-[#6B7280]/20 text-[#6B7280] border border-[#6B7280]/20 px-3 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-50"
                   >
-                    {updatingId === req.id ? 'Processing...' : 'Cancel'}
+                    {updatingKey === `${req.id}-cancel` ? 'Processing...' : 'Cancel'}
                   </button>
                 )}
               </div>
