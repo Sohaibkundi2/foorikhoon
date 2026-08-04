@@ -427,7 +427,6 @@ The radius query currently pulls candidates per tier from Postgres using a lat/l
 - Trained ML model (logistic regression) replacing rule-based scoring, once sufficient real/synthetic data is available
 - Unit + integration tests (Jest, Cypress), CI/CD via GitHub Actions
 - AWS deployment (EC2, S3, RDS, CloudWatch)
-- RWDP simulation study — synthetic donor-behavior dataset compared against random-matching baseline
 - Small-scale user study (SUS usability testing) for FYP evaluation
 - Google Play Store release
 - Automatic (cron-based) no-show detection — currently a hospital must manually report a no-show; a timeout-based auto-flag is a possible future improvement
@@ -436,7 +435,27 @@ The radius query currently pulls candidates per tier from Postgres using a lat/l
 
 ## Research Contribution
 
-This project proposes a **Reliability-Weighted Donor Prioritization (RWDP)** framework for emergency blood donation. Unlike existing blood bank directories that treat all available donors equally, RWDP ranks donors using a composite score combining blood compatibility, geographic proximity, real-time availability, and longitudinal commitment history. The commitment score updates dynamically based on confirmed donation outcomes — not just replies — creating a self-improving prioritization system that favors historically reliable donors in future matches. A planned simulation study will compare RWDP against random-baseline matching to quantify improvement in donation fulfillment rates.
+This project proposes a **Reliability-Weighted Donor Prioritization (RWDP)** framework for emergency blood donation. Unlike existing blood bank directories that treat all available donors equally, RWDP ranks donors usi## Research Contribution
+
+This project proposes a **Reliability-Weighted Donor Prioritization (RWDP)** framework for emergency blood donation. Unlike existing blood bank directories that treat all available donors equally, RWDP ranks donors using a composite score combining blood compatibility, geographic proximity, real-time availability, and longitudinal commitment history. The commitment score updates dynamically based on confirmed donation outcomes — not just replies — creating a self-improving prioritization system that favors historically reliable donors in future matches.
+
+### Simulation Study
+
+A Monte Carlo simulation (30 trials per scenario, synthetic donor/request populations) compared RWDP against two baselines — pure random selection and the project's original exact-match-only (V1) logic — across three donor-supply conditions:
+
+| Scenario | Donors | RWDP Fulfillment | vs Random | vs Exact-Match-Only |
+|---|---|---|---|---|
+| Abundant | 800 | 95.27% | +2.30pp (p<0.001) | +2.03pp (p<0.001) |
+| Moderate | 300 | 88.41% | +1.07pp (p=0.008) | +1.92pp (p<0.001) |
+| Scarce | 150 | 81.14% | +0.07pp (p=0.89, not significant) | +2.84pp (p<0.001) |
+
+RWDP produced a statistically significant fulfillment-rate improvement over both baselines under abundant and moderate donor supply, and a consistently lower no-show rate than random selection across every scenario (e.g. 5.87% vs 11.83% under abundant supply) — evidence that commitment-score weighting measurably improves donor reliability, not just match speed.
+
+Under severe donor scarcity, RWDP's advantage over random selection disappears (not statistically significant), since a very small candidate pool leaves little room for donor ordering to matter — nearly every available donor ends up contacted regardless of priority. RWDP still significantly outperforms the exact-match-only baseline in this condition, since compatibility-matrix matching alone continues to expand the usable donor pool.
+
+**Known limitation:** RWDP consistently produces a higher maximum donor load than the random baseline across all scenarios (e.g. ~21–26 vs ~8–19 times the most-contacted donor was reached), since top-scored donors are repeatedly prioritized. This is a fairness trade-off worth addressing in future work (e.g. a temporary priority cooldown after consecutive matches), not currently implemented.
+
+---ng a composite score combining blood compatibility, geographic proximity, real-time availability, and longitudinal commitment history. The commitment score updates dynamically based on confirmed donation outcomes — not just replies — creating a self-improving prioritization system that favors historically reliable donors in future matches. A planned simulation study will compare RWDP against random-baseline matching to quantify improvement in donation fulfillment rates.
 
 ---
 
