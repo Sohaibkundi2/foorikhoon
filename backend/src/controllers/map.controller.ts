@@ -1,11 +1,18 @@
-
 import { Request, Response } from 'express'
 import prisma from '../lib/prisma'
 import axios from 'axios'
 
 const getMapStats = async (req: Request, res: Response) => {
   try {
-    const cities = ['DI Khan', 'Tank', 'Peshawar', 'Islamabad']
+    const distinctCities = await prisma.user.findMany({
+      where: {
+        OR: [{ donor: { isNot: null } }, { hospital: { isNot: null } }]
+      },
+      select: { city: true },
+      distinct: ['city']
+    })
+
+    const cities = distinctCities.map(u => u.city).filter(Boolean)
 
     const cityStats = await Promise.all(
       cities.map(async (city) => {
@@ -32,7 +39,11 @@ const getPublicStats = async (req: Request, res: Response) => {
     const [totalDonors, totalHospitals, totalMatches] = await Promise.all([
       prisma.donor.count(),
       prisma.hospital.count({ where: { verified: true } }),
-      prisma.match.count({ where: { status: 'ACCEPTED' } })
+      // a "successful match" is one that actually resulted in a completed
+      // donation -- ACCEPTED alone is a transient state now that COMPLETED
+      // and NO_SHOW exist, so counting ACCEPTED here undercounts real
+      // completed donations once they resolve
+      prisma.match.count({ where: { status: 'COMPLETED' } })
     ])
 
     res.status(200).json({ totalDonors, totalHospitals, totalMatches })
@@ -48,7 +59,7 @@ const getWeeklyHeroes = async (req: Request, res: Response) => {
 
     const heroes = await prisma.match.findMany({
       where: {
-        status: 'ACCEPTED',
+        status: 'COMPLETED',
         respondedAt: { gte: oneWeekAgo }
       },
       include: {
@@ -122,7 +133,9 @@ const getLeaderboard = async (req: Request, res: Response) => {
       include: {
         user: true,
         matches: {
-          where: { status: 'ACCEPTED' }
+          // count actual completed donations, not just acceptances --
+          // same reasoning as getPublicStats/getWeeklyHeroes above
+          where: { status: 'COMPLETED' }
         }
       },
       orderBy: { commitmentScore: 'desc' },
@@ -145,4 +158,3 @@ const getLeaderboard = async (req: Request, res: Response) => {
 }
 
 export { getMapStats, getPublicStats, getWeeklyHeroes, getShortagePrediiction, getLeaderboard }
-
