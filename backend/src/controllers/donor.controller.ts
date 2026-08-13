@@ -51,49 +51,6 @@ const getProfile = async (req: Request, res: Response) => {
   }
 }
 
-const updateProfile = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user?.userId
-    if (!userId) {
-      return res.status(400).json({ message: 'Invalid user ID' })
-    }
-
-    const { name, bloodGroup, city, phone, area, shareContactInfo } = req.body
-
-    let coords = null
-    if (area && area.trim()) {
-      coords = await geocodeAddress(area.trim())
-
-      if (!coords) {
-        return res.status(400).json({
-          message: "We couldn't find that location. Please be more specific (e.g. add your city or a well-known landmark)."
-        })
-      }
-    }
-
-    const updatedUser = await prisma.donor.update({
-      where: { userId },
-      data: {
-        bloodGroup,
-        ...(area && area.trim() && { area: area.trim() }),
-        ...(coords && {
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-        }),
-        ...(typeof shareContactInfo === 'boolean' && { shareContactInfo })
-      }
-    })
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: { name, city: city?.trim(), phone }
-    })
-
-    res.status(200).json({ message: "profile updated successfully", updatedUser })
-  } catch (error) {
-    res.status(500).json({ message: "internal server error" })
-  }
-}
 const updateAvailability = async (req: Request, res: Response) => {
 
   try {
@@ -275,6 +232,77 @@ export async function escalateAfterDecline(requestId: string) {
   }
 }
 
+// small privacy fuzz for donor GPS coordinates -- rounds to ~1.1km precision
+// instead of storing the donor's exact doorstep location, mirroring the
+// same privacy intent as the old "area, not exact address" approach
+function fuzzCoordinates(lat: number, lon: number) {
+    const FUZZ_PRECISION = 2 // decimal places -- ~1.1km at this latitude range
+    return {
+        latitude: parseFloat(lat.toFixed(FUZZ_PRECISION)),
+        longitude: parseFloat(lon.toFixed(FUZZ_PRECISION)),
+    }
+}
+
+const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId
+    if (!userId) {
+      return res.status(400).json({ message: 'Invalid user ID' })
+    }
+
+    const { name, bloodGroup, city, phone, area, shareContactInfo, latitude, longitude } = req.body
+
+    let locationUpdate: { area: string; latitude: number; longitude: number } | null = null
+
+    if (typeof latitude === 'number' && typeof longitude === 'number') {
+        // GPS path
+        const PAKISTAN_BOUNDS = { minLat: 23.5, maxLat: 37.5, minLon: 60.5, maxLon: 77.5 }
+        if (
+            latitude < PAKISTAN_BOUNDS.minLat || latitude > PAKISTAN_BOUNDS.maxLat ||
+            longitude < PAKISTAN_BOUNDS.minLon || longitude > PAKISTAN_BOUNDS.maxLon
+        ) {
+            return res.status(400).json({ message: 'Location coordinates are outside the supported region.' })
+        }
+
+        const fuzzed = fuzzCoordinates(latitude, longitude)
+        locationUpdate = {
+            area: area && area.trim() ? area.trim() : 'We\'ll use this to match you with nearby requests',
+            latitude: fuzzed.latitude,
+            longitude: fuzzed.longitude,
+        }
+    } else if (area && area.trim()) {
+        // manual address path -- existing geocoding flow, unchanged
+        const coords = await geocodeAddress(area.trim())
+
+        if (!coords) {
+            return res.status(400).json({
+                message: "We couldn't find that location. Please be more specific (e.g. add your city or a well-known landmark)."
+            })
+        }
+
+        locationUpdate = { area: area.trim(), latitude: coords.latitude, longitude: coords.longitude }
+    }
+
+    const updatedUser = await prisma.donor.update({
+      where: { userId },
+      data: {
+        bloodGroup,
+        ...(locationUpdate && locationUpdate),
+        ...(typeof shareContactInfo === 'boolean' && { shareContactInfo })
+      }
+    })
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { name, city: city?.trim(), phone }
+    })
+
+    res.status(200).json({ message: "profile updated successfully", updatedUser })
+  } catch (error) {
+    res.status(500).json({ message: "internal server error" })
+  }
+}
+
 const createDonorProfile = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.userId
@@ -282,35 +310,58 @@ const createDonorProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid user ID' })
     }
 
-    const { bloodGroup, area } = req.body
+    const { bloodGroup, area, latitude, longitude } = req.body
 
-    if (!area || !area.trim()) {
-      return res.status(400).json({ message: 'Area is required' })
-    }
+    let finalCoords: { latitude: number; longitude: number }
+    let finalArea: string
 
-    const coords = await geocodeAddress(area.trim())
+    if (typeof latitude === 'number' && typeof longitude === 'number') {
+        // GPS path -- fuzz before storing, area label is just descriptive
+        const PAKISTAN_BOUNDS = { minLat: 23.5, maxLat: 37.5, minLon: 60.5, maxLon: 77.5 }
+        if (
+            latitude < PAKISTAN_BOUNDS.minLat || latitude > PAKISTAN_BOUNDS.maxLat ||
+            longitude < PAKISTAN_BOUNDS.minLon || longitude > PAKISTAN_BOUNDS.maxLon
+        ) {
+            return res.status(400).json({ message: 'Location coordinates are outside the supported region.' })
+        }
 
-    if (!coords) {
-      return res.status(400).json({
-        message: "We couldn't find that location. Please be more specific (e.g. add your city or a well-known landmark)."
-      })
+        finalCoords = fuzzCoordinates(latitude, longitude)
+        finalArea = area && area.trim() ? area.trim() : 'Shared location'
+    } else {
+        // manual address path -- existing geocoding flow, unchanged
+        if (!area || !area.trim()) {
+            return res.status(400).json({ message: 'Area is required' })
+        }
+
+        const coords = await geocodeAddress(area.trim())
+
+        if (!coords) {
+            return res.status(400).json({
+                message: "We couldn't find that location. Please be more specific (e.g. add your city or a well-known landmark)."
+            })
+        }
+
+        finalCoords = coords
+        finalArea = area.trim()
     }
 
     const donor = await prisma.donor.create({
-      data: {
-        userId,
-        bloodGroup,
-        area: area.trim(),
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-      }
+        data: {
+            userId,
+            bloodGroup,
+            area: finalArea,
+            latitude: finalCoords.latitude,
+            longitude: finalCoords.longitude,
+        }
     })
 
     res.status(201).json({ message: 'Donor profile created', donor })
   } catch (error) {
+    console.error('Create donor profile error:', error)
     res.status(500).json({ message: 'Internal server error' })
-  }
 }
+}
+
 const savePushToken = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.userId

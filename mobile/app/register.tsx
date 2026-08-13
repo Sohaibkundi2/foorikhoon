@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { Link, router } from 'expo-router'
 import { useAuthStore } from '../src/store/authStore'
 import api from '../src/lib/api'
+import * as Location from 'expo-location'
 
 type Role = 'DONOR' | 'HOSPITAL' | null
 
@@ -30,6 +31,9 @@ export default function Register() {
   const [address, setAddress] = useState('')
   const [licenseNo, setLicenseNo] = useState('')
   const [area, setArea] = useState('')
+  const [locationMethod, setLocationMethod] = useState<'gps' | 'manual' | null>(null)
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null)
+  const [locationError, setLocationError] = useState('')
 
   const { setAuth } = useAuthStore()
 
@@ -48,8 +52,8 @@ export default function Register() {
       setError('Please fill in all hospital details')
       return
     }
-    if (role === 'DONOR' && !area) {
-      setError('Please enter your area or neighborhood')
+    if (role === 'DONOR' && !area && !(locationMethod === 'gps' && coords)) {
+      setError('Please share your location or enter your area')
       return
     }
 
@@ -61,19 +65,49 @@ export default function Register() {
       setAuth(user, token)
 
       if (role === 'DONOR') {
-        await api.post('/api/donor/profile', { bloodGroup, area })
+          await api.post('/api/donor/profile', {
+            bloodGroup,
+            ...(locationMethod === 'gps' && coords
+              ? { latitude: coords.latitude, longitude: coords.longitude }
+              : { area }),
+          })
         router.push('/donor/dashboard')
       } else if (role === 'HOSPITAL') {
         await api.post('/api/hospital/profile', { name: hospitalName, address, licenseNo })
         router.push('/hospital/dashboard')
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Registration failed. Try again.')
+        console.error('Registration error:', err?.message, err?.response?.data)
+        setError(err?.response?.data?.message || 'Registration failed. Try again.')
     } finally {
       setLoading(false)
     }
   }
 
+  const requestLocation = async () => {
+    setLocationError('')
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync()
+
+      if (status !== 'granted') {
+        setLocationError('permission_denied')
+        return
+      }
+
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      })
+
+      setCoords({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      })
+      setLocationMethod('gps')
+    } catch (err) {
+      console.error('Location error:', err)
+      setLocationError('unavailable')
+    }
+  }
   // ── Step 1: Role picker ──────────────────────────────────────────────────
   if (!role) {
     return (
@@ -213,13 +247,50 @@ export default function Register() {
               </Text>
             </TouchableOpacity>
 
-            <Field label="Area / neighborhood">
-              <TextInput
-                style={styles.input} placeholderTextColor="#6B7280"
-                placeholder="Hayatabad, Peshawar" value={area} onChangeText={setArea}
-              />
-              <Text style={styles.helperText}>Used to match you with nearby requests — not your exact address.</Text>
-            </Field>
+            <View style={styles.field}>
+              <Text style={styles.label}>Your location</Text>
+
+              {locationMethod === 'gps' && coords ? (
+                <View style={styles.locationConfirmedBox}>
+                  <Text style={styles.locationConfirmedText}>✓ Your location has been saved for matching</Text>
+                  <TouchableOpacity onPress={() => { setLocationMethod(null); setCoords(null) }}>
+                    <Text style={styles.locationSwitchText}>Use a different method</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : locationMethod === 'manual' ? (
+                <View>
+                  <TextInput
+                    style={styles.input} placeholderTextColor="#6B7280"
+                    placeholder="Hayatabad, Peshawar" value={area} onChangeText={setArea}
+                  />
+                  <Text style={styles.helperText}>Used to match you with nearby requests — not your exact address.</Text>
+                  <TouchableOpacity onPress={() => setLocationMethod(null)}>
+                    <Text style={styles.locationSwitchText}>Use my location instead</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.locationPromptBox}>
+                  <Text style={styles.locationPromptTitle}>Share your location</Text>
+                  <Text style={styles.locationPromptDesc}>
+                    For faster, more accurate matching in an emergency, we recommend sharing your location.
+                  </Text>
+                  <TouchableOpacity style={styles.locationButton} onPress={requestLocation} activeOpacity={0.85}>
+                    <Text style={styles.locationButtonText}>Use My Location</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setLocationMethod('manual')}>
+                    <Text style={styles.locationManualText}>Enter address instead</Text>
+                  </TouchableOpacity>
+
+                  {locationError ? (
+                    <Text style={styles.locationErrorText}>
+                      {locationError === 'permission_denied'
+                        ? "We couldn't access your location. You can try again or enter your address manually."
+                        : 'Something went wrong getting your location. Please enter your address instead.'}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+            </View>
           </View>
         )}
 
@@ -356,6 +427,39 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
 
   helperText: { color: '#6B7280', fontSize: 11, marginTop: 4 },
+
+  locationConfirmedBox: {
+  backgroundColor: 'rgba(34,197,94,0.1)',
+  borderWidth: 1,
+  borderColor: 'rgba(34,197,94,0.2)',
+  borderRadius: 8,
+  padding: 12,
+},
+locationConfirmedText: { color: '#4ADE80', fontSize: 14, marginBottom: 4 },
+locationSwitchText: { color: '#6B7280', fontSize: 12, textDecorationLine: 'underline' },
+
+locationPromptBox: {
+  backgroundColor: '#141414',
+  borderWidth: 1,
+  borderColor: '#2A2A2A',
+  borderRadius: 8,
+  padding: 16,
+  alignItems: 'center',
+},
+locationPromptTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '600', marginBottom: 4 },
+locationPromptDesc: { color: '#6B7280', fontSize: 12, textAlign: 'center', marginBottom: 12 },
+locationButton: {
+  backgroundColor: '#DC2626',
+  borderRadius: 8,
+  paddingVertical: 12,
+  paddingHorizontal: 24,
+  width: '100%',
+  alignItems: 'center',
+  marginBottom: 8,
+},
+locationButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+locationManualText: { color: '#6B7280', fontSize: 12, textDecorationLine: 'underline' },
+locationErrorText: { color: '#F87171', fontSize: 12, marginTop: 8, textAlign: 'center' },
 
   // Blood group grid
   bloodGrid: {

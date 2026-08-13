@@ -31,33 +31,45 @@ const getProfile = async (req: Request, res: Response) => {
 const updateProfile = async (req: Request, res: Response) => {
     try {
         const userId = req.user?.userId
-
         if (!userId) {
             return res.status(400).json({ message: 'Invalid user ID' })
         }
 
-        const { name, address, phone, city } = req.body
+        const { name, address, phone, city, latitude, longitude } = req.body
 
-        let coords = null
-        if (address && address.trim()) {
-            coords = await geocodeAddress(address.trim())
+        let locationUpdate: { address: string; latitude: number; longitude: number } | null = null
+
+        if (typeof latitude === 'number' && typeof longitude === 'number') {
+            const PAKISTAN_BOUNDS = { minLat: 23.5, maxLat: 37.5, minLon: 60.5, maxLon: 77.5 }
+            if (
+                latitude < PAKISTAN_BOUNDS.minLat || latitude > PAKISTAN_BOUNDS.maxLat ||
+                longitude < PAKISTAN_BOUNDS.minLon || longitude > PAKISTAN_BOUNDS.maxLon
+            ) {
+                return res.status(400).json({ message: 'Location coordinates are outside the supported region.' })
+            }
+
+            locationUpdate = {
+                address: address && address.trim() ? address.trim() : 'Shared location',
+                latitude,
+                longitude,
+            }
+        } else if (address && address.trim()) {
+            const coords = await geocodeAddress(address.trim())
 
             if (!coords) {
                 return res.status(400).json({
                     message: "We couldn't find that address. Please be more specific (e.g. add a well-known landmark or the city name)."
                 })
             }
+
+            locationUpdate = { address: address.trim(), latitude: coords.latitude, longitude: coords.longitude }
         }
 
         const updatedHospital = await prisma.hospital.update({
             where: { userId },
             data: {
                 name,
-                ...(address && address.trim() && { address: address.trim() }),
-                ...(coords && {
-                    latitude: coords.latitude,
-                    longitude: coords.longitude,
-                })
+                ...(locationUpdate && locationUpdate)
             }
         })
 
@@ -193,28 +205,47 @@ const createHospitalProfile = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Invalid user ID' })
         }
 
-        const { name, address, licenseNo } = req.body
+        const { name, address, licenseNo, latitude, longitude } = req.body
 
-        if (!address || !address.trim()) {
-            return res.status(400).json({ message: 'Address is required' })
-        }
+        let finalCoords: { latitude: number; longitude: number }
+        let finalAddress: string
 
-        const coords = await geocodeAddress(address.trim())
+        if (typeof latitude === 'number' && typeof longitude === 'number') {
+            const PAKISTAN_BOUNDS = { minLat: 23.5, maxLat: 37.5, minLon: 60.5, maxLon: 77.5 }
+            if (
+                latitude < PAKISTAN_BOUNDS.minLat || latitude > PAKISTAN_BOUNDS.maxLat ||
+                longitude < PAKISTAN_BOUNDS.minLon || longitude > PAKISTAN_BOUNDS.maxLon
+            ) {
+                return res.status(400).json({ message: 'Location coordinates are outside the supported region.' })
+            }
 
-        if (!coords) {
-            return res.status(400).json({
-                message: "We couldn't find that address. Please be more specific (e.g. add a well-known landmark or the city name)."
-            })
+            finalCoords = { latitude, longitude } // no fuzzing -- hospital location is public/institutional
+            finalAddress = address && address.trim() ? address.trim() : 'Shared location'
+        } else {
+            if (!address || !address.trim()) {
+                return res.status(400).json({ message: 'Address is required' })
+            }
+
+            const coords = await geocodeAddress(address.trim())
+
+            if (!coords) {
+                return res.status(400).json({
+                    message: "We couldn't find that address. Please be more specific (e.g. add a well-known landmark or the city name)."
+                })
+            }
+
+            finalCoords = coords
+            finalAddress = address.trim()
         }
 
         const hospital = await prisma.hospital.create({
             data: {
                 userId,
                 name,
-                address: address.trim(),
+                address: finalAddress,
                 licenseNo,
-                latitude: coords.latitude,
-                longitude: coords.longitude,
+                latitude: finalCoords.latitude,
+                longitude: finalCoords.longitude,
             }
         })
 
@@ -385,5 +416,6 @@ const savePushToken = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Internal server error' })
   }
 }
+
 
 export { getProfile, updateProfile, getInventory, updateInventory, getRequests, createHospitalProfile, getAnalytics, fulfillRequest, reportNoShow, savePushToken }

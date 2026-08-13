@@ -29,6 +29,7 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 - **Medically correct blood-compatibility matching** — donors ranked using a compatible-donor matrix per blood group
 - **Strict rare-type reservation** — scarce types (O−, AB−) are matched only against requests for their own exact type; they are never used as cross-type substitutes for other blood groups, regardless of urgency
 - **Geolocation-based matching** — donors and hospitals are geocoded (via Nominatim/OpenStreetMap) to real coordinates, with hardened validation against garbage or misleading geocoding results; requests search a widening radius (10km → 25km → 50km → 100km), stopping at the first tier with a qualifying donor
+- **GPS-based location capture** — donors and hospitals can share their device location directly at registration for faster, more accurate matching, with manual address entry (geocoded via Nominatim) as a fallback if permission is denied. Donor coordinates are fuzzed before storage to preserve privacy; hospital coordinates are stored exact
 - **90-day donor eligibility window** — donors are automatically excluded from matching for 90 days after their last donation, regardless of their manual availability toggle, reflecting the real medical recovery period for whole-blood donation
 - **Escalation on decline or no-show** — if a donor declines, or a hospital reports a no-show after acceptance, the system immediately searches for and notifies a replacement donor, excluding everyone already tried for that request
 - **Escalation on silence** — a background job checks every 5 minutes for requests where no donor has responded within 15 minutes, and escalates to a new batch of donors
@@ -43,7 +44,7 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 - Donor leaderboard with city filter
 - Public blood request board with filters
 - Hospital analytics — most requested blood group, fulfillment rate, inventory status
-- Admin dashboard with hospital verification, shortage alerts, user management
+- Admin dashboard with hospital verification, shortage alerts, user management (including account deletion)
 - Push notifications via Expo Push Service (production ready)
 - Offline support with cached data on mobile
 - Mobile responsive web + React Native mobile app
@@ -163,10 +164,20 @@ foorikhoon/
 │           └── donorMatching.ts
 │   └── prisma/
 │       ├── schema.prisma
-│       └── seed.ts
+│       ├── seed.ts
+│       └── seed-admin.ts
 │
 ├── ai-engine/
 │   └── app.py
+│
+├── research/                  RWDP simulation study
+│   ├── RWDP_Research_Report.pdf
+│   ├── simulate.py
+│   ├── algorithms.py
+│   ├── population.py
+│   ├── requests.py
+│   ├── compatibility.py
+│   └── response_model.py
 │
 └── docker-compose.yml
 ```
@@ -222,11 +233,13 @@ GET   /api/requests/:id
 PUT   /api/requests/:id
 
 ADMIN
-GET   /api/admin/stats
-GET   /api/admin/hospitals
-PUT   /api/admin/hospitals/:id/verify
-GET   /api/admin/users
-GET   /api/admin/requests
+GET    /api/admin/stats
+GET    /api/admin/hospitals
+PUT    /api/admin/hospitals/:id/verify
+DELETE /api/admin/hospitals/:id
+GET    /api/admin/users
+DELETE /api/admin/users/:id     → deletes a donor/hospital account and its profile; admin accounts excluded
+GET    /api/admin/requests
 
 MAP
 GET   /api/map/stats
@@ -350,6 +363,7 @@ cp .env.example .env
 # Add DATABASE_URL and JWT_SECRET to .env
 npx prisma migrate dev
 npx ts-node prisma/seed.ts
+npx ts-node prisma/seed-admin.ts
 npm run dev
 ```
 
@@ -373,6 +387,8 @@ python app.py
 cd mobile
 yarn install
 # Add EXPO_PUBLIC_API_URL=http://<your-local-ip>:5000 to .env
+# (must be your machine's local network IP, not localhost — a physical
+# device can't resolve localhost back to your dev machine)
 yarn expo start --go
 ```
 
@@ -389,7 +405,7 @@ docker-compose up --build
 ```
 Donor:    donor1@foorikhoon.com  / 123456
 Hospital: hospital1@foorikhoon.com / 123456
-Admin:    update role via seed script
+Admin:    admin@321.com / (set via prisma/seed-admin.ts)
 ```
 
 ---
@@ -408,6 +424,8 @@ Admin:    update role via seed script
 ## Known Limitation
 
 The radius query currently pulls candidates per tier from Postgres using a lat/lng bounding-box filter, then computes precise distance in the application layer. This is efficient enough for the project's current scale, but a production deployment with a very large donor base would benefit from a PostGIS spatial index (`ST_DWithin`) to push distance filtering fully into the database.
+
+Location capture during profile editing (as opposed to initial registration) still uses the manual address + geocoding flow only — GPS capture is not yet available on the edit-profile screens.
 
 ---
 
@@ -430,12 +448,11 @@ The radius query currently pulls candidates per tier from Postgres using a lat/l
 - Small-scale user study (SUS usability testing) for FYP evaluation
 - Google Play Store release
 - Automatic (cron-based) no-show detection — currently a hospital must manually report a no-show; a timeout-based auto-flag is a possible future improvement
+- GPS-based location capture on profile-edit screens (currently registration-only)
 
 ---
 
 ## Research Contribution
-
-This project proposes a **Reliability-Weighted Donor Prioritization (RWDP)** framework for emergency blood donation. Unlike existing blood bank directories that treat all available donors equally, RWDP ranks donors usi## Research Contribution
 
 This project proposes a **Reliability-Weighted Donor Prioritization (RWDP)** framework for emergency blood donation. Unlike existing blood bank directories that treat all available donors equally, RWDP ranks donors using a composite score combining blood compatibility, geographic proximity, real-time availability, and longitudinal commitment history. The commitment score updates dynamically based on confirmed donation outcomes — not just replies — creating a self-improving prioritization system that favors historically reliable donors in future matches.
 
@@ -455,7 +472,7 @@ Under severe donor scarcity, RWDP's advantage over random selection disappears (
 
 **Known limitation:** RWDP consistently produces a higher maximum donor load than the random baseline across all scenarios (e.g. ~21–26 vs ~8–19 times the most-contacted donor was reached), since top-scored donors are repeatedly prioritized. This is a fairness trade-off worth addressing in future work (e.g. a temporary priority cooldown after consecutive matches), not currently implemented.
 
----ng a composite score combining blood compatibility, geographic proximity, real-time availability, and longitudinal commitment history. The commitment score updates dynamically based on confirmed donation outcomes — not just replies — creating a self-improving prioritization system that favors historically reliable donors in future matches. A planned simulation study will compare RWDP against random-baseline matching to quantify improvement in donation fulfillment rates.
+Full methodology, results, and discussion available in [RWDP_Research_Report.pdf](./research/RWDP_Research_Report.pdf).
 
 ---
 

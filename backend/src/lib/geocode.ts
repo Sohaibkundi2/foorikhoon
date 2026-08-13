@@ -10,7 +10,6 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult | n
 
   const trimmed = address.trim()
 
-  // Basic sanity check: too short, or just a repeated character
   if (trimmed.length < 3 || /^(.)\1+$/.test(trimmed)) {
     console.error('Address failed basic sanity check:', trimmed)
     return null
@@ -43,12 +42,6 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult | n
   }
 
   if (!Array.isArray(results) || results.length === 0) {
-    return null
-  }
-
-  const MIN_IMPORTANCE = 0.1
-  if (results[0].importance !== undefined && results[0].importance < MIN_IMPORTANCE) {
-    console.error('Nominatim match too low-confidence, rejecting:', results[0].importance, trimmed)
     return null
   }
 
