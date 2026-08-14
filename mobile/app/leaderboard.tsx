@@ -20,8 +20,6 @@ const bloodGroupLabels: Record<string, string> = {
   AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−',
 }
 
-const cities = ['ALL', 'DI Khan', 'Tank', 'Peshawar', 'Islamabad']
-
 const avatarPalettes = [
   { bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.3)', text: '#F87171' },
   { bg: 'rgba(251,146,60,0.12)',  border: 'rgba(251,146,60,0.3)',  text: '#FB923C' },
@@ -63,6 +61,7 @@ export default function LeaderboardScreen() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [cityFilter, setCityFilter] = useState('ALL')
+  const [activeFilter, setActiveFilter] = useState<'city' | null>(null)
 
   useEffect(() => {
     api.get('/api/map/leaderboard')
@@ -71,6 +70,8 @@ export default function LeaderboardScreen() {
       .finally(() => setLoading(false))
   }, [])
 
+  const cities = ['ALL', ...Array.from(new Set(leaderboard.map(d => d.city).filter(Boolean)))]
+
   const filtered = cityFilter === 'ALL'
     ? leaderboard
     : leaderboard.filter(d => d.city === cityFilter)
@@ -78,6 +79,43 @@ export default function LeaderboardScreen() {
   const ranked = filtered.map((d, i) => ({ ...d, rank: i + 1 }))
   const top3 = ranked.slice(0, 3)
   const rest = ranked.slice(3)
+
+  const renderFilterRow = (
+    label: string,
+    key: 'city',
+    options: string[],
+    current: string,
+    setter: (v: string) => void
+  ) => (
+    <View style={styles.filterGroup}>
+      <TouchableOpacity
+        style={[styles.filterBtn, activeFilter === key && styles.filterBtnActive]}
+        onPress={() => setActiveFilter(activeFilter === key ? null : key)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.filterBtnText}>
+          {current === 'ALL' ? label : current}
+        </Text>
+        <Text style={styles.filterArrow}>{activeFilter === key ? '▲' : '▼'}</Text>
+      </TouchableOpacity>
+      {activeFilter === key && (
+        <View style={styles.dropdown}>
+          {options.map(opt => (
+            <TouchableOpacity
+              key={opt}
+              style={[styles.dropdownItem, current === opt && styles.dropdownItemActive]}
+              onPress={() => { setter(opt); setActiveFilter(null) }}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.dropdownText, current === opt && styles.dropdownTextActive]}>
+                {opt === 'ALL' ? `All ${label}` : opt}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </View>
+  )
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -88,25 +126,8 @@ export default function LeaderboardScreen() {
         <Text style={styles.subtitle}>Top donors ranked by commitment score across Pakistan.</Text>
       </View>
 
-      {/* City filter */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-      >
-        {cities.map((city) => {
-          const active = cityFilter === city
-          return (
-            <TouchableOpacity
-              key={city}
-              onPress={() => setCityFilter(city)}
-              style={[styles.filterChip, active && styles.filterChipActive]}
-            >
-              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{city}</Text>
-            </TouchableOpacity>
-          )
-        })}
-      </ScrollView>
+      {/* City filter — dropdown, not a wrapping chip row */}
+      {renderFilterRow('Cities', 'city', cities, cityFilter, setCityFilter)}
 
       {loading && (
         <View style={{ gap: 10 }}>
@@ -237,14 +258,24 @@ const styles = StyleSheet.create({
   title: { color: '#FFFFFF', fontSize: 26, fontWeight: '700' },
   subtitle: { color: '#9CA3AF', fontSize: 13, marginTop: 6 },
 
-  filterRow: { gap: 8, paddingBottom: 20 },
-  filterChip: {
-    borderWidth: 1, borderColor: '#222', backgroundColor: '#141414',
-    borderRadius: 999, paddingHorizontal: 16, paddingVertical: 8,
+  // Dropdown filter (replaces old horizontal chip row)
+  filterGroup: { marginBottom: 20, position: 'relative', zIndex: 10 },
+  filterBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#141414', borderWidth: 1, borderColor: '#222',
+    borderRadius: 10, paddingHorizontal: 16, paddingVertical: 12,
   },
-  filterChipActive: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
-  filterChipText: { color: '#9CA3AF', fontSize: 13 },
-  filterChipTextActive: { color: '#FFFFFF', fontWeight: '600' },
+  filterBtnActive: { borderColor: '#DC2626' },
+  filterBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '500' },
+  filterArrow: { color: '#6B7280', fontSize: 10 },
+  dropdown: {
+    marginTop: 6, backgroundColor: '#141414', borderWidth: 1, borderColor: '#222',
+    borderRadius: 10, overflow: 'hidden',
+  },
+  dropdownItem: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' },
+  dropdownItemActive: { backgroundColor: 'rgba(220,38,38,0.08)' },
+  dropdownText: { color: '#9CA3AF', fontSize: 13.5 },
+  dropdownTextActive: { color: '#DC2626', fontWeight: '600' },
 
   skeletonRow: { height: 80, backgroundColor: '#141414', borderWidth: 1, borderColor: '#222', borderRadius: 14 },
 

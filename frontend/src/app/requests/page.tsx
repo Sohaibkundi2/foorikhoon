@@ -42,7 +42,6 @@ const urgencyOrder: Record<string, number> = {
   CRITICAL: 0, URGENT: 1, NORMAL: 2
 }
 
-const cities = ['DI Khan', 'Tank', 'Peshawar', 'Islamabad']
 const bloodGroups = ['A_POS', 'A_NEG', 'B_POS', 'B_NEG', 'AB_POS', 'AB_NEG', 'O_POS', 'O_NEG']
 const urgencies = ['NORMAL', 'URGENT', 'CRITICAL']
 
@@ -54,12 +53,15 @@ export default function RequestsPage() {
   const [urgencyFilter, setUrgencyFilter] = useState('ALL')
   const [copied, setCopied] = useState<string | null>(null)
 
+  
   useEffect(() => {
     api.get('/api/requests')
       .then(res => setRequests(res.data.requests))
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
+
+  const cities = Array.from(new Set(requests.map(r => r.hospital.user?.city).filter(Boolean))) as string[]
 
   const filtered = requests
     .filter(req => {

@@ -18,8 +18,6 @@ const bloodGroupLabels: Record<string, string> = {
   AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
 }
 
-const cities = ['ALL', 'DI Khan', 'Tank', 'Peshawar', 'Islamabad']
-
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
@@ -44,16 +42,18 @@ function getRankStyle(rank: number) {
 }
 
 export default function LeaderboardPage() {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [cityFilter, setCityFilter] = useState('ALL')
+const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+const [loading, setLoading] = useState(true)
+const [cityFilter, setCityFilter] = useState('ALL')
 
-  useEffect(() => {
-    api.get('/api/map/leaderboard')
-      .then(res => setLeaderboard(res.data.leaderboard))
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
+useEffect(() => {
+  api.get('/api/map/leaderboard')
+    .then(res => setLeaderboard(res.data.leaderboard))
+    .catch(console.error)
+    .finally(() => setLoading(false))
+}, [])
+
+const cities = ['ALL', ...Array.from(new Set(leaderboard.map(d => d.city).filter(Boolean)))]
 
   const filtered = cityFilter === 'ALL'
     ? leaderboard

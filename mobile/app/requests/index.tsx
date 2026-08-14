@@ -44,7 +44,6 @@ const urgencyStyle: Record<string, { bg: string; border: string; text: string }>
 
 const urgencyOrder: Record<string, number> = { CRITICAL: 0, URGENT: 1, NORMAL: 2 }
 
-const cities = ['ALL', 'DI Khan', 'Tank', 'Peshawar', 'Islamabad']
 const bloodGroups = ['ALL', 'A_POS', 'A_NEG', 'B_POS', 'B_NEG', 'AB_POS', 'AB_NEG', 'O_POS', 'O_NEG']
 const urgencies = ['ALL', 'CRITICAL', 'URGENT', 'NORMAL']
 
@@ -58,6 +57,10 @@ export default function RequestsScreen() {
 
   const { isOnline } = useNetwork()
   const [cacheTime, setCacheTime] = useState<number | null>(null)
+
+  const cities = ['ALL', ...Array.from(new Set(
+  requests.map(r => r.hospital?.user?.city).filter(Boolean)
+))] as string[]
 
   useEffect(() => {
     const fetchRequests = async () => {
