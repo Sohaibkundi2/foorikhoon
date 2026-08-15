@@ -476,6 +476,11 @@ Full methodology, results, and discussion available in [RWDP_Research_Report.pdf
 
 ---
 
+
+## System Design
+
+Architecture, ER, DFD (levels 0-1), sequence, and state diagrams are available in [`/diagrams`](./diagrams).
+
 ## Status
 
 Active development. Final Year Project — Gomal University, D.I. Khan (2023–2027).
