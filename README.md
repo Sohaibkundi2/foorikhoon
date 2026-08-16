@@ -425,8 +425,6 @@ Admin:    admin@321.com / (set via prisma/seed-admin.ts)
 
 The radius query currently pulls candidates per tier from Postgres using a lat/lng bounding-box filter, then computes precise distance in the application layer. This is efficient enough for the project's current scale, but a production deployment with a very large donor base would benefit from a PostGIS spatial index (`ST_DWithin`) to push distance filtering fully into the database.
 
-Location capture during profile editing (as opposed to initial registration) still uses the manual address + geocoding flow only — GPS capture is not yet available on the edit-profile screens.
-
 ---
 
 ## Roadmap — Planned Features
@@ -448,7 +446,6 @@ Location capture during profile editing (as opposed to initial registration) sti
 - Small-scale user study (SUS usability testing) for FYP evaluation
 - Google Play Store release
 - Automatic (cron-based) no-show detection — currently a hospital must manually report a no-show; a timeout-based auto-flag is a possible future improvement
-- GPS-based location capture on profile-edit screens (currently registration-only)
 
 ---
 

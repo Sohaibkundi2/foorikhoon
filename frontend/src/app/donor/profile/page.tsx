@@ -29,6 +29,38 @@ export default function DonorProfilePage() {
   const [isAvailable, setIsAvailable] = useState(true)
   const [area, setArea] = useState('')
   const [shareContactInfo, setShareContactInfo] = useState(false)
+  const [locationMethod, setLocationMethod] = useState<'gps' | 'manual' | null>(null)
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null)
+  const [locationError, setLocationError] = useState('')
+  const [locatingInProgress, setLocatingInProgress] = useState(false)
+
+  const requestLocation = () => {
+    setLocationError('')
+
+    if (!navigator.geolocation) {
+      setLocationError('unavailable')
+      return
+    }
+
+    setLocatingInProgress(true)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCoords({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        })
+        setLocationMethod('gps')
+        setLocatingInProgress(false)
+      },
+      (err) => {
+        console.error('Geolocation error:', err)
+        setLocationError(err.code === err.PERMISSION_DENIED ? 'permission_denied' : 'unavailable')
+        setLocatingInProgress(false)
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
+  }
+
 
   useEffect(() => {
     if (!user) { router.push('/login'); return }
@@ -63,9 +95,12 @@ export default function DonorProfilePage() {
     try {
       setSaving(true)
       await api.put('/api/donor/profile', {
-        name, phone, city, bloodGroup, area,
+        name, phone, city, bloodGroup,
         lastDonated: lastDonated || null,
-        shareContactInfo
+        shareContactInfo,
+        ...(locationMethod === 'gps' && coords
+          ? { latitude: coords.latitude, longitude: coords.longitude }
+          : { area }),
       })
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
@@ -153,17 +188,69 @@ export default function DonorProfilePage() {
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm text-[#9CA3AF] mb-1.5">
-                Area / neighborhood <span className="text-[#6B7280]">(update to refresh your match location)</span>
-              </label>
-              <input
-                type="text"
-                value={area}
-                onChange={(e) => setArea(e.target.value)}
-                placeholder="Hayatabad, Peshawar"
-                className="w-full bg-[#0F0F0F] border border-[#2A2A2A] focus:border-[#DC2626] rounded-md px-4 py-2.5 text-white text-sm outline-none transition-colors placeholder:text-[#6B7280]"
-              />
-              <p className="text-xs text-[#6B7280] mt-1">Leave blank to keep your current saved location.</p>
+              {locationMethod === 'gps' && coords ? (
+                <div className="bg-green-500/10 border border-green-500/20 rounded-md px-4 py-3">
+                  <p className="text-green-400 text-sm">✓ We'll use this to match you with nearby    requests</p>
+                  <button
+                    type="button"
+                    onClick={() => { setLocationMethod(null); setCoords(null) }}
+                    className="text-xs text-[#6B7280] hover:text-white underline mt-1"
+                  >
+                    Use a different method
+                  </button>
+                </div>
+              ) : locationMethod === 'manual' ? (
+                <div>
+                  <label className="block text-sm text-[#9CA3AF] mb-1.5">
+                    Area / neighborhood <span className="text-[#6B7280]">(update to refresh your match location)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={area}
+                    onChange={(e) => setArea(e.target.value)}
+                    placeholder="Hayatabad, Peshawar"
+                    className="w-full bg-[#0F0F0F] border border-[#2A2A2A] focus:border-[#DC2626] rounded-md px-4 py-2.5 text-white text-sm outline-none transition-colors placeholder:text-[#6B7280]"
+                  />
+                  <p className="text-xs text-[#6B7280] mt-1">Leave blank to keep your current saved location.</p>
+                  <button
+                    type="button"
+                    onClick={() => setLocationMethod(null)}
+                    className="text-xs text-[#6B7280] hover:text-white underline mt-2"
+                  >
+                    Use my location instead
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-[#0F0F0F] border border-[#2A2A2A] rounded-md p-4 text-center">
+                  <p className="text-white text-sm mb-1">Update your location</p>
+                  <p className="text-[#6B7280] text-xs mb-3">
+                    Share your current location for more accurate matching, or enter your area manually.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={requestLocation}
+                    disabled={locatingInProgress}
+                    className="w-full bg-[#DC2626] hover:bg-[#B91C1C] disabled:bg-[#DC2626]/50 text-white text-sm font-medium py-2.5 rounded-md transition-colors mb-2"
+                  >
+                    {locatingInProgress ? 'Getting location...' : 'Use My Location'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLocationMethod('manual')}
+                    className="text-xs text-[#6B7280] hover:text-white underline"
+                  >
+                    Enter address instead
+                  </button>
+
+                  {locationError && (
+                    <p className="text-red-400 text-xs mt-2">
+                      {locationError === 'permission_denied'
+                        ? "We couldn't access your location. You can try again or enter your address manually."
+                        : 'Something went wrong getting your location. Please enter your address instead.'}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

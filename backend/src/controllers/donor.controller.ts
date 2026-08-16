@@ -299,8 +299,9 @@ const updateProfile = async (req: Request, res: Response) => {
 
     res.status(200).json({ message: "profile updated successfully", updatedUser })
   } catch (error) {
+    console.error('Update donor profile error:', error)
     res.status(500).json({ message: "internal server error" })
-  }
+}
 }
 
 const createDonorProfile = async (req: Request, res: Response) => {
