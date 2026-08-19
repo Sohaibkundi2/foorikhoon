@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 import prisma from "../lib/prisma"
 import { geocodeAddress } from "../lib/geocode"
 import { escalateAfterDecline } from './donor.controller'
+import { sendPushNotification } from "../services/notification.service"
 
 const getProfile = async (req: Request, res: Response) => {
 
@@ -327,12 +328,17 @@ const fulfillRequest = async (req: Request, res: Response) => {
         const request = await prisma.bloodRequest.update({
             where: { id },
             data: { status: 'FULFILLED' },
-            include: { matches: true }
+            include: { matches: true, hospital: true }   // added hospital, need its name for the notification
         })
 
         // reward the donor who actually donated
         const acceptedMatch = request.matches.find(m => m.status === 'ACCEPTED')
         if (acceptedMatch) {
+            // completed count BEFORE this one, to detect a newly-crossed badge threshold
+            const priorCompletedCount = await prisma.match.count({
+                where: { donorId: acceptedMatch.donorId, status: 'COMPLETED' }
+            })
+
             const donor = await prisma.donor.update({
                 where: { id: acceptedMatch.donorId },
                 data: {
@@ -352,6 +358,28 @@ const fulfillRequest = async (req: Request, res: Response) => {
                 where: { id: acceptedMatch.id },
                 data: { status: 'COMPLETED' }
             })
+
+            const newCompletedCount = priorCompletedCount + 1
+            const badgeThresholds: { name: string; count: number }[] = [
+                { name: 'First Blood', count: 1 },
+                { name: 'Lifesaver', count: 5 },
+                { name: 'Hero', count: 10 }
+            ]
+            const newlyEarnedBadge = badgeThresholds.find(b => b.count === newCompletedCount)?.name ?? null
+
+            if (donor.pushToken) {
+                await sendPushNotification(
+                    donor.pushToken,
+                    '🎉 Donation Confirmed!',
+                    `${request.hospital.name} confirmed your donation. Thank you for saving a life — tap to view your certificate.`,
+                    {
+                        type: 'DONATION_CONFIRMED',
+                        matchId: acceptedMatch.id,
+                        requestId: request.id,
+                        newBadge: newlyEarnedBadge
+                    }
+                )
+            }
         }
 
         res.status(200).json({ message: 'Request fulfilled', request })

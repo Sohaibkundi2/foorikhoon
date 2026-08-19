@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { useRouter } from 'next/navigation'
 import BadgePopup, { BadgeShelf } from '@/components/BadgePopup'
+import HeroCertificate from '@/components/HeroCertificate'
 import api from '@/lib/api'
 import Link from 'next/link'
 
@@ -56,6 +57,7 @@ const matchStatusColors: Record<string, string> = {
   ACCEPTED: 'text-green-400 bg-green-400/10 border-green-400/20',
   DECLINED: 'text-red-400 bg-red-400/10 border-red-400/20',
   COMPLETED: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
+  NO_SHOW: 'text-red-400 bg-red-400/10 border-red-400/20',
 }
 
 export default function DonorDashboard() {
@@ -68,6 +70,8 @@ export default function DonorDashboard() {
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState(false)
   const [hydrated, setHydrated] = useState(false)
+  const [certificate, setCertificate] = useState<any>(null)
+  const [certificateOpen, setCertificateOpen] = useState(false)
 
     useEffect(() => {
       setHydrated(true)
@@ -126,6 +130,16 @@ useEffect(() => {
     const today = new Date()
     const days = Math.ceil((eligible.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
     return days > 0 ? days : 0
+  }
+
+  const viewCertificate = async (matchId: string) => {
+    try {
+      const res = await api.get(`/api/donor/certificate/${matchId}`)
+      setCertificate(res.data.certificate)
+      setCertificateOpen(true)
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   const pendingMatches = matches.filter(m => m.status === 'PENDING')
@@ -317,11 +331,47 @@ useEffect(() => {
                     {bloodGroupLabels[match.request.bloodGroup]} · {match.request.units} unit{match.request.units > 1 ? 's' : ''}
                   </p>
                 </div>
-                <span className={`text-xs px-2.5 py-1 rounded-full border ${matchStatusColors[match.status]}`}>
-                  {match.status}
-                </span>
+                <div className="flex items-center gap-3 shrink-0">
+                  {match.status === 'COMPLETED' && (
+                    <button
+                      onClick={() => viewCertificate(match.id)}
+                      className="text-xs bg-[#DC2626]/10 hover:bg-[#DC2626]/20 border border-[#DC2626]/20 text-[#DC2626] px-3 py-1.5 rounded-md transition-all duration-150"
+                    >
+                      🎖️ View Certificate
+                    </button>
+                  )}
+                  <span className={`text-xs px-2.5 py-1 rounded-full border ${matchStatusColors[match.status]}`}>
+                    {match.status}
+                  </span>
+                </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Certificate modal */}
+      {certificateOpen && certificate && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141414] border border-[#222] rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={() => setCertificateOpen(false)}
+                className="text-[#6B7280] hover:text-white text-sm"
+              >
+                ✕ Close
+              </button>
+            </div>
+            <HeroCertificate
+              donorName={certificate.donorName}
+              bloodGroup={certificate.bloodGroup}
+              city={certificate.city}
+              hospitalName={certificate.hospitalName}
+              donationDate={certificate.donationDate}
+              badge={certificate.badge}
+              totalDonations={certificate.totalDonations}
+              commitmentScore={certificate.commitmentScore}
+            />
           </div>
         </div>
       )}

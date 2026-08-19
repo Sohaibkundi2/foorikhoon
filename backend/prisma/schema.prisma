@@ -68,16 +68,16 @@ model BloodRequest {
 }
 
 model Match {
-  id          String       @id @default(uuid())
-  requestId   String
-  donorId     String
-  status      MatchStatus  @default(PENDING)
-  respondedAt DateTime?
-  createdAt   DateTime     @default(now())
-  donor       Donor        @relation(fields: [donorId], references: [id])
-  request     BloodRequest @relation(fields: [requestId], references: [id])
+  id            String       @id @default(uuid())
+  requestId     String
+  donorId       String
+  status        MatchStatus  @default(PENDING)
+  respondedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  responseToken String?      @unique
+  donor         Donor        @relation(fields: [donorId], references: [id])
+  request       BloodRequest @relation(fields: [requestId], references: [id])
 }
-
 model Inventory {
   id         String     @id @default(uuid())
   hospitalId String

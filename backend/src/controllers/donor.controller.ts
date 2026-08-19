@@ -381,6 +381,57 @@ const savePushToken = async (req: Request, res: Response) => {
   }
 }
 
+const getCertificate = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId
+    if (!userId) return res.status(400).json({ message: 'Invalid user ID' })
+
+    const matchId = req.params.matchId as string
+
+    const match = await prisma.match.findUnique({
+      where: { id: matchId },
+      include: {
+        donor: { include: { user: true } },
+        request: { include: { hospital: true } }
+      }
+    })
+
+    if (!match || match.status !== 'COMPLETED') {
+      return res.status(404).json({ message: 'No completed donation found for this match' })
+    }
+
+    if (match.donor.userId !== userId) {
+      return res.status(403).json({ message: 'Not authorized' })
+    }
+
+    const completedCount = await prisma.match.count({
+      where: { donorId: match.donorId, status: 'COMPLETED' }
+    })
+
+    const badgeThresholds: { name: string; count: number }[] = [
+      { name: 'First Blood', count: 1 },
+      { name: 'Lifesaver', count: 5 },
+      { name: 'Hero', count: 10 }
+    ]
+    const badgeEarnedHere = badgeThresholds.find(b => b.count === completedCount)?.name ?? null
+
+    res.status(200).json({
+      certificate: {
+        donorName: match.donor.user.name,
+        bloodGroup: match.donor.bloodGroup,
+        city: match.donor.user.city,
+        hospitalName: match.request.hospital.name,
+        donationDate: match.respondedAt ?? match.createdAt,
+        badge: badgeEarnedHere,
+        totalDonations: completedCount,
+        commitmentScore: match.donor.commitmentScore 
+      }
+    })
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}
+
 export {
   getProfile,
   updateProfile,
@@ -388,5 +439,6 @@ export {
   getMatches,
   respondToMatch,
   createDonorProfile,
-  savePushToken
+  savePushToken,
+  getCertificate
 }
