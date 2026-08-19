@@ -12,7 +12,7 @@ Finding blood in an emergency in Pakistan is still largely word-of-mouth. Hospit
 
 ForiKhoon bridges that gap with a platform that handles the full lifecycle of a blood donation request — from the moment a hospital posts a need, to matching the right donor using AI, to tracking whether the donation actually happened, to automatically finding a replacement if it doesn't.
 
-**For donors** — register once, set your blood group and location, get notified when someone nearby needs your blood type, earn badges for milestones, and build a commitment score based on your actual donation track record.
+**For donors** — register once, set your blood group and location, get notified when someone nearby needs your blood type, earn badges and shareable donation certificates for milestones, and build a commitment score based on your actual donation track record.
 
 **For hospitals** — post emergency requests, track donor responses in real time, mark a match as fulfilled or as a no-show, manage blood inventory, view analytics, and get matched with the most reliable donors first.
 
@@ -38,6 +38,7 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 - Shortage prediction — predicts which blood groups will run low based on 30-day history
 - Request auto-expiry — PENDING requests expire after 24 hours via background job
 - Badge system — donors earn badges (First Blood, Lifesaver, Hero etc)
+- **Hero certificates — shareable donation cards (web + mobile)** — when a hospital marks a request fulfilled, the donor is notified their donation was confirmed and can view a designed, downloadable/shareable certificate card (blood group, donation count, commitment score, badge earned, donation details) directly from their match history. Shareable to WhatsApp and other apps via the native share sheet; downloadable as PNG on web, savable to photos on mobile (native dev builds)
 - City-level heatmap showing blood demand across Pakistan
 - Live public stats on landing page
 - Weekly heroes slider — showcases donors who donated this week
@@ -68,6 +69,8 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 | State (Mobile) | Zustand + AsyncStorage |
 | Maps | Leaflet.js, React Leaflet |
 | Push Notifications | Expo Push Service (FCM) |
+| Certificate Export (Web) | html2canvas |
+| Certificate Export (Mobile) | react-native-view-shot, expo-sharing, expo-media-library |
 | Offline Cache | AsyncStorage + NetInfo |
 | Background Jobs | node-cron |
 | HTTP Client | Axios |
@@ -113,6 +116,7 @@ foorikhoon/
 │       │   ├── Navbar.tsx
 │       │   ├── Map.tsx
 │       │   ├── BadgePopup.tsx
+│       │   ├── HeroCertificate.tsx
 │       │   └── WeeklyHeroes.tsx
 │       ├── store/authStore.ts
 │       └── lib/api.ts
@@ -137,6 +141,7 @@ foorikhoon/
 │       ├── components/
 │       │   ├── WeeklyHeroes.tsx
 │       │   ├── CityStats.tsx
+│       │   ├── HeroCertificate.tsx
 │       │   └── OfflineBanner.tsx
 │       ├── hooks/useNetwork.ts
 │       ├── lib/
@@ -213,6 +218,9 @@ PUT   /api/donor/availability
 PUT   /api/donor/push-token
 GET   /api/donor/matches
 PUT   /api/donor/matches/:id          → donor accepts/declines a match
+GET   /api/donor/certificate/:matchId → returns hero-certificate data for a COMPLETED match
+                                         (donor name, blood group, city, hospital, date,
+                                         badge earned, donation count, commitment score)
 
 HOSPITAL
 POST  /api/hospital/profile
@@ -222,7 +230,8 @@ GET   /api/hospital/inventory
 PUT   /api/hospital/inventory
 GET   /api/hospital/requests
 GET   /api/hospital/analytics
-PUT   /api/hospital/requests/:id/fulfill   → marks donation complete, rewards donor
+PUT   /api/hospital/requests/:id/fulfill   → marks donation complete, rewards donor,
+                                              sends a "Donation Confirmed" push notification
 PATCH /api/hospital/matches/:id/no-show    → marks accepted donor as no-show, penalizes, escalates
 PUT   /api/hospital/push-token             → saves hospital's Expo push token
 
@@ -244,7 +253,7 @@ GET    /api/admin/requests
 MAP
 GET   /api/map/stats
 GET   /api/map/public-stats
-GET   /api/map/weekly-heroes
+GET   /api/map/weekly-heroes    → includes matchId per hero, linking to their certificate
 GET   /api/map/leaderboard
 GET   /api/map/shortage
 ```
@@ -312,7 +321,9 @@ A request can move back from MATCHED to PENDING if the accepted donor is later r
 PENDING    → donor notified, awaiting response
 ACCEPTED   → donor said yes
 DECLINED   → donor said no — commitment score -5, replacement escalation triggered
-COMPLETED  → donor actually donated — commitment score +10, lastDonated updated
+COMPLETED  → donor actually donated — commitment score +10, lastDonated updated,
+             donor notified with a "Donation Confirmed" push and can view their
+             hero certificate
 NO_SHOW    → donor accepted but never donated — commitment score -10, replacement escalation triggered
 ```
 
@@ -344,6 +355,22 @@ Dedicated    → commitment score > 80
 Lifesaver    → accepted 5+ matches
 Hero         → accepted 10+ matches
 ```
+
+---
+
+## Hero Certificates
+
+When a hospital marks a request as fulfilled, the donor whose match is COMPLETED:
+
+1. Has their commitment score incremented and `lastDonated` updated (as above)
+2. Receives a push notification confirming their donation, including whether it unlocked a new badge
+3. Can open a "View Certificate" action from their match history to see a designed, portrait shareable card — donor name, blood group, donation count, commitment score, badge earned (if any), and donation details (date, hospital, certificate ID)
+4. Can share the card directly via the device's native share sheet (WhatsApp, etc.) or download it as a PNG
+
+**Web** — the card is rendered as plain-inline-styled HTML/CSS (deliberately avoiding Tailwind's oklch/oklab-based color utilities, which `html2canvas` can't parse) and exported client-side via `html2canvas`.
+
+**Mobile** — the same design is built with React Native `StyleSheet` and captured via `react-native-view-shot`; sharing uses `expo-sharing`.
+
 
 ---
 
@@ -418,19 +445,20 @@ Admin:    admin@321.com / (set via prisma/seed-admin.ts)
 - City stats, weekly heroes, public request board
 - Leaderboard with city filter
 - Secure token storage via Expo SecureStore
+- Shareable hero certificate cards for completed donations
 
 ---
 
-## Known Limitation
+## Known Limitations
 
-The radius query currently pulls candidates per tier from Postgres using a lat/lng bounding-box filter, then computes precise distance in the application layer. This is efficient enough for the project's current scale, but a production deployment with a very large donor base would benefit from a PostGIS spatial index (`ST_DWithin`) to push distance filtering fully into the database.
+- The radius query currently pulls candidates per tier from Postgres using a lat/lng bounding-box filter, then computes precise distance in the application layer. This is efficient enough for the project's current scale, but a production deployment with a very large donor base would benefit from a PostGIS spatial index (`ST_DWithin`) to push distance filtering fully into the database.
+- Saving a hero certificate directly to the mobile photo library needs a native `expo-media-library` permission declaration that Expo Go's fixed binary doesn't support; this only works once the project is built with EAS or a custom dev client. In the meantime, mobile users can still share the certificate via the native share sheet.
 
 ---
 
 ## Roadmap — Planned Features
 
 - Twilio SMS notifications for donors without smartphones
-- Hero certificate / shareable donation card (PNG export, WhatsApp/Instagram sharing)
 - Chart.js analytics for admin and hospital dashboards
 - Real-time updates via WebSockets (Socket.io)
 - Redis caching for public stats, leaderboard, heatmap
@@ -444,7 +472,7 @@ The radius query currently pulls candidates per tier from Postgres using a lat/l
 - Unit + integration tests (Jest, Cypress), CI/CD via GitHub Actions
 - AWS deployment (EC2, S3, RDS, CloudWatch)
 - Small-scale user study (SUS usability testing) for FYP evaluation
-- Google Play Store release
+- Google Play Store release, including moving mobile builds to EAS/dev-client (also unlocks direct photo-library saving for certificates)
 - Automatic (cron-based) no-show detection — currently a hospital must manually report a no-show; a timeout-based auto-flag is a possible future improvement
 
 ---

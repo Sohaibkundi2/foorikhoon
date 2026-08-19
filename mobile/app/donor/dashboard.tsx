@@ -13,6 +13,8 @@ import { registerForPushNotifications, savePushTokenToBackend } from '../../src/
 import { useNetwork } from '../../src/hooks/useNetwork'
 import { saveCache, loadCache } from '../../src/lib/cache'
 import OfflineBanner from '../../src/components/OfflineBanner'
+import { Modal } from 'react-native'
+import HeroCertificate from '../../src/components/Herocertificate'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface DonorProfile {
@@ -72,6 +74,8 @@ export default function DonorDashboard() {
   const [toggling, setToggling] = useState(false)
   const { isOnline } = useNetwork()
   const [cacheTime, setCacheTime] = useState<number | null>(null)
+  const [certificate, setCertificate] = useState<any>(null)
+  const [certificateOpen, setCertificateOpen] = useState(false)
 
   useEffect(() => {
     if (!user) { router.replace('/login'); return }
@@ -141,6 +145,16 @@ const fetchData = async () => {
     try {
       await api.put(`/api/donor/matches/${matchId}`, { status })
       setMatches(matches.map(m => m.id === matchId ? { ...m, status } : m))
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const viewCertificate = async (matchId: string) => {
+    try {
+      const res = await api.get(`/api/donor/certificate/${matchId}`)
+      setCertificate(res.data.certificate)
+      setCertificateOpen(true)
     } catch (err) {
       console.error(err)
     }
@@ -350,23 +364,55 @@ const fetchData = async () => {
       </View>
 
       {/* Match history */}
-      {pastMatches.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>History</Text>
-          {pastMatches.map((match) => (
-            <View key={match.id} style={styles.historyRow}>
-              <View style={[styles.historyDot, { backgroundColor: statusDot[match.status] ?? '#6B7280' }]} />
-              <View style={styles.historyTextWrap}>
-                <Text style={styles.matchHospital} numberOfLines={1}>{match.request.hospital.name}</Text>
-                <Text style={styles.historyMeta}>
-                  {bloodGroupLabels[match.request.bloodGroup]} · {match.request.units} unit{match.request.units > 1 ? 's' : ''}
-                </Text>
-              </View>
-              <Text style={styles.historyStatus}>{match.status}</Text>
-            </View>
-          ))}
+      {pastMatches.map((match) => (
+        <TouchableOpacity
+          key={match.id}
+          style={styles.historyRow}
+          activeOpacity={match.status === 'COMPLETED' ? 0.6 : 1}
+          onPress={() => match.status === 'COMPLETED' && viewCertificate(match.id)}
+        >
+          <View style={[styles.historyDot, { backgroundColor: statusDot[match.status] ?? '#6B7280' }]} />
+          <View style={styles.historyTextWrap}>
+            <Text style={styles.matchHospital} numberOfLines={1}>{match.request.hospital.name}</Text>
+            <Text style={styles.historyMeta}>
+              {bloodGroupLabels[match.request.bloodGroup]} · {match.request.units} unit{match.request.units > 1 ? 's' : ''}
+            </Text>
+          </View>
+          {match.status === 'COMPLETED' ? (
+            <Text style={styles.certificateLink}>View Certificate</Text>
+          ) : (
+            <Text style={styles.historyStatus}>{match.status}</Text>
+          )}
+        </TouchableOpacity>
+      ))}
+
+      <Modal
+        visible={certificateOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setCertificateOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <TouchableOpacity onPress={() => setCertificateOpen(false)} style={styles.modalClose}>
+              <Text style={styles.modalCloseText}>✕ Close</Text>
+            </TouchableOpacity>
+
+            {certificate && (
+              <HeroCertificate
+                donorName={certificate.donorName}
+                bloodGroup={certificate.bloodGroup}
+                city={certificate.city}
+                hospitalName={certificate.hospitalName}
+                donationDate={certificate.donationDate}
+                badge={certificate.badge}
+                totalDonations={certificate.totalDonations}
+                commitmentScore={certificate.commitmentScore}
+              />
+            )}
+          </View>
         </View>
-      )}
+      </Modal>
 
     </ScrollView>
   )
@@ -477,6 +523,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   declineText: { color: '#9CA3AF', fontSize: 13, fontWeight: '600' },
+
+  // certificate link in history
+  certificateLink: { color: '#DC2626', fontSize: 12, fontWeight: '700' },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalClose: { alignSelf: 'flex-end', marginBottom: 12, paddingHorizontal: 8, paddingVertical: 6 },
+  modalCloseText: { color: '#9CA3AF', fontSize: 14 },
 
   // Pill badge
   pill: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
