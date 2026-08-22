@@ -10,7 +10,7 @@ Finding blood in an emergency in Pakistan is still largely word-of-mouth. Hospit
 
 ## What ForiKhoon Does
 
-ForiKhoon bridges that gap with a platform that handles the full lifecycle of a blood donation request — from the moment a hospital posts a need, to matching the right donor using AI, to tracking whether the donation actually happened, to automatically finding a replacement if it doesn't.
+ForiKhoon bridges that gap with a platform that handles the full lifecycle of a blood donation request — from the moment a hospital posts a need, to ranking candidate donors with a reliability-weighted scoring engine, to tracking whether the donation actually happened, to automatically finding a replacement if it doesn't.
 
 **For donors** — register once, set your blood group and location, get notified when someone nearby needs your blood type, earn badges and shareable donation certificates for milestones, and build a commitment score based on your actual donation track record.
 
@@ -25,8 +25,8 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 ## Key Features
 
 - Role-based access for donors, hospitals, and admins
-- AI-powered donor matching using Python Flask microservice
-- **Medically correct blood-compatibility matching** — donors ranked using a compatible-donor matrix per blood group
+- **Reliability-weighted multi-factor scoring engine** — donor ranking is a deterministic weighted sum of blood compatibility, proximity, availability, and commitment score, computed by a Python Flask scoring microservice. The formula is explicit and auditable, not a trained model; nothing here learns from data
+- **Conservative compatibility matching with strict rare-type reservation** — donors are ranked using a compatible-donor matrix per blood group. This is deliberately narrower than textbook ABO/Rh compatibility: full universal-donor logic (O− to any recipient) is **not** implemented, because treating the scarcest types as universal substitutes drains them first. The matrix encodes a scarcity-management policy, not a claim of clinical correctness — any real deployment needs sign-off from a qualified transfusion service
 - **Strict rare-type reservation** — scarce types (O−, AB−) are matched only against requests for their own exact type; they are never used as cross-type substitutes for other blood groups, regardless of urgency
 - **Geolocation-based matching** — donors and hospitals are geocoded (via Nominatim/OpenStreetMap) to real coordinates, with hardened validation against garbage or misleading geocoding results; requests search a widening radius (10km → 25km → 50km → 100km), stopping at the first tier with a qualifying donor
 - **GPS-based location capture** — donors and hospitals can share their device location directly at registration for faster, more accurate matching, with manual address entry (geocoded via Nominatim) as a fallback if permission is denied. Donor coordinates are fuzzed before storage to preserve privacy; hospital coordinates are stored exact
@@ -63,7 +63,7 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 | Mobile App | React Native, Expo SDK 54, Expo Router |
 | Backend | Node.js, Express, TypeScript |
 | Database | PostgreSQL (Neon), Prisma ORM v7 |
-| AI Engine | Python 3, Flask |
+| Scoring Engine (`ai-engine/`) | Python 3, Flask |
 | Auth | JWT (jsonwebtoken, bcryptjs) |
 | Mobile Auth | Expo SecureStore |
 | State (Web) | Zustand with persistence |
@@ -95,7 +95,7 @@ Next.js Web App (port 3000)          React Native Mobile App
             Prisma ORM        HTTP POST
                   |              |
           PostgreSQL        Python Flask
-           (Neon DB)        AI Engine (port 5001)
+           (Neon DB)        Scoring Engine (port 5001)
 ```
 
 ---
@@ -241,7 +241,7 @@ PATCH /api/hospital/matches/:id/no-show    → marks accepted donor as no-show, 
 PUT   /api/hospital/push-token             → saves hospital's Expo push token
 
 REQUESTS
-POST  /api/requests             → creates request + AI matching + push notifications
+POST  /api/requests             → creates request + donor scoring + push notifications
 GET   /api/requests             → public, sorted ascending
 GET   /api/requests/:id
 PUT   /api/requests/:id
@@ -265,7 +265,14 @@ GET   /api/map/shortage
 
 ---
 
-## AI Engine
+## Scoring Engine (`ai-engine/`)
+
+A standalone Python/Flask microservice that ranks donors and projects shortages. The
+directory and route prefix are named `ai` for historical reasons, but nothing in it is
+machine learning: both endpoints are deterministic arithmetic over the weights documented
+below, so the same inputs always produce the same ranking and any result can be explained
+by hand. Replacing the rule-based scoring with a trained model is on the roadmap, not in
+the codebase.
 
 ```
 POST /ai/match    — scores and ranks donors for a blood request
@@ -343,7 +350,7 @@ Donor accepts but never donates (NO_SHOW) → -10 points (penalized more than a 
                                              since it wastes the request's time after
                                              other donors were already excluded)
 Score range: 0 - 100 (clamped)
-Higher score = ranked higher in future AI matching
+Higher score = ranked higher in future donor ranking
 ```
 
 Accepting a match, on its own, no longer changes the score — only a confirmed outcome (an actual donation, or a confirmed no-show) does, since simply saying yes isn't proof of reliability.
@@ -425,7 +432,7 @@ npm install
 npm run dev
 ```
 
-### AI Engine
+### Scoring Engine (`ai-engine/`)
 ```bash
 cd ai-engine
 pip install flask flask-cors

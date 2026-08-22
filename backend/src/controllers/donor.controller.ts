@@ -6,6 +6,12 @@ import axios from "axios"
 import { sendPushNotification } from '../services/notification.service'
 import { findEligibleDonors } from '../lib/donorMatching'
 import { getSignedPhotoUrl } from '../services/cloudinary.service'
+import {
+  canTransitionMatch,
+  illegalTransitionMessage,
+  isMatchStatus,
+  requestStatesLeadingTo
+} from '../lib/statusTransitions'
 
 const bloodGroupLabels: Record<string, string> = {
   A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
@@ -122,8 +128,15 @@ const respondToMatch = async (req: Request, res: Response) => {
     const matchId = req.params.id as string
     const { status } = req.body
 
+    if (!isMatchStatus(status)) {
+      return res.status(400).json({ message: 'Invalid match status' })
+    }
+
+    // A donor may only ever accept or decline. COMPLETED and NO_SHOW are hospital-confirmed
+    // outcomes — letting a donor set them would mint a hero certificate and a +10
+    // commitment score with no hospital ever confirming the donation took place.
     if (status !== 'ACCEPTED' && status !== 'DECLINED') {
-      return res.status(400).json({ message: 'Status must be either ACCEPTED or DECLINED' })
+      return res.status(403).json({ message: 'A donor can only accept or decline a match' })
     }
 
     const donorProfile = await prisma.donor.findUnique({ where: { userId } })
@@ -142,10 +155,14 @@ const respondToMatch = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'This match does not belong to you' })
     }
 
-    // Only an unanswered match can be answered. Re-responding would penalise the donor
-    // twice and trigger a second replacement escalation for the same request.
-    if (match.status !== 'PENDING') {
-      return res.status(400).json({ message: 'You have already responded to this match' })
+    // Validated against the shared transition map so this endpoint can't drift from the
+    // hospital-side ones. With status already narrowed to ACCEPTED/DECLINED above, this
+    // fails exactly when the match has already been answered — re-responding would
+    // penalise the donor twice and trigger a second escalation for the same request.
+    if (!canTransitionMatch(match.status, status)) {
+      return res.status(400).json({
+        message: illegalTransitionMessage('match', match.status, status)
+      })
     }
 
     const updatedMatch = await prisma.match.update({
@@ -165,9 +182,23 @@ const respondToMatch = async (req: Request, res: Response) => {
     }
 
     if (status === 'ACCEPTED') {
-        const request = await prisma.bloodRequest.update({
+        // Guard the transition in the WHERE clause rather than with a read-then-write.
+        // A request can hold several PENDING matches at once (units > 1, or escalation
+        // fan-out), so two donors can accept within the same tick. Filtering on the
+        // legal predecessor states makes this atomic: the first acceptance moves the
+        // request to MATCHED, the second matches zero rows. A no-op is the correct
+        // outcome — the second acceptance is legitimate, the request has simply already
+        // moved, so this must not be treated as an illegal transition and rejected.
+        await prisma.bloodRequest.updateMany({
+            where: {
+                id: updatedMatch.requestId,
+                status: { in: requestStatesLeadingTo('MATCHED') }
+            },
+            data: { status: 'MATCHED' }
+        })
+
+        const request = await prisma.bloodRequest.findUniqueOrThrow({
             where: { id: updatedMatch.requestId },
-            data: { status: 'MATCHED' },
             include: { hospital: true }
         })
 
@@ -206,12 +237,16 @@ export async function escalateAfterDecline(requestId: string) {
   if (!request) return
   if (request.status === 'FULFILLED' || request.status === 'EXPIRED') return // already resolved, nothing to do
 
-    if (request.status === 'MATCHED') {
-    await prisma.bloodRequest.update({
-      where: { id: request.id },
-      data: { status: 'PENDING' }
-    })
-  }
+  // Return the request to the pool. Guarded by the transition map and applied atomically
+  // in the WHERE clause, so this can only ever fire from a state MATCHED→PENDING is legal
+  // from, and never fights a concurrent write.
+  await prisma.bloodRequest.updateMany({
+    where: {
+      id: request.id,
+      status: { in: requestStatesLeadingTo('PENDING') }
+    },
+    data: { status: 'PENDING' }
+  })
 
   const alreadyTriedDonorIds = request.matches.map(m => m.donorId)
   const allowedGroups = COMPATIBLE_DONOR_GROUPS[request.bloodGroup] ?? [request.bloodGroup]
@@ -243,12 +278,13 @@ export async function escalateAfterDecline(requestId: string) {
     data: { requestId: request.id, donorId: nextDonor.donorId }
   })
 
-  // a replacement was found — the request is no longer confirmed-matched,
-  // it's back to needing a response
-  await prisma.bloodRequest.update({
-    where: { id: request.id },
-    data: { status: 'PENDING' }
-  })
+  // NOTE: there was a second `update` to PENDING here. It has been removed rather than
+  // guarded, because it was both redundant and unsafe. Redundant: the request is already
+  // PENDING on every path that reaches this line — it was either PENDING on entry or set
+  // above. Unsafe: the AI scoring call between the two points is an awaited HTTP request,
+  // and another donor accepting during that window moves the request to MATCHED. The old
+  // unconditional write would then reset it to PENDING and silently discard a real
+  // acceptance. Please don't reinstate it.
 
   const donor = await prisma.donor.findUnique({ where: { id: nextDonor.donorId } })
   if (donor?.pushToken) {

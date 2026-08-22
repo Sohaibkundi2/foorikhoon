@@ -9,6 +9,7 @@ import {
     deleteDonationPhoto
 } from "../services/cloudinary.service"
 import type { RequestWithPhoto } from "../middleware/upload.middleware"
+import { canTransitionMatch, illegalTransitionMessage } from '../lib/statusTransitions'
 
 const getProfile = async (req: Request, res: Response) => {
 
@@ -373,6 +374,23 @@ const fulfillRequest = async (req: Request, res: Response) => {
             })
         }
 
+        // Match-side transition, asserted against the shared map. Redundant with the find
+        // above today, but it is the assertion that keeps this endpoint honest if the
+        // selection above is ever loosened.
+        if (!canTransitionMatch(acceptedMatch.status, 'COMPLETED')) {
+            return res.status(400).json({
+                message: illegalTransitionMessage('match', acceptedMatch.status, 'COMPLETED')
+            })
+        }
+
+        // On the request side, the FULFILLED and EXPIRED guards above are the transition
+        // map's rule (both are terminal) expressed with friendlier messages. Note that
+        // PENDING is deliberately allowed through even though the map only lists
+        // PENDING → MATCHED / EXPIRED: escalation resets a multi-unit request to PENDING
+        // when a second donor declines, while the first donor's acceptance still stands.
+        // An ACCEPTED match is stronger evidence than the request's own status, and
+        // refusing here would stop a hospital confirming a donation that really happened.
+
         const file = (req as RequestWithPhoto).file
         if (!file) {
             return res.status(400).json({
@@ -487,8 +505,14 @@ const reportNoShow = async (req: Request, res: Response) => {
             return res.status(403).json({ message: 'You can only report no-shows on your own requests' })
         }
 
-        if (match.status !== 'ACCEPTED') {
-            return res.status(400).json({ message: 'Only an accepted match can be reported as a no-show' })
+        // Validated against the shared transition map: ACCEPTED is the only state a
+        // no-show can be reported from. Guards against re-penalising a donor who has
+        // already been marked NO_SHOW, and against penalising one whose donation is
+        // already COMPLETED.
+        if (!canTransitionMatch(match.status, 'NO_SHOW')) {
+            return res.status(400).json({
+                message: illegalTransitionMessage('match', match.status, 'NO_SHOW')
+            })
         }
 
         const { updatedMatch } = await prisma.$transaction(async (tx) => {
