@@ -38,6 +38,7 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 - Shortage prediction — predicts which blood groups will run low based on 30-day history
 - Request auto-expiry — PENDING requests expire after 24 hours via background job
 - Badge system — donors earn badges (First Blood, Lifesaver, Hero etc)
+- **Photo verification of donations (Cloudinary)** — a hospital cannot mark a request fulfilled without uploading a photo of the blood bag, which carries the donor's details printed on the label. The photo becomes the donor's proof that their blood was actually collected, visible in their match history and optionally on their hero certificate. Photos are stored on Cloudinary as `authenticated` assets and served only through server-signed URLs, so a leaked link cannot expose a donor's name and blood group to the public web
 - **Hero certificates — shareable donation cards (web + mobile)** — when a hospital marks a request fulfilled, the donor is notified their donation was confirmed and can view a designed, downloadable/shareable certificate card (blood group, donation count, commitment score, badge earned, donation details) directly from their match history. Shareable to WhatsApp and other apps via the native share sheet; downloadable as PNG on web, savable to photos on mobile (native dev builds)
 - City-level heatmap showing blood demand across Pakistan
 - Live public stats on landing page
@@ -69,6 +70,8 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 | State (Mobile) | Zustand + AsyncStorage |
 | Maps | Leaflet.js, React Leaflet |
 | Push Notifications | Expo Push Service (FCM) |
+| Image Storage | Cloudinary (authenticated assets + signed URLs) |
+| File Uploads | Multer (memory storage), expo-image-picker (mobile) |
 | Certificate Export (Web) | html2canvas |
 | Certificate Export (Mobile) | react-native-view-shot, expo-sharing, expo-media-library |
 | Offline Cache | AsyncStorage + NetInfo |
@@ -198,6 +201,7 @@ Donor        — blood group, availability, commitment score (0-100), lastDonate
 Hospital     — name, address, latitude/longitude (required), license, verified, pushToken
 BloodRequest — blood group, units, urgency, status, expiry
 Match        — links donor to request; status: PENDING, ACCEPTED, DECLINED, COMPLETED, NO_SHOW
+               photoPublicId, photoUploadedAt — Cloudinary proof-of-donation photo (see below)
 Inventory    — hospital blood stock per blood group
 ```
 
@@ -230,8 +234,9 @@ GET   /api/hospital/inventory
 PUT   /api/hospital/inventory
 GET   /api/hospital/requests
 GET   /api/hospital/analytics
-PUT   /api/hospital/requests/:id/fulfill   → marks donation complete, rewards donor,
-                                              sends a "Donation Confirmed" push notification
+PUT   /api/hospital/requests/:id/fulfill   → multipart/form-data, field "photo" (required).
+                                              Marks donation complete, rewards donor, sends a
+                                              "Donation Confirmed" push notification
 PATCH /api/hospital/matches/:id/no-show    → marks accepted donor as no-show, penalizes, escalates
 PUT   /api/hospital/push-token             → saves hospital's Expo push token
 
@@ -358,6 +363,22 @@ Hero         → accepted 10+ matches
 
 ---
 
+## Photo Verification of Donations
+
+A hospital cannot mark a request as fulfilled without attaching a photo of the blood bag. Because Pakistani blood bags carry the donor's name and blood group printed on the label, that photo doubles as the donor's independent evidence that their blood was actually collected rather than the hospital simply clicking a button.
+
+The fulfil endpoint accepts `multipart/form-data` with a single `photo` field. Uploads are capped at 5MB and restricted to JPEG, PNG and WebP. The request is authorised before a single byte is buffered, and the file is pushed to Cloudinary before any database write happens — so a failed upload leaves the request exactly as it was, and a failed database write deletes the just-uploaded asset instead of orphaning it. The status change, the score increment and the photo attachment all happen inside one Prisma transaction; the push notification is sent afterwards, outside it, so an external HTTP call can never hold a database connection open.
+
+Fulfilment now also requires an ACCEPTED match to exist. Previously a request could be marked FULFILLED with no donor attached, which awarded nothing to anybody and left a misleading record.
+
+**Why `photoPublicId` and not `photoUrl`.** Cloudinary's `secure_url` only means the URL is HTTPS — it is still world-readable by anyone who obtains it, forever, independent of the app's JWT auth. Storing one would mean a donor's name and blood group sit behind nothing more than an unguessable string. Photos are therefore uploaded as `authenticated` assets and the database stores only Cloudinary's `public_id`. The API mints a signed delivery URL at read time, so access is gated by the same authorisation that protects every other endpoint, and the donor's health data is never reachable from a plain link.
+
+Uploads are re-encoded server-side (capped at 1600px, `quality: auto:good`), which also strips EXIF metadata — worth noting because a raw phone photo taken inside a hospital would otherwise embed GPS coordinates.
+
+**Who can see a photo.** Only the donor it belongs to and the hospital that uploaded it. On the hero certificate the photo is opt-in and off by default, since that card is designed to be shared publicly on WhatsApp and the bag label would leak the donor's blood group to every recipient.
+
+---
+
 ## Hero Certificates
 
 When a hospital marks a request as fulfilled, the donor whose match is COMPLETED:
@@ -387,7 +408,9 @@ When a hospital marks a request as fulfilled, the donor whose match is COMPLETED
 cd backend
 npm install
 cp .env.example .env
-# Add DATABASE_URL and JWT_SECRET to .env
+# Fill in DATABASE_URL, JWT_SECRET, and the three CLOUDINARY_* values
+# (Cloudinary is required for donation photo verification — the fulfil
+#  endpoint returns a clear error if the keys are missing)
 npx prisma migrate dev
 npx ts-node prisma/seed.ts
 npx ts-node prisma/seed-admin.ts
@@ -446,6 +469,7 @@ Admin:    admin@321.com / (set via prisma/seed-admin.ts)
 - Leaderboard with city filter
 - Secure token storage via Expo SecureStore
 - Shareable hero certificate cards for completed donations
+- Blood-bag photo capture (camera or gallery) for hospitals confirming a donation, and proof-photo viewing for donors
 
 ---
 
@@ -453,6 +477,7 @@ Admin:    admin@321.com / (set via prisma/seed-admin.ts)
 
 - The radius query currently pulls candidates per tier from Postgres using a lat/lng bounding-box filter, then computes precise distance in the application layer. This is efficient enough for the project's current scale, but a production deployment with a very large donor base would benefit from a PostGIS spatial index (`ST_DWithin`) to push distance filtering fully into the database.
 - Saving a hero certificate directly to the mobile photo library needs a native `expo-media-library` permission declaration that Expo Go's fixed binary doesn't support; this only works once the project is built with EAS or a custom dev client. In the meantime, mobile users can still share the certificate via the native share sheet.
+- Signed URLs for donation photos are access-controlled but do **not** expire. Cloudinary's standard plans sign `authenticated` assets without a TTL; genuine short-lived links require either the token-based authentication add-on or proxying the image bytes through our own API. In practice this means a signed URL, if deliberately copied out of the app, stays valid — the meaningful protection is that the URL cannot be guessed or discovered without authenticating first.
 
 ---
 
@@ -462,7 +487,6 @@ Admin:    admin@321.com / (set via prisma/seed-admin.ts)
 - Chart.js analytics for admin and hospital dashboards
 - Real-time updates via WebSockets (Socket.io)
 - Redis caching for public stats, leaderboard, heatmap
-- Photo verification of blood donation (Cloudinary)
 - Urdu language support (i18n) for web and mobile
 - Blood drive event scheduling
 - Hospital-to-hospital inventory transfer

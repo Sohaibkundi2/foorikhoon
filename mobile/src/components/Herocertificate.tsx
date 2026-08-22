@@ -1,6 +1,6 @@
-import Constants from 'expo-constants'
-import { useRef, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native'
+ import Constants from 'expo-constants'
+import { useEffect, useRef, useState } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, Switch } from 'react-native'
 import ViewShot, { captureRef } from 'react-native-view-shot'
 import * as Sharing from 'expo-sharing'
 import * as MediaLibrary from 'expo-media-library'
@@ -14,6 +14,8 @@ interface CertificateProps {
   badge?: string | null
   totalDonations?: number
   commitmentScore?: number
+  /** Signed Cloudinary URL of the hospital's blood-bag proof photo, if one exists. */
+  photoUrl?: string | null
 }
 
 const bloodGroupLabels: Record<string, string> = {
@@ -54,10 +56,36 @@ export default function HeroCertificate({
   badge,
   totalDonations,
   commitmentScore,
+  photoUrl,
 }: CertificateProps) {
   const viewShotRef = useRef<ViewShot>(null)
   const [saving, setSaving] = useState(false)
   const [sharing, setSharing] = useState(false)
+  // Off by default. This card exists to be shared publicly on WhatsApp, and the bag
+  // carries the donor's name and blood group — so including it is an explicit opt-in,
+  // the same way contact sharing works elsewhere in the app.
+  const [includePhoto, setIncludePhoto] = useState(false)
+  const [photoReady, setPhotoReady] = useState(false)
+
+  // react-native-view-shot rasterises whatever the native view currently shows. If the
+  // remote image were still in flight at capture time we would silently export a blank
+  // box, so warm the native image cache first and only let the donor enable the photo
+  // once it is actually decoded and ready to draw.
+  useEffect(() => {
+    if (!photoUrl) {
+      setPhotoReady(false)
+      return
+    }
+
+    let cancelled = false
+    Image.prefetch(photoUrl)
+      .then((ok) => { if (!cancelled) setPhotoReady(!!ok) })
+      .catch(() => { if (!cancelled) setPhotoReady(false) })
+
+    return () => { cancelled = true }
+  }, [photoUrl])
+
+  const showPhoto = includePhoto && photoReady && !!photoUrl
 
   const isExpoGo = Constants.appOwnership === 'expo'
 
@@ -209,6 +237,20 @@ export default function HeroCertificate({
               <View style={styles.quoteLine} />
             </View>
 
+            {/* Collection proof — only when the donor opts in, and only once the image
+                is cached so ViewShot can't capture an empty box. */}
+            {showPhoto && (
+              <View style={styles.proofStrip}>
+                <Image source={{ uri: photoUrl! }} style={styles.proofThumb} />
+                <View style={styles.proofTextWrap}>
+                  <Text style={styles.proofTitle}>✓ COLLECTION VERIFIED</Text>
+                  <Text style={styles.proofSub} numberOfLines={1}>
+                    Photo confirmed by {hospitalName}
+                  </Text>
+                </View>
+              </View>
+            )}
+
             {/* Stats */}
             <View style={styles.statRow}>
               <View style={styles.statBox}>
@@ -257,6 +299,24 @@ export default function HeroCertificate({
       </ViewShot>
 
       {/* Actions — outside ViewShot, never captured. */}
+      {photoReady && (
+        <View style={styles.photoToggleRow}>
+          <Switch
+            value={includePhoto}
+            onValueChange={setIncludePhoto}
+            trackColor={{ false: '#2A2A2A', true: 'rgba(220,38,38,0.5)' }}
+            thumbColor={includePhoto ? '#DC2626' : '#6B7280'}
+          />
+          <View style={styles.photoToggleTextWrap}>
+            <Text style={styles.photoToggleTitle}>Include the blood-bag photo</Text>
+            <Text style={styles.photoToggleHint}>
+              The bag shows your name and blood group. Leave this off if you plan to
+              share the card publicly.
+            </Text>
+          </View>
+        </View>
+      )}
+
       <View style={styles.actionsRow}>
         <TouchableOpacity
           style={[styles.actionBtn, styles.shareBtn]}
@@ -550,6 +610,37 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
+  proofStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    padding: 7,
+    marginBottom: 10,
+  },
+  proofThumb: {
+    width: 34,
+    height: 34,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  proofTextWrap: { flex: 1, minWidth: 0 },
+  proofTitle: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    letterSpacing: 1,
+    color: '#86EFAC',
+  },
+  proofSub: {
+    fontSize: 8.5,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 3,
+  },
+
   statBox: {
     flex: 1,
     alignItems: 'center',
@@ -641,6 +732,18 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     color: 'rgba(255,255,255,0.55)',
   },
+
+  photoToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    maxWidth: 320,
+    marginBottom: 14,
+    paddingHorizontal: 4,
+  },
+  photoToggleTextWrap: { flex: 1, minWidth: 0 },
+  photoToggleTitle: { color: '#E5E7EB', fontSize: 12.5, fontWeight: '600' },
+  photoToggleHint: { color: '#6B7280', fontSize: 11, lineHeight: 16, marginTop: 3 },
 
   actionsRow: {
     flexDirection: 'row',

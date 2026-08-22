@@ -44,6 +44,13 @@
           }
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ForiKhoon needs access to your photos so hospital staff can attach a photo of the blood bag as proof of donation.",
+          "cameraPermission": "ForiKhoon needs camera access so hospital staff can photograph the blood bag as proof of donation."
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "experiments": {

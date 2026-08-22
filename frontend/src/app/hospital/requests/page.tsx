@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { useRouter } from 'next/navigation'
 import api from '@/lib/api'
+import FulfillPhotoModal from '@/components/FulfillPhotoModal'
 
 interface BloodRequest {
   id: string
@@ -20,6 +21,8 @@ interface Match {
   id: string
   donorId: string
   status: string
+  photoUrl?: string | null
+  photoUploadedAt?: string | null
   donorContact?: { name: string; phone: string | null } | null
 }
 
@@ -54,6 +57,10 @@ export default function HospitalRequestsPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('ALL')
   const [updatingKey, setUpdatingKey] = useState<string | null>(null)
+  // Which request is currently having a proof photo attached, if any.
+  const [fulfillingRequest, setFulfillingRequest] = useState<BloodRequest | null>(null)
+  // Blood-bag photo opened full size.
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) { router.push('/login'); return }
@@ -78,17 +85,9 @@ export default function HospitalRequestsPage() {
   const getAcceptedContact = (req: BloodRequest) =>
     req.matches?.find(m => m.status === 'ACCEPTED')?.donorContact
 
-  const handleFulfill = async (id: string) => {
-    setUpdatingKey(`${id}-fulfill`)
-    try {
-      await api.put(`/api/hospital/requests/${id}/fulfill`)
-      await fetchRequests()
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setUpdatingKey(null)
-    }
-  }
+  // The proof photo lives on the COMPLETED match once the donation is confirmed.
+  const getCompletedMatch = (req: BloodRequest) =>
+    req.matches?.find(m => m.status === 'COMPLETED')
 
   const handleCancel = async (id: string) => {
     setUpdatingKey(`${id}-cancel`)
@@ -170,6 +169,7 @@ export default function HospitalRequestsPage() {
           {filteredRequests.map((req) => {
             const acceptedContact = getAcceptedContact(req)
             const acceptedMatch = getAcceptedMatch(req)
+            const completedMatch = getCompletedMatch(req)
 
             return (
               <div key={req.id} className="bg-[#141414] border border-[#222] rounded-xl p-5 flex items-center justify-between gap-4">
@@ -206,17 +206,37 @@ export default function HospitalRequestsPage() {
                       </p>
                     )
                   )}
+
+                  {completedMatch?.photoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setLightboxUrl(completedMatch.photoUrl!)}
+                      className="mt-2.5 flex items-center gap-2 group"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={completedMatch.photoUrl}
+                        alt="Blood bag proof of donation"
+                        className="w-10 h-10 rounded-md object-cover border border-[#2A2A2A] group-hover:border-[#3A3A3A] transition-colors duration-150"
+                      />
+                      <span className="text-[#6B7280] group-hover:text-[#9CA3AF] text-xs transition-colors duration-150">
+                        Proof photo
+                        {completedMatch.photoUploadedAt
+                          ? ` · ${new Date(completedMatch.photoUploadedAt).toLocaleDateString()}`
+                          : ''}
+                      </span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Actions */}
                 <div className="flex gap-2 shrink-0">
-                  {req.status === 'MATCHED' && (
+                  {req.status === 'MATCHED' && acceptedMatch && (
                     <button
-                      onClick={() => handleFulfill(req.id)}
-                      disabled={updatingKey === `${req.id}-fulfill`}
-                      className="text-xs bg-green-400/10 hover:bg-green-400/20 text-green-400 border border-green-400/20 px-3 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-50"
+                      onClick={() => setFulfillingRequest(req)}
+                      className="text-xs bg-green-400/10 hover:bg-green-400/20 text-green-400 border border-green-400/20 px-3 py-1.5 rounded-md transition-colors duration-150"
                     >
-                      {updatingKey === `${req.id}-fulfill` ? 'Processing...' : 'Mark Fulfilled'}
+                      Mark Fulfilled
                     </button>
                   )}
 
@@ -243,6 +263,41 @@ export default function HospitalRequestsPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {fulfillingRequest && (
+        <FulfillPhotoModal
+          requestId={fulfillingRequest.id}
+          bloodGroupLabel={bloodGroupLabels[fulfillingRequest.bloodGroup] || fulfillingRequest.bloodGroup}
+          donorName={getAcceptedContact(fulfillingRequest)?.name}
+          onClose={() => setFulfillingRequest(null)}
+          onSuccess={async () => {
+            setFulfillingRequest(null)
+            await fetchRequests()
+          }}
+        />
+      )}
+
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-6"
+          onClick={() => setLightboxUrl(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxUrl}
+            alt="Blood bag proof of donation"
+            className="max-w-full max-h-full rounded-xl border border-[#2A2A2A]"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-5 right-5 text-[#9CA3AF] hover:text-white text-sm bg-[#141414] border border-[#2A2A2A] rounded-lg px-3 py-1.5"
+          >
+            Close
+          </button>
         </div>
       )}
 

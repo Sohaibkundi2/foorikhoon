@@ -3,6 +3,12 @@ import prisma from "../lib/prisma"
 import { geocodeAddress } from "../lib/geocode"
 import { escalateAfterDecline } from './donor.controller'
 import { sendPushNotification } from "../services/notification.service"
+import {
+    uploadDonationPhoto,
+    getSignedPhotoUrl,
+    deleteDonationPhoto
+} from "../services/cloudinary.service"
+import type { RequestWithPhoto } from "../middleware/upload.middleware"
 
 const getProfile = async (req: Request, res: Response) => {
 
@@ -185,6 +191,8 @@ const getRequests = async (req: Request, res: Response) => {
                     donorId: match.donorId,
                     createdAt: match.createdAt,
                     respondedAt: match.respondedAt,
+                    photoUrl: match.photoPublicId ? getSignedPhotoUrl(match.photoPublicId) : null,
+                    photoUploadedAt: match.photoUploadedAt,
                     donorContact: canShowContact
                         ? { name: match.donor.user.name, phone: match.donor.user.phone }
                         : null
@@ -319,71 +327,139 @@ const getAnalytics = async (req: Request, res: Response) => {
 }
 
 const fulfillRequest = async (req: Request, res: Response) => {
+    let uploadedPublicId: string | null = null
+
     try {
         const userId = req.user?.userId
         if (!userId) return res.status(400).json({ message: 'Invalid user ID' })
 
         const id = req.params.id as string
 
-        const request = await prisma.bloodRequest.update({
+        const hospital = await prisma.hospital.findUnique({ where: { userId } })
+        if (!hospital) return res.status(404).json({ message: 'Hospital not found' })
+
+        const existing = await prisma.bloodRequest.findUnique({
             where: { id },
-            data: { status: 'FULFILLED' },
-            include: { matches: true, hospital: true }   // added hospital, need its name for the notification
+            include: { matches: true, hospital: true }
         })
 
-        // reward the donor who actually donated
-        const acceptedMatch = request.matches.find(m => m.status === 'ACCEPTED')
-        if (acceptedMatch) {
-            // completed count BEFORE this one, to detect a newly-crossed badge threshold
-            const priorCompletedCount = await prisma.match.count({
-                where: { donorId: acceptedMatch.donorId, status: 'COMPLETED' }
+        if (!existing) return res.status(404).json({ message: 'Request not found' })
+
+        // Ownership check. Without this, any authenticated hospital could fulfil any
+        // other hospital's request — closing their case, crediting their donor and
+        // firing their notifications.
+        if (existing.hospitalId !== hospital.id) {
+            return res.status(403).json({ message: 'You can only fulfil your own requests' })
+        }
+
+        // Idempotency guard: re-fulfilling would upload a second photo and re-credit
+        // the donor, and there's no legitimate reason to do it.
+        if (existing.status === 'FULFILLED') {
+            return res.status(400).json({ message: 'This request is already fulfilled' })
+        }
+
+        if (existing.status === 'EXPIRED') {
+            return res.status(400).json({ message: 'This request has expired and cannot be fulfilled' })
+        }
+
+        // A donation can only be confirmed for a donor who actually accepted. This is
+        // a deliberate tightening: previously a request could be marked FULFILLED with
+        // no accepted match at all, which recorded a donation that never happened and
+        // silently credited nobody.
+        const acceptedMatch = existing.matches.find(m => m.status === 'ACCEPTED')
+        if (!acceptedMatch) {
+            return res.status(400).json({
+                message: 'No donor has accepted this request yet, so there is no donation to confirm'
+            })
+        }
+
+        const file = (req as RequestWithPhoto).file
+        if (!file) {
+            return res.status(400).json({
+                message: 'A photo of the blood bag is required to confirm a donation'
+            })
+        }
+
+        // Completed count BEFORE this donation, so we can detect a newly-crossed
+        // badge threshold rather than re-announcing an old one.
+        const priorCompletedCount = await prisma.match.count({
+            where: { donorId: acceptedMatch.donorId, status: 'COMPLETED' }
+        })
+
+        uploadedPublicId = await uploadDonationPhoto(file)
+
+        const now = new Date()
+
+        const { request, donor } = await prisma.$transaction(async (tx) => {
+            const request = await tx.bloodRequest.update({
+                where: { id },
+                data: { status: 'FULFILLED' },
+                include: { hospital: true }
             })
 
-            const donor = await prisma.donor.update({
-                where: { id: acceptedMatch.donorId },
+            await tx.match.update({
+                where: { id: acceptedMatch.id },
                 data: {
-                    commitmentScore: { increment: 10 },
-                    lastDonated: new Date()
+                    status: 'COMPLETED',
+                    photoPublicId: uploadedPublicId,
+                    photoUploadedAt: now
                 }
             })
 
-            if (donor.commitmentScore > 100) {
-                await prisma.donor.update({
-                    where: { id: donor.id },
-                    data: { commitmentScore: 100 }
-                })
-            }
-
-            await prisma.match.update({
-                where: { id: acceptedMatch.id },
-                data: { status: 'COMPLETED' }
+            // Clamp in one computed write. The previous implementation incremented and
+            // then issued a second corrective update if the result exceeded 100, which
+            // briefly persisted an out-of-range score and needed two round trips.
+            const current = await tx.donor.findUnique({
+                where: { id: acceptedMatch.donorId },
+                select: { commitmentScore: true }
             })
 
-            const newCompletedCount = priorCompletedCount + 1
-            const badgeThresholds: { name: string; count: number }[] = [
-                { name: 'First Blood', count: 1 },
-                { name: 'Lifesaver', count: 5 },
-                { name: 'Hero', count: 10 }
-            ]
-            const newlyEarnedBadge = badgeThresholds.find(b => b.count === newCompletedCount)?.name ?? null
+            const donor = await tx.donor.update({
+                where: { id: acceptedMatch.donorId },
+                data: {
+                    commitmentScore: Math.min(100, (current?.commitmentScore ?? 0) + 10),
+                    lastDonated: now
+                }
+            })
 
-            if (donor.pushToken) {
-                await sendPushNotification(
-                    donor.pushToken,
-                    '🎉 Donation Confirmed!',
-                    `${request.hospital.name} confirmed your donation. Thank you for saving a life — tap to view your certificate.`,
-                    {
-                        type: 'DONATION_CONFIRMED',
-                        matchId: acceptedMatch.id,
-                        requestId: request.id,
-                        newBadge: newlyEarnedBadge
-                    }
-                )
-            }
+            return { request, donor }
+        })
+
+        const newCompletedCount = priorCompletedCount + 1
+        const badgeThresholds: { name: string; count: number }[] = [
+            { name: 'First Blood', count: 1 },
+            { name: 'Lifesaver', count: 5 },
+            { name: 'Hero', count: 10 }
+        ]
+        const newlyEarnedBadge = badgeThresholds.find(b => b.count === newCompletedCount)?.name ?? null
+
+        if (donor.pushToken) {
+            await sendPushNotification(
+                donor.pushToken,
+                '🎉 Donation Confirmed!',
+                `${request.hospital.name} confirmed your donation. Thank you for saving a life — tap to view your certificate.`,
+                {
+                    type: 'DONATION_CONFIRMED',
+                    matchId: acceptedMatch.id,
+                    requestId: request.id,
+                    newBadge: newlyEarnedBadge
+                }
+            )
         }
 
-        res.status(200).json({ message: 'Request fulfilled', request })
+        res.status(200).json({
+            message: 'Request fulfilled',
+            request,
+            photoUrl: getSignedPhotoUrl(uploadedPublicId)
+        })
     } catch (error) {
+        // If we uploaded but never managed to reference the image from a row, remove it.
+        // Otherwise every failed fulfilment leaks an orphaned asset that nothing points
+        // at and no cleanup job knows about.
+        if (uploadedPublicId) {
+            await deleteDonationPhoto(uploadedPublicId)
+        }
+        console.error('Fulfil request error:', error)
         res.status(500).json({ message: 'Internal server error' })
     }
 }
@@ -395,34 +471,52 @@ const reportNoShow = async (req: Request, res: Response) => {
 
         const matchId = req.params.id as string
 
-        const match = await prisma.match.findUnique({ where: { id: matchId } })
+        const hospital = await prisma.hospital.findUnique({ where: { userId } })
+        if (!hospital) return res.status(404).json({ message: 'Hospital not found' })
+
+        const match = await prisma.match.findUnique({
+            where: { id: matchId },
+            include: { request: true }
+        })
         if (!match) return res.status(404).json({ message: 'Match not found' })
+
+        // Ownership check. Without it, any hospital could report a no-show against a
+        // donor on someone else's request and knock 10 points off their commitment
+        // score — the most damaging penalty in the system.
+        if (match.request.hospitalId !== hospital.id) {
+            return res.status(403).json({ message: 'You can only report no-shows on your own requests' })
+        }
+
         if (match.status !== 'ACCEPTED') {
             return res.status(400).json({ message: 'Only an accepted match can be reported as a no-show' })
         }
 
-        const updatedMatch = await prisma.match.update({
-            where: { id: matchId },
-            data: { status: 'NO_SHOW' }
-        })
-
-        const donor = await prisma.donor.update({
-            where: { id: match.donorId },
-            data: { commitmentScore: { decrement: 10 } }
-        })
-
-        if (donor.commitmentScore < 0) {
-            await prisma.donor.update({
-                where: { id: donor.id },
-                data: { commitmentScore: 0 }
+        const { updatedMatch } = await prisma.$transaction(async (tx) => {
+            const updatedMatch = await tx.match.update({
+                where: { id: matchId },
+                data: { status: 'NO_SHOW' }
             })
-        }
+
+            const current = await tx.donor.findUnique({
+                where: { id: match.donorId },
+                select: { commitmentScore: true }
+            })
+
+            await tx.donor.update({
+                where: { id: match.donorId },
+                data: { commitmentScore: Math.max(0, (current?.commitmentScore ?? 0) - 10) }
+            })
+
+            return { updatedMatch }
+        })
+
         // the request wasn't actually fulfilled — find a replacement,
         // same as a decline, since the accepted donor never showed up
         await escalateAfterDecline(match.requestId)
 
         res.status(200).json({ message: 'No-show recorded', match: updatedMatch })
     } catch (error) {
+        console.error('Report no-show error:', error)
         res.status(500).json({ message: 'Internal server error' })
     }
 }

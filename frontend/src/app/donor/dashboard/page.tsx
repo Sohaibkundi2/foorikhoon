@@ -30,6 +30,8 @@ interface Match {
   id: string
   status: string
   createdAt: string
+  photoUrl?: string | null
+  photoUploadedAt?: string | null
   request: {
     bloodGroup: string
     units: number
@@ -72,6 +74,8 @@ export default function DonorDashboard() {
   const [hydrated, setHydrated] = useState(false)
   const [certificate, setCertificate] = useState<any>(null)
   const [certificateOpen, setCertificateOpen] = useState(false)
+  // Blood-bag proof photo opened full size.
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
     useEffect(() => {
       setHydrated(true)
@@ -325,11 +329,31 @@ useEffect(() => {
           <div className="space-y-2">
             {pastMatches.map((match) => (
               <div key={match.id} className="bg-[#141414] border border-[#222] rounded-xl p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-white text-sm font-medium">{match.request.hospital.name}</p>
-                  <p className="text-[#6B7280] text-xs mt-0.5">
-                    {bloodGroupLabels[match.request.bloodGroup]} · {match.request.units} unit{match.request.units > 1 ? 's' : ''}
-                  </p>
+                <div className="flex items-center gap-3">
+                  {match.status === 'COMPLETED' && match.photoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setLightboxUrl(match.photoUrl!)}
+                      title="View proof of donation"
+                      className="shrink-0 group"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={match.photoUrl}
+                        alt="Blood bag proof of donation"
+                        className="w-11 h-11 rounded-lg object-cover border border-[#2A2A2A] group-hover:border-[#DC2626]/40 transition-colors duration-150"
+                      />
+                    </button>
+                  )}
+                  <div>
+                    <p className="text-white text-sm font-medium">{match.request.hospital.name}</p>
+                    <p className="text-[#6B7280] text-xs mt-0.5">
+                      {bloodGroupLabels[match.request.bloodGroup]} · {match.request.units} unit{match.request.units > 1 ? 's' : ''}
+                    </p>
+                    {match.status === 'COMPLETED' && match.photoUrl && (
+                      <p className="text-green-400/80 text-xs mt-0.5">✓ Collection verified by photo</p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   {match.status === 'COMPLETED' && (
@@ -351,25 +375,62 @@ useEffect(() => {
       )}
 
       {certificateOpen && certificate && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="relative bg-[#141414] border border-[#222] rounded-xl p-5">
-            <button
-              onClick={() => setCertificateOpen(false)}
-              className="absolute top-3 right-3 text-[#6B7280] hover:text-white text-lg leading-none z-10"
-            >
-              ✕
-            </button>
-            <HeroCertificate
-              donorName={certificate.donorName}
-              bloodGroup={certificate.bloodGroup}
-              city={certificate.city}
-              hospitalName={certificate.hospitalName}
-              donationDate={certificate.donationDate}
-              badge={certificate.badge}
-              totalDonations={certificate.totalDonations}
-              commitmentScore={certificate.commitmentScore}
-            />
+        // The OVERLAY scrolls, not the panel. A flex child centred with `items-center`
+        // that grows taller than the viewport overflows in both directions at once, and
+        // the part above the top edge cannot be scrolled to — so once the photo opt-in
+        // row was added to the card, the Copy/Download buttons went off-screen with no
+        // way to reach them. `min-h-full` on the inner wrapper lets it grow past the
+        // viewport instead of being clipped by the centring, which keeps the card
+        // centred on tall screens and fully reachable on short ones.
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70">
+          <div className="flex min-h-full items-center justify-center p-3 sm:p-4">
+            <div className="relative bg-[#141414] border border-[#222] rounded-xl p-4 sm:p-5">
+              <button
+                onClick={() => setCertificateOpen(false)}
+                className="absolute top-3 right-3 text-[#6B7280] hover:text-white text-lg leading-none z-10"
+              >
+                ✕
+              </button>
+              <HeroCertificate
+                donorName={certificate.donorName}
+                bloodGroup={certificate.bloodGroup}
+                city={certificate.city}
+                hospitalName={certificate.hospitalName}
+                donationDate={certificate.donationDate}
+                badge={certificate.badge}
+                totalDonations={certificate.totalDonations}
+                commitmentScore={certificate.commitmentScore}
+                photoUrl={certificate.photoUrl}
+              />
+            </div>
           </div>
+        </div>
+      )}
+
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-6"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <div className="flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxUrl}
+              alt="Blood bag proof of donation"
+              className="max-w-full max-h-[75vh] rounded-xl border border-[#2A2A2A]"
+            />
+            <p className="text-[#6B7280] text-xs text-center max-w-sm">
+              Photo uploaded by the hospital when your donation was collected. Only you and
+              that hospital can view it.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-5 right-5 text-[#9CA3AF] hover:text-white text-sm bg-[#141414] border border-[#2A2A2A] rounded-lg px-3 py-1.5"
+          >
+            Close
+          </button>
         </div>
       )}
 

@@ -1,7 +1,7 @@
 // app/donor/dashboard.tsx
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Switch
+  StyleSheet, ActivityIndicator, Switch, Image
 } from 'react-native'
 import { useEffect, useState } from 'react'
 import { router, Link } from 'expo-router'
@@ -31,6 +31,8 @@ interface Match {
   id: string
   status: string
   createdAt: string
+  photoUrl?: string | null
+  photoUploadedAt?: string | null
   request: {
     bloodGroup: string
     units: number
@@ -76,6 +78,8 @@ export default function DonorDashboard() {
   const [cacheTime, setCacheTime] = useState<number | null>(null)
   const [certificate, setCertificate] = useState<any>(null)
   const [certificateOpen, setCertificateOpen] = useState(false)
+  // Blood-bag proof photo opened full size.
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) { router.replace('/login'); return }
@@ -372,11 +376,26 @@ const fetchData = async () => {
           onPress={() => match.status === 'COMPLETED' && viewCertificate(match.id)}
         >
           <View style={[styles.historyDot, { backgroundColor: statusDot[match.status] ?? '#6B7280' }]} />
+          {match.status === 'COMPLETED' && match.photoUrl && (
+            <TouchableOpacity
+              onPress={() => setLightboxUrl(match.photoUrl!)}
+              activeOpacity={0.7}
+            >
+              {/* Nested inside the row's TouchableOpacity on purpose. React Native's
+                  touch responder system grants the responder to the deepest view that
+                  claims it, so tapping the thumbnail opens the photo and does not also
+                  fire the row's "view certificate" press. */}
+              <Image source={{ uri: match.photoUrl }} style={styles.historyThumb} />
+            </TouchableOpacity>
+          )}
           <View style={styles.historyTextWrap}>
             <Text style={styles.matchHospital} numberOfLines={1}>{match.request.hospital.name}</Text>
             <Text style={styles.historyMeta}>
               {bloodGroupLabels[match.request.bloodGroup]} · {match.request.units} unit{match.request.units > 1 ? 's' : ''}
             </Text>
+            {match.status === 'COMPLETED' && match.photoUrl && (
+              <Text style={styles.historyVerified}>✓ Collection verified by photo</Text>
+            )}
           </View>
           {match.status === 'COMPLETED' ? (
             <Text style={styles.certificateLink}>View Certificate</Text>
@@ -408,9 +427,30 @@ const fetchData = async () => {
                 badge={certificate.badge}
                 totalDonations={certificate.totalDonations}
                 commitmentScore={certificate.commitmentScore}
+                photoUrl={certificate.photoUrl}
               />
             )}
           </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={!!lightboxUrl}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setLightboxUrl(null)}
+      >
+        <View style={styles.lightbox}>
+          {lightboxUrl && (
+            <Image source={{ uri: lightboxUrl }} style={styles.lightboxImage} resizeMode="contain" />
+          )}
+          <Text style={styles.lightboxCaption}>
+            Photo uploaded by the hospital when your donation was collected.
+            Only you and that hospital can view it.
+          </Text>
+          <TouchableOpacity onPress={() => setLightboxUrl(null)} style={styles.lightboxClose}>
+            <Text style={styles.lightboxCloseText}>Close</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
 
@@ -526,6 +566,29 @@ const styles = StyleSheet.create({
 
   // certificate link in history
   certificateLink: { color: '#DC2626', fontSize: 12, fontWeight: '700' },
+
+  // proof-of-donation photo in history
+  historyThumb: {
+    width: 38, height: 38, borderRadius: 9, marginRight: 10,
+    borderWidth: 1, borderColor: '#2A2A2A', backgroundColor: '#141414',
+  },
+  historyVerified: { color: 'rgba(74,222,128,0.85)', fontSize: 11, marginTop: 2 },
+
+  lightbox: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.93)',
+    alignItems: 'center', justifyContent: 'center', padding: 20,
+  },
+  lightboxImage: { width: '100%', height: '70%' },
+  lightboxCaption: {
+    color: '#6B7280', fontSize: 12, lineHeight: 18,
+    textAlign: 'center', marginTop: 14, maxWidth: 320,
+  },
+  lightboxClose: {
+    marginTop: 16, backgroundColor: '#141414',
+    borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 10,
+    paddingHorizontal: 18, paddingVertical: 10,
+  },
+  lightboxCloseText: { color: '#9CA3AF', fontSize: 13, fontWeight: '600' },
 
   modalOverlay: {
     flex: 1,

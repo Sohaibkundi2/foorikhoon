@@ -2,16 +2,19 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator,
-  RefreshControl, ScrollView
+  RefreshControl, ScrollView, Modal, Image
 } from 'react-native'
 import { router } from 'expo-router'
 import { useAuthStore } from '../../src/store/authStore'
 import api from '../../src/lib/api'
+import ConfirmDonationModal from '../../src/components/ConfirmDonationModal'
 
 interface Match {
   id: string
   donorId: string
   status: string
+  photoUrl?: string | null
+  photoUploadedAt?: string | null
   donorContact?: { name: string; phone: string | null } | null
 }
 
@@ -42,6 +45,7 @@ const statusStyle: Record<string, { text: string; bg: string; border: string }> 
   MATCHED: { text: '#60A5FA', bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.2)' },
   FULFILLED: { text: '#4ADE80', bg: 'rgba(74,222,128,0.1)', border: 'rgba(74,222,128,0.2)' },
   EXPIRED: { text: '#6B7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.2)' },
+  NO_SHOW: { text: '#F87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
 }
 
 type Tab = 'ALL' | 'PENDING' | 'MATCHED' | 'FULFILLED' | 'EXPIRED'
@@ -55,6 +59,10 @@ export default function HospitalRequestsScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('ALL')
   const [updatingKey, setUpdatingKey] = useState<string | null>(null)
+  // Request currently having a proof photo attached, if any.
+  const [fulfilling, setFulfilling] = useState<BloodRequest | null>(null)
+  // Blood-bag photo opened full size.
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) { router.replace('/login'); return }
@@ -78,18 +86,6 @@ export default function HospitalRequestsScreen() {
     setRefreshing(true)
     fetchRequests()
   }, [])
-
-const handleFulfill = async (requestId: string) => {
-  setUpdatingKey(`${requestId}-fulfill`)
-  try {
-    await api.put(`/api/hospital/requests/${requestId}/fulfill`)
-    await fetchRequests()
-  } catch (err) {
-    console.error(err)
-  } finally {
-    setUpdatingKey(null)
-  }
-}
 
 const handleCancel = async (requestId: string) => {
   setUpdatingKey(`${requestId}-cancel`)
@@ -120,6 +116,10 @@ const getAcceptedMatch = (req: BloodRequest) =>
 
 const getAcceptedContact = (req: BloodRequest) =>
 req.matches?.find(m => m.status === 'ACCEPTED')?.donorContact
+
+// The proof photo lands on the match once it flips to COMPLETED at fulfilment.
+const getCompletedMatch = (req: BloodRequest) =>
+  req.matches?.find(m => m.status === 'COMPLETED')
 
   const filteredRequests = activeTab === 'ALL'
     ? requests
@@ -185,6 +185,7 @@ req.matches?.find(m => m.status === 'ACCEPTED')?.donorContact
           const canAct = req.status === 'PENDING' || req.status === 'MATCHED'
           const acceptedMatch = getAcceptedMatch(req)
           const acceptedContact = getAcceptedContact(req)
+          const completedMatch = getCompletedMatch(req)
           return (
             <View style={styles.card}>
               <View style={styles.topRow}>
@@ -223,29 +224,40 @@ req.matches?.find(m => m.status === 'ACCEPTED')?.donorContact
                       )
                     )}
 
+              {completedMatch?.photoUrl && (
+                <TouchableOpacity
+                  onPress={() => setLightboxUrl(completedMatch.photoUrl!)}
+                  style={styles.proofRow}
+                  activeOpacity={0.7}
+                >
+                  <Image source={{ uri: completedMatch.photoUrl }} style={styles.proofThumb} />
+                  <Text style={styles.proofLabel}>
+                    Proof photo
+                    {completedMatch.photoUploadedAt
+                      ? ` · ${new Date(completedMatch.photoUploadedAt).toLocaleDateString()}`
+                      : ''}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               {canAct && (
                 <View style={styles.actionsRow}>
-                  {req.status === 'MATCHED' && (
+                  {req.status === 'MATCHED' && acceptedMatch && (
                     <TouchableOpacity
-                      onPress={() => handleFulfill(req.id)}
-                      disabled={updatingKey === `${req.id}-fulfill`}
+                      onPress={() => setFulfilling(req)}
                       style={[styles.actionBtn, styles.fulfillBtn]}
                     >
-                      {updatingKey === `${req.id}-fulfill` ? (
-                        <ActivityIndicator size="small" color="#4ADE80" />
-                      ) : (
-                        <Text style={styles.fulfillText}>Mark Fulfilled</Text>
-                      )}
+                      <Text style={styles.fulfillText}>Confirm Donation</Text>
                     </TouchableOpacity>
                   )}
 
-                  {req.status === 'MATCHED' && getAcceptedMatch(req) && (
+                  {req.status === 'MATCHED' && acceptedMatch && (
                     <TouchableOpacity
-                      onPress={() => handleNoShow(getAcceptedMatch(req)!.id)}
-                      disabled={updatingKey === `${getAcceptedMatch(req)!.id}-noshow`}
+                      onPress={() => handleNoShow(acceptedMatch.id)}
+                      disabled={updatingKey === `${acceptedMatch.id}-noshow`}
                       style={[styles.actionBtn, styles.noShowBtn]}
                     >
-                      {updatingKey === `${getAcceptedMatch(req)!.id}-noshow` ? (
+                      {updatingKey === `${acceptedMatch.id}-noshow` ? (
                         <ActivityIndicator size="small" color="#F87171" />
                       ) : (
                         <Text style={styles.noShowText}>Report No-Show</Text>
@@ -270,6 +282,36 @@ req.matches?.find(m => m.status === 'ACCEPTED')?.donorContact
           )
         }}
       />
+
+      <ConfirmDonationModal
+        visible={!!fulfilling}
+        requestId={fulfilling?.id ?? null}
+        bloodGroupLabel={
+          fulfilling ? (bloodGroupLabels[fulfilling.bloodGroup] || fulfilling.bloodGroup) : ''
+        }
+        donorName={fulfilling ? getAcceptedContact(fulfilling)?.name : null}
+        onClose={() => setFulfilling(null)}
+        onSuccess={async () => {
+          setFulfilling(null)
+          await fetchRequests()
+        }}
+      />
+
+      <Modal
+        visible={!!lightboxUrl}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLightboxUrl(null)}
+      >
+        <View style={styles.lightbox}>
+          {lightboxUrl && (
+            <Image source={{ uri: lightboxUrl }} style={styles.lightboxImage} resizeMode="contain" />
+          )}
+          <TouchableOpacity onPress={() => setLightboxUrl(null)} style={styles.lightboxClose}>
+            <Text style={styles.lightboxCloseText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -315,6 +357,25 @@ const styles = StyleSheet.create({
 
   acceptedContact: { color: '#4ADE80', fontSize: 12, marginBottom: 10 },
   acceptedNoContact: { color: '#6B7280', fontSize: 12, marginBottom: 10 },
+
+  proofRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 10 },
+  proofThumb: {
+    width: 40, height: 40, borderRadius: 8,
+    borderWidth: 1, borderColor: '#2A2A2A', backgroundColor: '#0F0F0F',
+  },
+  proofLabel: { color: '#6B7280', fontSize: 12 },
+
+  lightbox: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.92)',
+    alignItems: 'center', justifyContent: 'center', padding: 16,
+  },
+  lightboxImage: { width: '100%', height: '80%' },
+  lightboxClose: {
+    marginTop: 16, backgroundColor: '#141414',
+    borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 10,
+    paddingHorizontal: 18, paddingVertical: 10,
+  },
+  lightboxCloseText: { color: '#9CA3AF', fontSize: 13, fontWeight: '600' },
 
   actionsRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   actionBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },

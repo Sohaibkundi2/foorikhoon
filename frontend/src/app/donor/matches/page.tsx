@@ -9,6 +9,7 @@ interface Match {
   id: string
   status: string
   createdAt: string
+  photoUrl?: string | null
   request: {
     bloodGroup: string
     units: number
@@ -49,6 +50,8 @@ export default function DonorMatchesPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('ALL')
   const [respondingId, setRespondingId] = useState<string | null>(null)
+  // Blood-bag proof photo opened full size.
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) { router.push('/login'); return }
@@ -155,6 +158,24 @@ export default function DonorMatchesPage() {
                 <p className="text-[#6B7280] text-xs mt-1">
                   {new Date(match.createdAt).toLocaleDateString()}
                 </p>
+
+                {match.status === 'COMPLETED' && match.photoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setLightboxUrl(match.photoUrl!)}
+                    className="mt-2.5 flex items-center gap-2 group"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={match.photoUrl}
+                      alt="Blood bag proof of donation"
+                      className="w-10 h-10 rounded-md object-cover border border-[#2A2A2A] group-hover:border-[#DC2626]/40 transition-colors duration-150"
+                    />
+                    <span className="text-green-400/80 group-hover:text-green-400 text-xs transition-colors duration-150">
+                      ✓ Collection verified by photo
+                    </span>
+                  </button>
+                )}
               </div>
 
               {match.status === 'PENDING' && (
@@ -177,6 +198,33 @@ export default function DonorMatchesPage() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-6"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <div className="flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxUrl}
+              alt="Blood bag proof of donation"
+              className="max-w-full max-h-[75vh] rounded-xl border border-[#2A2A2A]"
+            />
+            <p className="text-[#6B7280] text-xs text-center max-w-sm">
+              Photo uploaded by the hospital when your donation was collected. Only you and
+              that hospital can view it.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-5 right-5 text-[#9CA3AF] hover:text-white text-sm bg-[#141414] border border-[#2A2A2A] rounded-lg px-3 py-1.5"
+          >
+            Close
+          </button>
         </div>
       )}
 

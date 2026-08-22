@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import html2canvas from 'html2canvas'
 
 interface CertificateProps {
@@ -12,6 +12,8 @@ interface CertificateProps {
   badge?: string | null
   totalDonations?: number
   commitmentScore?: number
+  /** Signed Cloudinary URL of the hospital's blood-bag proof photo, if one exists. */
+  photoUrl?: string | null
 }
 
 const bloodGroupLabels: Record<string, string> = {
@@ -48,12 +50,54 @@ export default function HeroCertificate({
   donationDate,
   badge,
   totalDonations,
-  commitmentScore
+  commitmentScore,
+  photoUrl
 }: CertificateProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const [downloading, setDownloading] = useState(false)
   const [copying, setCopying] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null)
+  // Off by default. This card is built to be shared publicly, and the blood bag carries
+  // the donor's name and blood group — so including it is an explicit opt-in, matching
+  // how donor contact sharing works elsewhere in the app.
+  const [includePhoto, setIncludePhoto] = useState(false)
+
+  // html2canvas rasterises the DOM onto a canvas. A cross-origin <img> makes that canvas
+  // "tainted", and reading it back via toBlob() then throws a SecurityError — which would
+  // break the download button entirely, not just the photo. Fetching the image and
+  // inlining it as a data URL sidesteps the whole same-origin problem, because a data URL
+  // is treated as same-origin. If the fetch fails we simply never offer the photo.
+  useEffect(() => {
+    if (!photoUrl) {
+      setPhotoDataUrl(null)
+      return
+    }
+
+    let cancelled = false
+
+    ;(async () => {
+      try {
+        const res = await fetch(photoUrl, { mode: 'cors' })
+        if (!res.ok) throw new Error(`Photo fetch failed: ${res.status}`)
+        const blob = await res.blob()
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(blob)
+        })
+        if (!cancelled) setPhotoDataUrl(dataUrl)
+      } catch (err) {
+        console.error('Could not inline proof photo for certificate:', err)
+        if (!cancelled) setPhotoDataUrl(null)
+      }
+    })()
+
+    return () => { cancelled = true }
+  }, [photoUrl])
+
+  const showPhoto = includePhoto && !!photoDataUrl
 
   const formattedDate = new Date(donationDate).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric'
@@ -134,7 +178,10 @@ export default function HeroCertificate({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+    // gap kept tight: the card below is a fixed 500px (it must not shrink, or the
+    // exported PNG changes), so this wrapper's spacing is the only vertical budget
+    // available to keep the opt-in row and the action buttons on screen without scrolling.
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
       <div
         ref={cardRef}
         style={{
@@ -235,6 +282,37 @@ export default function HeroCertificate({
             </p>
           </div>
 
+          {/* verified strip — only rendered when the donor opts in, and only once the
+              image has been inlined as a data URL so html2canvas can capture it */}
+          {showPhoto && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10,
+              padding: '7px 9px', borderRadius: 13,
+              background: 'rgba(0,0,0,0.22)', border: '1px solid rgba(255,255,255,0.15)'
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photoDataUrl!}
+                alt=""
+                style={{
+                  width: 34, height: 34, borderRadius: 9, objectFit: 'cover',
+                  border: '1px solid rgba(255,255,255,0.3)', flexShrink: 0, display: 'block'
+                }}
+              />
+              <div style={{ minWidth: 0 }}>
+                <p style={{
+                  fontSize: 9, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase',
+                  margin: 0, lineHeight: 1, color: '#86efac'
+                }}>
+                  ✓ Collection Verified
+                </p>
+                <p style={{ fontSize: 8.5, margin: '4px 0 0', lineHeight: 1, opacity: 0.75 }}>
+                  Photo confirmed by {hospitalName}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* stat row */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
             <div style={{
@@ -270,6 +348,24 @@ export default function HeroCertificate({
       </div>
 
       {/* ACTIONS — Tailwind classes fine here, this part is never captured */}
+      {photoDataUrl && (
+        <label className="flex items-start gap-2.5 max-w-[300px] cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={includePhoto}
+            onChange={(e) => setIncludePhoto(e.target.checked)}
+            className="mt-0.5 accent-[#DC2626]"
+          />
+          <span className="text-[#9CA3AF] text-xs leading-relaxed">
+            Include the blood-bag photo on this card
+            <span className="block text-[#6B7280] mt-0.5">
+              The bag shows your name and blood group. Leave this off if you plan to share
+              the card publicly.
+            </span>
+          </span>
+        </label>
+      )}
+
       <div className="flex flex-wrap items-center justify-center gap-3">
         <button
           onClick={handleWhatsAppShare}

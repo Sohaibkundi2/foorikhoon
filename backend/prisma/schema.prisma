@@ -75,6 +75,8 @@ model Match {
   respondedAt   DateTime?
   createdAt     DateTime     @default(now())
   responseToken String?      @unique
+  photoPublicId   String?
+  photoUploadedAt DateTime?
   donor         Donor        @relation(fields: [donorId], references: [id])
   request       BloodRequest @relation(fields: [requestId], references: [id])
 }

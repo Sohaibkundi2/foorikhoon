@@ -5,6 +5,7 @@ import { COMPATIBLE_DONOR_GROUPS } from "../lib/compatibility"
 import axios from "axios"
 import { sendPushNotification } from '../services/notification.service'
 import { findEligibleDonors } from '../lib/donorMatching'
+import { getSignedPhotoUrl } from '../services/cloudinary.service'
 
 const bloodGroupLabels: Record<string, string> = {
   A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
@@ -98,7 +99,13 @@ const getMatches = async (req: Request, res: Response) => {
       }
     })
 
-    res.status(200).json({ matches: matchedDonor })
+
+    const matches = matchedDonor.map(({ photoPublicId, ...match }) => ({
+      ...match,
+      photoUrl: photoPublicId ? getSignedPhotoUrl(photoPublicId) : null
+    }))
+
+    res.status(200).json({ matches })
 
   } catch (error) {
     res.status(500).json({ message: "internal server error" })
@@ -115,23 +122,44 @@ const respondToMatch = async (req: Request, res: Response) => {
     const matchId = req.params.id as string
     const { status } = req.body
 
+    if (status !== 'ACCEPTED' && status !== 'DECLINED') {
+      return res.status(400).json({ message: 'Status must be either ACCEPTED or DECLINED' })
+    }
+
+    const donorProfile = await prisma.donor.findUnique({ where: { userId } })
+    if (!donorProfile) {
+      return res.status(404).json({ message: 'Donor profile not found' })
+    }
+
+    const match = await prisma.match.findUnique({ where: { id: matchId } })
+    if (!match) {
+      return res.status(404).json({ message: 'Match not found' })
+    }
+
+    // Ownership check. Without it, any donor could accept or decline a match belonging
+    // to a different donor, moving someone else's request and score.
+    if (match.donorId !== donorProfile.id) {
+      return res.status(403).json({ message: 'This match does not belong to you' })
+    }
+
+    // Only an unanswered match can be answered. Re-responding would penalise the donor
+    // twice and trigger a second replacement escalation for the same request.
+    if (match.status !== 'PENDING') {
+      return res.status(400).json({ message: 'You have already responded to this match' })
+    }
+
     const updatedMatch = await prisma.match.update({
       where: { id: matchId },
       data: { status, respondedAt: new Date() }
     })
 
     if (status === 'DECLINED') {
-        const donor = await prisma.donor.update({
+        // Single computed write, clamped at 0 — same pattern as the fulfil and no-show
+        // paths, rather than decrementing and then correcting an out-of-range value.
+        await prisma.donor.update({
             where: { id: updatedMatch.donorId },
-            data: { commitmentScore: { decrement: 5 } }
+            data: { commitmentScore: Math.max(0, donorProfile.commitmentScore - 5) }
         })
-
-        if (donor.commitmentScore < 0) {
-            await prisma.donor.update({
-                where: { id: donor.id },
-                data: { commitmentScore: 0 }
-            })
-        }
 
         await escalateAfterDecline(updatedMatch.requestId)
     }
@@ -143,14 +171,14 @@ const respondToMatch = async (req: Request, res: Response) => {
             include: { hospital: true }
         })
 
-        const donor = await prisma.donor.findUnique({
+        const donorWithUser = await prisma.donor.findUnique({
             where: { id: updatedMatch.donorId },
             include: { user: true }
         })
 
         if (request.hospital.pushToken) {
-            const contactHint = donor?.shareContactInfo
-                ? `${donor.user.name} · ${donor.user.phone ?? 'no phone on file'}`
+            const contactHint = donorWithUser?.shareContactInfo
+                ? `${donorWithUser.user.name} · ${donorWithUser.user.phone ?? 'no phone on file'}`
                 : 'Contact info not shared — check in-app for updates'
 
             await sendPushNotification(
@@ -164,6 +192,7 @@ const respondToMatch = async (req: Request, res: Response) => {
 
     res.status(200).json({ message: 'Match updated', match: updatedMatch })
   } catch (error) {
+    console.error('Respond to match error:', error)
     res.status(500).json({ message: 'Internal server error' })
   }
 }
@@ -424,7 +453,11 @@ const getCertificate = async (req: Request, res: Response) => {
         donationDate: match.respondedAt ?? match.createdAt,
         badge: badgeEarnedHere,
         totalDonations: completedCount,
-        commitmentScore: match.donor.commitmentScore 
+        commitmentScore: match.donor.commitmentScore,
+        // Ownership was verified above (match.donor.userId === userId), so signing here
+        // is safe. Null for donations recorded before photo verification shipped.
+        photoUrl: match.photoPublicId ? getSignedPhotoUrl(match.photoPublicId) : null,
+        photoUploadedAt: match.photoUploadedAt
       }
     })
   } catch (error) {
