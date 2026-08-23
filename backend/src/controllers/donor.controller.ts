@@ -178,7 +178,7 @@ const respondToMatch = async (req: Request, res: Response) => {
             data: { commitmentScore: Math.max(0, donorProfile.commitmentScore - 5) }
         })
 
-        await escalateAfterDecline(updatedMatch.requestId)
+        await escalateAfterDeclineBestEffort(updatedMatch.requestId)
     }
 
     if (status === 'ACCEPTED') {
@@ -293,6 +293,18 @@ export async function escalateAfterDecline(requestId: string) {
       '🩸 Blood Needed Urgently',
       `${request.hospital.name} needs blood — please respond`,
       { requestId: request.id }
+    )
+  }
+}
+
+export async function escalateAfterDeclineBestEffort(requestId: string): Promise<void> {
+  try {
+    await escalateAfterDecline(requestId)
+  } catch (error) {
+    console.error(
+      `Escalation failed for request ${requestId}. The triggering action was committed and ` +
+      'has been reported as successful; no replacement donor was notified.',
+      error
     )
   }
 }

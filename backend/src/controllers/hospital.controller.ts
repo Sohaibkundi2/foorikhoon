@@ -1,7 +1,7 @@
 import { Request, Response } from "express"
 import prisma from "../lib/prisma"
 import { geocodeAddress } from "../lib/geocode"
-import { escalateAfterDecline } from './donor.controller'
+import { escalateAfterDeclineBestEffort } from './donor.controller'
 import { sendPushNotification } from "../services/notification.service"
 import {
     uploadDonationPhoto,
@@ -535,8 +535,10 @@ const reportNoShow = async (req: Request, res: Response) => {
         })
 
         // the request wasn't actually fulfilled — find a replacement,
-        // same as a decline, since the accepted donor never showed up
-        await escalateAfterDecline(match.requestId)
+        // same as a decline, since the accepted donor never showed up.
+        // Best-effort: the no-show and its deduction are already committed above, so a
+        // failure to find a replacement must not turn this into a 500 the client cannot retry.
+        await escalateAfterDeclineBestEffort(match.requestId)
 
         res.status(200).json({ message: 'No-show recorded', match: updatedMatch })
     } catch (error) {
