@@ -1,6 +1,10 @@
 node_modules
 # Keep environment variables out of version control
 .env
+# Test database credentials. `.env.test.example` is the committed template.
+.env.test
+# Written only when jest is run with --json
+jest-results.json
 
 /generated/prisma
 
