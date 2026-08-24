@@ -6,7 +6,7 @@ module.exports = {
   transform: {
     '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tests/tsconfig.json' }]
   },
-  // setupFiles (not setupFilesAfterEach) because this has to run before the test file
+  // setupFiles (not setupFilesAfterEnv) because this has to run before the test file
   // and its imports are evaluated: src/lib/prisma.ts builds its connection adapter from
   // process.env.DATABASE_URL at module scope, so the env must already be populated.
   setupFiles: ['<rootDir>/tests/setup/loadTestEnv.ts'],
