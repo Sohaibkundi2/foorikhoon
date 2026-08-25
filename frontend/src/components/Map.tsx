@@ -30,7 +30,7 @@ export default function Map() {
   }, [])
 
   if (loading) {
-    return <div className="h-[450px] bg-[#141414] border border-[#222] rounded-xl animate-pulse" />
+    return <div className="h-[450px] animate-pulse rounded-xl border border-line bg-surface" />
   }
 
   const getColor = (requests: number) => {
@@ -46,83 +46,96 @@ export default function Map() {
     return Math.min(base + requestWeight + donorWeight, 80)
   }
 
+  // Legend rows are driven off the same thresholds as getColor, so the swatches
+  // cannot drift from what the map actually draws.
+  const legend = [
+    { color: getColor(5), label: 'High demand', range: '5+' },
+    { color: getColor(2), label: 'Moderate', range: '2–4' },
+    { color: getColor(0), label: 'Low', range: '0–1' },
+  ]
+
   return (
-    <div className="rounded-xl overflow-hidden border border-[#222]" style={{ height: '450px' }}>
-      <MapContainer
-        center={[32.5, 71.5]}
-        zoom={7}
-        style={{ height: '100%', width: '100%', background: '#0A0A0A' }}
-        zoomControl={true}
-      >
-        <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-        />
+    <div>
+      {/* The fixed height and the clipping stay on this element alone. The legend
+          used to sit inside it, below a 100%-height map, so `overflow-hidden`
+          cut it off and it never rendered on the page at all. */}
+      <div className="overflow-hidden rounded-xl border border-line" style={{ height: '450px' }}>
+        <MapContainer
+          center={[32.5, 71.5]}
+          zoom={7}
+          style={{ height: '100%', width: '100%', background: '#0A0A0A' }}
+          zoomControl={true}
+        >
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+          />
 
-        {cities.map((city) => {
-          const coords = cityCoords[city.city]
-          if (!coords) return null
+          {cities.map((city) => {
+            const coords = cityCoords[city.city]
+            if (!coords) return null
 
-          return (
-            <CircleMarker
-              key={city.city}
-              center={coords}
-              radius={getRadius(city.activeDonors, city.activeRequests)}
-              pathOptions={{
-                color: getColor(city.activeRequests),
-                fillColor: getColor(city.activeRequests),
-                fillOpacity: 0.25,
-                weight: 2,
-              }}
-            >
-              <Popup className="dark-popup">
-                <div style={{
-                  background: '#1A1A1A',
-                  border: '1px solid #333',
-                  borderRadius: '8px',
-                  padding: '12px 16px',
-                  minWidth: '160px',
-                  color: 'white',
-                  fontFamily: 'inherit'
-                }}>
-                  <p style={{ fontWeight: 700, fontSize: '14px', marginBottom: '8px', color: 'white' }}>
-                    {city.city}
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                      <span style={{ color: '#9CA3AF' }}>Active requests</span>
-                      <span style={{ color: getColor(city.activeRequests), fontWeight: 600 }}>
-                        {city.activeRequests}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                      <span style={{ color: '#9CA3AF' }}>Available donors</span>
-                      <span style={{ color: '#16A34A', fontWeight: 600 }}>
-                        {city.activeDonors}
-                      </span>
+            return (
+              <CircleMarker
+                key={city.city}
+                center={coords}
+                radius={getRadius(city.activeDonors, city.activeRequests)}
+                pathOptions={{
+                  color: getColor(city.activeRequests),
+                  fillColor: getColor(city.activeRequests),
+                  fillOpacity: 0.25,
+                  weight: 2,
+                }}
+              >
+                <Popup className="dark-popup">
+                  <div style={{
+                    background: '#111010',
+                    border: '1px solid #221E1E',
+                    borderRadius: '10px',
+                    padding: '12px 16px',
+                    minWidth: '170px',
+                    color: '#F4F1EC',
+                    fontFamily: 'inherit'
+                  }}>
+                    <p style={{ fontWeight: 600, fontSize: '14px', marginBottom: '10px', color: '#F4F1EC' }}>
+                      {city.city}
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', fontSize: '12px' }}>
+                        <span style={{ color: '#A2A09B' }}>Active requests</span>
+                        <span style={{ color: getColor(city.activeRequests), fontWeight: 600 }}>
+                          {city.activeRequests}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', fontSize: '12px' }}>
+                        <span style={{ color: '#A2A09B' }}>Available donors</span>
+                        <span style={{ color: '#16A34A', fontWeight: 600 }}>
+                          {city.activeDonors}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Popup>
-            </CircleMarker>
-          )
-        })}
-      </MapContainer>
+                </Popup>
+              </CircleMarker>
+            )
+          })}
+        </MapContainer>
+      </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-6 mt-3 px-1">
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-[#DC2626] inline-block" />
-          <span className="text-[#9CA3AF] text-xs">High demand (5+)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-[#EA580C] inline-block" />
-          <span className="text-[#9CA3AF] text-xs">Moderate (2-4)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-[#16A34A] inline-block" />
-          <span className="text-[#9CA3AF] text-xs">Low (0-1)</span>
-        </div>
+      <div className="mt-4 flex flex-wrap items-center gap-x-7 gap-y-3">
+        {legend.map((row) => (
+          <div key={row.label} className="flex items-center gap-2.5">
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ backgroundColor: row.color, boxShadow: `0 0 0 3px ${row.color}22` }}
+            />
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-mute">
+              {row.label}
+              <span className="ml-2 text-faint tabular-nums">{row.range}</span>
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   )

@@ -1,5 +1,43 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Design tokens
+   ---------------------------------------------------------------------------
+   Tailwind 4 has no tailwind.config.js — `@theme` is where tokens live, and
+   anything declared here becomes a real utility (`bg-surface`, `text-bone`,
+   `border-line`). Purely additive: every existing `bg-[#141414]` in the app
+   keeps working, so pages can be moved over one at a time.
+--------------------------------------------------------------------------- */
+@theme {
+  /* Surfaces. Warm-tilted near-blacks rather than blue-grey — under a red
+     accent, a cool grey reads as dirty. `ink` deliberately equals the
+     navbar's #0A0A0A so the page meets it with no visible seam. */
+  --color-ink: #0a0a0a;
+  --color-surface: #111010;
+  --color-raised: #171514;
+
+  /* Hairlines. Two weights: `line` for real edges, `line-soft` for the
+     structural rules that only need to be felt, not seen. */
+  --color-line: #221e1e;
+  --color-line-soft: #191616;
+
+  /* Text. A warm off-white instead of #FFF — pure white against a red accent
+     is the giveaway of an unconsidered palette, and it glares on OLED. */
+  --color-bone: #f4f1ec;
+  --color-mute: #a2a09b;
+  --color-faint: #6e6a66;
+
+  /* Blood red — #DC2626 is kept as the brand value the rest of the app uses. */
+  --color-blood: #dc2626;
+  --color-blood-dark: #b91c1c;
+  --color-blood-deep: #450a0a;
+  --color-blood-lite: #fca5a5;
+
+  /* One secondary signal colour, for the HIGH shortage tier. Amber, so the
+     two tiers stay distinguishable without introducing a third hue family. */
+  --color-warn: #d97706;
+}
+
 :root {
   --primary: #DC2626;
   --background: #0F0F0F;
@@ -7,7 +45,7 @@
   --border: #2A2A2A;
   --text-secondary: #9CA3AF;
 }
-/* 
+/*
 * {
   box-sizing: border-box;
   margin: 0;
@@ -21,4 +59,62 @@ body {
 
 html {
   scroll-behavior: smooth;
+}
+
+/* ---------------------------------------------------------------------------
+   Texture
+   ---------------------------------------------------------------------------
+   All three are meant for an absolutely-positioned aria-hidden div behind
+   content, never on the content element itself.
+--------------------------------------------------------------------------- */
+
+/* Film grain: one tiled SVG turbulence at very low opacity. Large flat dark
+   fills band badly on 8-bit panels; a little noise hides that, and it is the
+   cheapest way to stop a dark page looking like an untouched default. */
+.fk-noise {
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Engineering-drawing grid. Barely visible by design — it gives the eye a
+   sense of alignment without becoming a pattern you notice. */
+.fk-rule-grid {
+  background-image:
+    linear-gradient(to right, rgba(244, 241, 236, 0.032) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(244, 241, 236, 0.032) 1px, transparent 1px);
+  background-size: 80px 80px;
+}
+
+/* Off-centre red wash. Deliberately anchored to the top-left corner and
+   asymmetric: a centred symmetrical glow behind a headline is the single most
+   recognisable stock-template move. */
+.fk-ember {
+  background:
+    radial-gradient(52% 44% at 6% -8%, rgba(220, 38, 38, 0.15), transparent 70%),
+    radial-gradient(36% 32% at 84% 6%, rgba(127, 29, 29, 0.18), transparent 72%);
+}
+
+/* Expanding ring for the live indicator. Tailwind's animate-ping snaps to full
+   scale and flashes; this eases out and tops out at 2.4x, which reads as a
+   monitor rather than a notification. */
+@keyframes fk-ring {
+  0% { transform: scale(1); opacity: 0.5; }
+  70%, 100% { transform: scale(2.4); opacity: 0; }
+}
+
+.fk-ring {
+  animation: fk-ring 2.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fk-ring {
+    animation: none;
+  }
+}
+
+/* Scoped to the landing page while the rest of the app is still on the old
+   palette — see the note in src/app/page.tsx. */
+.fk-landing ::selection {
+  background: rgba(220, 38, 38, 0.3);
+  color: #f4f1ec;
 }
