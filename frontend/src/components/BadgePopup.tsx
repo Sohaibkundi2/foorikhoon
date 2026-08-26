@@ -1,57 +1,62 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Award, CircleCheck, Droplet, Star, Syringe, Trophy } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { primaryBtn } from '@/components/fk'
 
 interface Badge {
   name: string
-  icon: string
+  icon: LucideIcon
   description: string
-  color: string
-  glow: string
+  /** Icon tile: border + fill + glyph, from the four-family tone set. */
+  tone: string
+  /** Heading colour, matching the tile's glyph. */
+  text: string
 }
 
 const BADGE_DATA: Record<string, Badge> = {
   'First Step': {
     name: 'First Step',
-    icon: '✅',
+    icon: CircleCheck,
     description: 'You joined ForiKhoon as a donor. Welcome to the family.',
-    color: 'text-blue-400',
-    glow: 'shadow-blue-500/20',
+    tone: 'border-line bg-raised text-bone',
+    text: 'text-bone',
   },
   'First Blood': {
     name: 'First Blood',
-    icon: '🩸',
+    icon: Droplet,
     description: 'You accepted your first donation request. Someone needed you — and you showed up.',
-    color: 'text-red-400',
-    glow: 'shadow-red-500/20',
+    tone: 'border-blood/25 bg-blood/10 text-blood',
+    text: 'text-blood',
   },
   'Reliable': {
     name: 'Reliable',
-    icon: '⭐',
+    icon: Star,
     description: 'Your commitment score crossed 50. Hospitals trust you.',
-    color: 'text-yellow-400',
-    glow: 'shadow-yellow-500/20',
+    tone: 'border-warn/25 bg-warn/10 text-warn',
+    text: 'text-warn',
   },
   'Dedicated': {
     name: 'Dedicated',
-    icon: '🏆',
+    icon: Trophy,
     description: 'Commitment score above 80. You are one of our most dependable donors.',
-    color: 'text-orange-400',
-    glow: 'shadow-orange-500/20',
+    tone: 'border-warn/25 bg-warn/10 text-warn',
+    text: 'text-warn',
   },
   'Lifesaver': {
     name: 'Lifesaver',
-    icon: '💉',
+    icon: Syringe,
     description: 'You have accepted 5 or more donation requests. You have saved lives.',
-    color: 'text-green-400',
-    glow: 'shadow-green-500/20',
+    tone: 'border-life/25 bg-life/10 text-life',
+    text: 'text-life',
   },
   'Hero': {
     name: 'Hero',
-    icon: '🦸',
+    icon: Award,
     description: 'Over 10 accepted requests. You are a hero of ForiKhoon.',
-    color: 'text-purple-400',
-    glow: 'shadow-purple-500/20',
+    tone: 'border-blood/25 bg-blood-deep/50 text-blood-lite',
+    text: 'text-blood-lite',
   },
 }
 
@@ -92,11 +97,13 @@ export default function BadgePopup({ badges, donorId }: BadgePopupProps) {
 
   if (!newBadge) return null
 
+  const Icon = newBadge.icon
+
   return (
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity duration-300 ${
+        className={`fixed inset-0 z-50 bg-black/70 transition-opacity duration-300 ${
           visible ? 'opacity-100' : 'opacity-0'
         }`}
         onClick={handleClose}
@@ -104,47 +111,59 @@ export default function BadgePopup({ badges, donorId }: BadgePopupProps) {
 
       {/* Popup */}
       <div
-        className={`fixed top-1/2 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ${
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="fk-badge-name"
+        className={`fixed left-1/2 top-1/2 z-50 -translate-x-1/2 transition-all duration-300 ${
           visible
-            ? 'opacity-100 -translate-y-1/2'
-            : 'opacity-0 -translate-y-[60%]'
+            ? '-translate-y-1/2 opacity-100'
+            : '-translate-y-[60%] opacity-0'
         }`}
       >
-        <div className={`bg-[#141414] border border-[#2A2A2A] rounded-2xl p-8 w-80 text-center shadow-2xl ${newBadge.glow}`}>
+        <div className="relative w-80">
+          {/* Offset frame instead of a coloured glow — the badge's own tone is
+              already carrying the colour, and a second halo behind it was the
+              only thing on this screen that read as a template. */}
+          <div
+            aria-hidden
+            className="absolute -bottom-2.5 -right-2.5 left-2.5 top-2.5 rounded-xl border border-line-soft"
+          />
 
-          {/* Badge earned label */}
-          <p className="text-[#6B7280] text-xs uppercase tracking-widest mb-6">
-            Badge Earned
-          </p>
+          <div className="relative rounded-xl border border-line bg-surface p-7">
 
-          {/* Icon */}
-          <div className={`text-6xl mb-4 filter drop-shadow-lg`}>
-            {newBadge.icon}
+            {/* Badge earned label */}
+            <div className="mb-6 flex items-center gap-3">
+              <p className="whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
+                Badge earned
+              </p>
+              <span aria-hidden className="h-px flex-1 bg-line-soft" />
+            </div>
+
+            {/* Icon. Squared and left-aligned: a centred circular glyph with a
+                ring around it is the single most recognisable award-modal move. */}
+            <div className={`mb-5 flex h-14 w-14 items-center justify-center rounded-lg border ${newBadge.tone}`}>
+              <Icon className="h-6 w-6" strokeWidth={1.75} aria-hidden />
+            </div>
+
+            {/* Name */}
+            <h2
+              id="fk-badge-name"
+              className={`font-serif text-3xl italic leading-none ${newBadge.text}`}
+            >
+              {newBadge.name}
+            </h2>
+
+            {/* Description */}
+            <p className="mt-4 mb-7 text-sm leading-relaxed text-mute">
+              {newBadge.description}
+            </p>
+
+            {/* Close button */}
+            <button onClick={handleClose} className={`w-full ${primaryBtn}`}>
+              Awesome!
+            </button>
+
           </div>
-
-          {/* Glow ring */}
-          <div className={`w-20 h-20 rounded-full border-2 ${newBadge.color.replace('text-', 'border-')}/30 mx-auto -mt-16 mb-4 flex items-center justify-center`}>
-            <span className="text-4xl">{newBadge.icon}</span>
-          </div>
-
-          {/* Name */}
-          <h2 className={`text-2xl font-bold mb-2 ${newBadge.color}`}>
-            {newBadge.name}
-          </h2>
-
-          {/* Description */}
-          <p className="text-[#9CA3AF] text-sm leading-relaxed mb-8">
-            {newBadge.description}
-          </p>
-
-          {/* Close button */}
-          <button
-            onClick={handleClose}
-            className="w-full bg-[#DC2626] hover:bg-[#B91C1C] text-white font-medium py-2.5 rounded-md transition-colors duration-150 text-sm"
-          >
-            Awesome!
-          </button>
-
         </div>
       </div>
     </>
@@ -156,18 +175,23 @@ export function BadgeShelf({ badges }: { badges: string[] }) {
   if (!badges.length) return null
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-line-soft bg-line-soft sm:grid-cols-3">
       {badges.map((name) => {
         const badge = BADGE_DATA[name]
         if (!badge) return null
+        const Icon = badge.icon
         return (
           <div
             key={name}
-            className="bg-[#141414] border border-[#222] hover:border-[#2A2A2A] rounded-xl p-4 text-center transition-all duration-150 group"
+            className="group flex items-center gap-3 bg-ink px-4 py-4 transition-colors duration-150 hover:bg-raised/50"
             title={badge.description}
           >
-            <div className="text-2xl mb-2">{badge.icon}</div>
-            <p className={`text-xs font-semibold ${badge.color}`}>{badge.name}</p>
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border ${badge.tone}`}>
+              <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            </div>
+            <p className={`truncate font-mono text-[11px] uppercase tracking-[0.12em] ${badge.text}`}>
+              {badge.name}
+            </p>
           </div>
         )
       })}

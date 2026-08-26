@@ -36,6 +36,14 @@
   /* One secondary signal colour, for the HIGH shortage tier. Amber, so the
      two tiers stay distinguishable without introducing a third hue family. */
   --color-warn: #d97706;
+
+  /* Availability / success. The app has states that are genuinely binary and
+     genuinely good news — a donor being available, a request fulfilled, a
+     hospital verified — and red-or-amber cannot say that. Kept to the same
+     value Map.tsx already uses for its low-demand marker so the map legend and
+     the pages agree. `life-lite` is for text sitting on a dark green wash. */
+  --color-life: #16a34a;
+  --color-life-lite: #86efac;
 }
 
 :root {
@@ -53,8 +61,8 @@
 } */
 
 body {
-  background-color: var(--background);
-  color: white;
+  background-color: var(--color-ink);
+  color: var(--color-bone);
 }
 
 html {
@@ -112,9 +120,8 @@ html {
   }
 }
 
-/* Scoped to the landing page while the rest of the app is still on the old
-   palette — see the note in src/app/page.tsx. */
-.fk-landing ::selection {
+/* Global now that every route is on the token palette. */
+::selection {
   background: rgba(220, 38, 38, 0.3);
   color: #f4f1ec;
 }

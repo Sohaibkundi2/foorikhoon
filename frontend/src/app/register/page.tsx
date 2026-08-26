@@ -3,8 +3,23 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import {
+  AlertCircle,
+  ArrowRight,
+  Building2,
+  Check,
+  Droplet,
+  MapPin,
+} from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import api from '@/lib/api'
+import {
+  Field,
+  Texture,
+  inputClass,
+  noticeClass,
+  primaryBtn,
+} from '@/components/fk'
 type Role = 'DONOR' | 'HOSPITAL' | null
 
 export default function RegisterPage() {
@@ -113,149 +128,195 @@ export default function RegisterPage() {
     )
   }
 
-  return (
-    <div className="min-h-[90vh] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm">
+  const optional = <span className="font-mono text-[10px] tracking-[0.14em] text-line">OPTIONAL</span>
 
-        <div className="mb-8">
-          <p className="text-[#DC2626] text-xs font-medium tracking-widest uppercase mb-3">Create account</p>
-          <h1 className="text-3xl font-bold text-white">Register</h1>
-          <p className="text-[#9CA3AF] text-sm mt-2">
+  return (
+    <div className="relative flex min-h-[90vh] items-center justify-center overflow-hidden px-4 py-14">
+      <Texture ember />
+
+      <div className="relative w-full max-w-md">
+        <div className="relative mb-8 border-b border-line pb-6">
+          <span aria-hidden className="absolute -bottom-px left-0 h-px w-10 bg-blood" />
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">Create account</p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-bone">Register</h1>
+          <p className="mt-2.5 text-sm text-mute">
             Already have an account?{' '}
-            <Link href="/login" className="text-white hover:text-[#DC2626] transition-colors underline underline-offset-2">
+            <Link
+              href="/login"
+              className="text-bone underline decoration-line underline-offset-4 transition-colors hover:decoration-blood"
+            >
               Sign in
             </Link>
           </p>
         </div>
 
         {!role && (
-          <div className="space-y-3">
-            <p className="text-[#9CA3AF] text-sm mb-5">I want to...</p>
-            <button
-              onClick={() => setRole('DONOR')}
-              className="w-full bg-[#141414] hover:bg-[#1A1A1A] border border-[#2A2A2A] hover:border-[#DC2626]/40 text-left px-5 py-4 rounded-md transition-all duration-150 group"
-            >
-              <p className="text-white font-medium text-sm group-hover:text-[#DC2626] transition-colors">Donate blood</p>
-              <p className="text-[#6B7280] text-xs mt-0.5">Register as a donor and help save lives</p>
-            </button>
-            <button
-              onClick={() => setRole('HOSPITAL')}
-              className="w-full bg-[#141414] hover:bg-[#1A1A1A] border border-[#2A2A2A] hover:border-[#DC2626]/40 text-left px-5 py-4 rounded-md transition-all duration-150 group"
-            >
-              <p className="text-white font-medium text-sm group-hover:text-[#DC2626] transition-colors">Request blood for my hospital</p>
-              <p className="text-[#6B7280] text-xs mt-0.5">Register your hospital and post blood requests</p>
-            </button>
+          <div>
+            <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
+              I want to...
+            </p>
+            {/* One continuous lattice rather than two detached cards — the gap between
+                them is the rule, so the pair reads as a single choice. */}
+            <div className="grid gap-px overflow-hidden rounded-lg border border-line-soft bg-line-soft">
+              {[
+                {
+                  role: 'DONOR' as const,
+                  icon: Droplet,
+                  title: 'Donate blood',
+                  blurb: 'Register as a donor and help save lives',
+                },
+                {
+                  role: 'HOSPITAL' as const,
+                  icon: Building2,
+                  title: 'Request blood for my hospital',
+                  blurb: 'Register your hospital and post blood requests',
+                },
+              ].map(({ role: value, icon: Icon, title, blurb }) => (
+                <button
+                  key={value}
+                  onClick={() => setRole(value)}
+                  className="group relative flex w-full items-center gap-4 bg-ink px-5 py-5 text-left transition-colors duration-150 hover:bg-surface"
+                >
+                  <span
+                    aria-hidden
+                    className="absolute inset-y-0 left-0 w-[3px] bg-blood opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                  />
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-raised">
+                    <Icon className="h-4 w-4 text-blood" strokeWidth={1.9} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-bone">{title}</span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-mute">{blurb}</span>
+                  </span>
+                  <ArrowRight
+                    className="h-4 w-4 shrink-0 text-line transition-colors duration-150 group-hover:text-blood"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
         {role && (
           <>
-            <div className="flex items-center justify-between mb-6">
-              <span className="text-xs bg-[#DC2626]/10 border border-[#DC2626]/20 text-[#DC2626] px-3 py-1 rounded-full">
+            <div className="mb-7 flex items-center justify-between gap-4">
+              <span className="inline-flex items-center gap-2 rounded-full border border-blood/25 bg-blood/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-blood">
                 {role === 'DONOR' ? 'Registering as Donor' : 'Registering as Hospital'}
               </span>
+              <span className="h-px flex-1 bg-line-soft" />
               <button
                 onClick={() => { setRole(null); setError('') }}
-                className="text-xs text-[#6B7280] hover:text-white transition-colors"
+                className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint transition-colors duration-150 hover:text-bone"
               >
                 Change
               </button>
             </div>
 
             {error && (
-              <div className="mb-5 bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-md">
-                {error}
+              <div className={`mb-5 ${noticeClass}`}>
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+                <span>{error}</span>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
 
-              <div>
-                <label className="block text-sm text-[#9CA3AF] mb-1.5">Full name</label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ali Khan"
-                  className="w-full bg-[#141414] border border-[#2A2A2A] focus:border-[#DC2626] text-white placeholder:text-[#6B7280] rounded-md px-4 py-2.5 text-sm outline-none transition-colors" />
-              </div>
+              <Field label="Full name" htmlFor="reg-name">
+                <input id="reg-name" type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ali Khan"
+                  className={inputClass} />
+              </Field>
 
-              <div>
-                <label className="block text-sm text-[#9CA3AF] mb-1.5">Email address</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
-                  className="w-full bg-[#141414] border border-[#2A2A2A] focus:border-[#DC2626] text-white placeholder:text-[#6B7280] rounded-md px-4 py-2.5 text-sm outline-none transition-colors" />
-              </div>
+              <Field label="Email address" htmlFor="reg-email">
+                <input id="reg-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
+                  className={inputClass} />
+              </Field>
 
-              <div>
-                <label className="block text-sm text-[#9CA3AF] mb-1.5">Password</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
-                  className="w-full bg-[#141414] border border-[#2A2A2A] focus:border-[#DC2626] text-white placeholder:text-[#6B7280] rounded-md px-4 py-2.5 text-sm outline-none transition-colors" />
-              </div>
+              <Field label="Password" htmlFor="reg-password">
+                <input id="reg-password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
+                  className={inputClass} />
+              </Field>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm text-[#9CA3AF] mb-1.5">City</label>
-                  <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="DI Khan"
-                    className="w-full bg-[#141414] border border-[#2A2A2A] focus:border-[#DC2626] text-white placeholder:text-[#6B7280] rounded-md px-4 py-2.5 text-sm outline-none transition-colors" />
-                </div>
-                <div>
-                  <label className="block text-sm text-[#9CA3AF] mb-1.5">Phone <span className="text-[#6B7280]">(optional)</span></label>
-                  <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03001234567"
-                    className="w-full bg-[#141414] border border-[#2A2A2A] focus:border-[#DC2626] text-white placeholder:text-[#6B7280] rounded-md px-4 py-2.5 text-sm outline-none transition-colors" />
-                </div>
+                <Field label="City" htmlFor="reg-city">
+                  <input id="reg-city" type="text" autoComplete="address-level2" value={city} onChange={(e) => setCity(e.target.value)} placeholder="DI Khan"
+                    className={inputClass} />
+                </Field>
+                <Field label="Phone" htmlFor="reg-phone" aside={optional}>
+                  <input id="reg-phone" type="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03001234567"
+                    className={inputClass} />
+                </Field>
               </div>
 
               {role === 'DONOR' && (
-                <div>
+                <div className="space-y-5">
                   <div>
                     {locationMethod === 'gps' && coords ? (
-                      <div className="bg-green-500/10 border border-green-500/20 rounded-md px-4 py-3">
-                        <p className="text-green-400 text-sm">✓ We'll use this to match you with nearby requests</p>
+                      <div className="rounded-md border border-life/25 bg-life/10 px-4 py-3">
+                        <p className="flex items-start gap-2 text-sm text-life">
+                          <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
+                          We'll use this to match you with nearby requests
+                        </p>
                         <button
                           type="button"
                           onClick={() => { setLocationMethod(null); setCoords(null) }}
-                          className="text-xs text-[#6B7280] hover:text-white underline mt-1"
+                          className="mt-1.5 pl-5.5 font-mono text-[10px] uppercase tracking-[0.14em] text-faint underline decoration-line underline-offset-4 transition-colors duration-150 hover:text-bone"
                         >
                           Use a different method
                         </button>
                       </div>
                     ) : locationMethod === 'manual' ? (
-                      <div>
-                        <label className="block text-sm text-[#9CA3AF] mb-1.5">Area / neighborhood</label>
+                      <Field
+                        label="Area / neighborhood"
+                        htmlFor="reg-area"
+                        hint="Used to match you with nearby requests — not your exact address."
+                      >
                         <input
+                          id="reg-area"
                           type="text" value={area} onChange={(e) => setArea(e.target.value)}
                           placeholder="Hayatabad, Peshawar"
-                          className="w-full bg-[#141414] border border-[#2A2A2A] focus:border-[#DC2626] text-white placeholder:text-[#6B7280] rounded-md px-4 py-2.5 text-sm outline-none transition-colors"
+                          className={inputClass}
                         />
-                        <p className="text-xs text-[#6B7280] mt-1">Used to match you with nearby requests — not your exact address.</p>
                         <button
                           type="button"
                           onClick={() => setLocationMethod(null)}
-                          className="text-xs text-[#6B7280] hover:text-white underline mt-2"
+                          className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.14em] text-faint underline decoration-line underline-offset-4 transition-colors duration-150 hover:text-bone"
                         >
                           Use my location instead
                         </button>
-                      </div>
+                      </Field>
                     ) : (
-                      <div className="bg-[#141414] border border-[#2A2A2A] rounded-md p-4 text-center">
-                        <p className="text-white text-sm mb-1">Share your location</p>
-                        <p className="text-[#6B7280] text-xs mb-3">
-                          For faster, more accurate matching in an emergency, we recommend sharing your location.
-                        </p>
+                      <div className="relative border-t border-line pt-6">
+                        <span aria-hidden className="absolute -top-px left-0 h-px w-10 bg-blood" />
+                        <div className="mb-3 flex items-start gap-3">
+                          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blood" strokeWidth={1.9} aria-hidden />
+                          <div>
+                            <p className="text-sm font-medium text-bone">Share your location</p>
+                            <p className="mt-1 text-xs leading-relaxed text-mute">
+                              For faster, more accurate matching in an emergency, we recommend sharing your location.
+                            </p>
+                          </div>
+                        </div>
                         <button
                           type="button"
                           onClick={requestLocation}
                           disabled={locatingInProgress}
-                          className="w-full bg-[#DC2626] hover:bg-[#B91C1C] disabled:bg-[#DC2626]/50 text-white text-sm font-medium py-2.5 rounded-md transition-colors mb-2"
+                          className={`w-full ${primaryBtn}`}
                         >
                           {locatingInProgress ? 'Getting location...' : 'Use My Location'}
                         </button>
                         <button
                           type="button"
                           onClick={() => setLocationMethod('manual')}
-                          className="text-xs text-[#6B7280] hover:text-white underline"
+                          className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.14em] text-faint underline decoration-line underline-offset-4 transition-colors duration-150 hover:text-bone"
                         >
                           Enter address instead
                         </button>
 
                         {locationError && (
-                          <p className="text-red-400 text-xs mt-2">
+                          <p className="mt-2.5 flex items-start gap-2 text-xs leading-relaxed text-blood-lite">
+                            <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
                             {locationError === 'permission_denied'
                               ? "We couldn't access your location. You can try again or enter your address manually."
                               : 'Something went wrong getting your location. Please enter your address instead.'}
@@ -265,92 +326,114 @@ export default function RegisterPage() {
                     )}
                   </div>
 
-                  <label className="block text-sm text-[#9CA3AF] mb-2 mt-4">
-                    Blood group <span className="text-[#6B7280]">(optional)</span>
-                  </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {bloodGroups.map((bg) => (
-                      <button key={bg} type="button" onClick={() => setBloodGroup(bg)}
-                        className={`py-2.5 rounded-md text-sm font-semibold border transition-all duration-150 ${
-                          bloodGroup === bg
-                            ? 'bg-[#DC2626] border-[#DC2626] text-white'
-                            : 'bg-[#141414] border-[#2A2A2A] text-[#9CA3AF] hover:border-[#DC2626]/40 hover:text-white'
-                        }`}>
-                        {bloodGroupLabels[bg]}
-                      </button>
-                    ))}
-
-                    <button
-                      type="button"
-                      onClick={() => setBloodGroup('')}
-                      className={`col-span-4 py-2 rounded-md text-xs border transition-all duration-150 ${
-                        bloodGroup === ''
-                          ? 'border-[#DC2626]/40 text-[#DC2626] bg-[#DC2626]/5'
-                          : 'border-[#2A2A2A] text-[#6B7280] hover:text-white'
-                      }`}
+                  <div>
+                    {/* Not a <Field>: the control is a grid of buttons, not one input, so the
+                        group is labelled by id and each button reports its own pressed state
+                        instead of relying on the fill colour alone. */}
+                    <div className="mb-2 flex items-baseline justify-between gap-3">
+                      <p id="reg-bloodgroup-label" className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
+                        Blood group
+                      </p>
+                      {optional}
+                    </div>
+                    <div
+                      role="group"
+                      aria-labelledby="reg-bloodgroup-label"
+                      className="grid grid-cols-4 gap-px overflow-hidden rounded-lg border border-line-soft bg-line-soft"
                     >
-                      I don't know my blood group
-                    </button>
+                      {bloodGroups.map((bg) => (
+                        <button key={bg} type="button" onClick={() => setBloodGroup(bg)}
+                          aria-pressed={bloodGroup === bg}
+                          className={`py-3 text-sm font-semibold tabular-nums transition-colors duration-150 ${
+                            bloodGroup === bg
+                              ? 'bg-blood text-white'
+                              : 'bg-ink text-mute hover:bg-raised hover:text-bone'
+                          }`}>
+                          {bloodGroupLabels[bg]}
+                        </button>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={() => setBloodGroup('')}
+                        aria-pressed={bloodGroup === ''}
+                        className={`col-span-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors duration-150 ${
+                          bloodGroup === ''
+                            ? 'bg-blood-deep/40 text-blood-lite'
+                            : 'bg-ink text-faint hover:bg-raised hover:text-bone'
+                        }`}
+                      >
+                        I don't know my blood group
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
 
               {role === 'HOSPITAL' && (
               <>
-                <div>
-                  <label className="block text-sm text-[#9CA3AF] mb-1.5">Hospital name</label>
-                  <input type="text" value={hospitalName} onChange={(e) => setHospitalName(e.target.value)} placeholder="DHQ Hospital DI Khan"
-                    className="w-full bg-[#141414] border border-[#2A2A2A] focus:border-[#DC2626] text-white placeholder:text-[#6B7280] rounded-md px-4 py-2.5 text-sm outline-none transition-colors" />
-                </div>
+                <Field label="Hospital name" htmlFor="reg-hospital-name">
+                  <input id="reg-hospital-name" type="text" value={hospitalName} onChange={(e) => setHospitalName(e.target.value)} placeholder="DHQ Hospital DI Khan"
+                    className={inputClass} />
+                </Field>
 
                 {locationMethod === 'gps' && coords ? (
-                  <div className="bg-green-500/10 border border-green-500/20 rounded-md px-4 py-3">
-                    <p className="text-green-400 text-sm">✓ Location captured for your hospital</p>
+                  <div className="rounded-md border border-life/25 bg-life/10 px-4 py-3">
+                    <p className="flex items-start gap-2 text-sm text-life">
+                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
+                      Location captured for your hospital
+                    </p>
                     <button
                       type="button"
                       onClick={() => { setLocationMethod(null); setCoords(null) }}
-                      className="text-xs text-[#6B7280] hover:text-white underline mt-1"
+                      className="mt-1.5 pl-5.5 font-mono text-[10px] uppercase tracking-[0.14em] text-faint underline decoration-line underline-offset-4 transition-colors duration-150 hover:text-bone"
                     >
                       Use a different method
                     </button>
                   </div>
                 ) : locationMethod === 'manual' ? (
-                  <div>
-                    <label className="block text-sm text-[#9CA3AF] mb-1.5">Address</label>
-                    <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Hospital Road, DI Khan"
-                      className="w-full bg-[#141414] border border-[#2A2A2A] focus:border-[#DC2626] text-white placeholder:text-[#6B7280] rounded-md px-4 py-2.5 text-sm outline-none transition-colors" />
+                  <Field label="Address" htmlFor="reg-address">
+                    <input id="reg-address" type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Hospital Road, DI Khan"
+                      className={inputClass} />
                     <button
                       type="button"
                       onClick={() => setLocationMethod(null)}
-                      className="text-xs text-[#6B7280] hover:text-white underline mt-2"
+                      className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.14em] text-faint underline decoration-line underline-offset-4 transition-colors duration-150 hover:text-bone"
                     >
                       Use current location instead
                     </button>
-                  </div>
+                  </Field>
                 ) : (
-                  <div className="bg-[#141414] border border-[#2A2A2A] rounded-md p-4 text-center">
-                    <p className="text-white text-sm mb-1">Hospital location</p>
-                    <p className="text-[#6B7280] text-xs mb-3">
-                      Sharing your exact location helps donors and patients find you accurately.
-                    </p>
+                  <div className="relative border-t border-line pt-6">
+                    <span aria-hidden className="absolute -top-px left-0 h-px w-10 bg-blood" />
+                    <div className="mb-3 flex items-start gap-3">
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blood" strokeWidth={1.9} aria-hidden />
+                      <div>
+                        <p className="text-sm font-medium text-bone">Hospital location</p>
+                        <p className="mt-1 text-xs leading-relaxed text-mute">
+                          Sharing your exact location helps donors and patients find you accurately.
+                        </p>
+                      </div>
+                    </div>
                     <button
                       type="button"
                       onClick={requestLocation}
                       disabled={locatingInProgress}
-                      className="w-full bg-[#DC2626] hover:bg-[#B91C1C] disabled:bg-[#DC2626]/50 text-white text-sm font-medium py-2.5 rounded-md transition-colors mb-2"
+                      className={`w-full ${primaryBtn}`}
                     >
                       {locatingInProgress ? 'Getting location...' : 'Use Current Location'}
                     </button>
                     <button
                       type="button"
                       onClick={() => setLocationMethod('manual')}
-                      className="text-xs text-[#6B7280] hover:text-white underline"
+                      className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.14em] text-faint underline decoration-line underline-offset-4 transition-colors duration-150 hover:text-bone"
                     >
                       Enter address instead
                     </button>
 
                     {locationError && (
-                      <p className="text-red-400 text-xs mt-2">
+                      <p className="mt-2.5 flex items-start gap-2 text-xs leading-relaxed text-blood-lite">
+                        <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
                         {locationError === 'permission_denied'
                           ? "We couldn't access your location. You can try again or enter your address manually."
                           : 'Something went wrong. Please enter your address instead.'}
@@ -359,18 +442,17 @@ export default function RegisterPage() {
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-sm text-[#9CA3AF] mb-1.5">License number</label>
-                  <input type="text" value={licenseNo} onChange={(e) => setLicenseNo(e.target.value)} placeholder="DHQ-DIK-2024"
-                    className="w-full bg-[#141414] border border-[#2A2A2A] focus:border-[#DC2626] text-white placeholder:text-[#6B7280] rounded-md px-4 py-2.5 text-sm outline-none transition-colors" />
-                </div>
+                <Field label="License number" htmlFor="reg-license">
+                  <input id="reg-license" type="text" value={licenseNo} onChange={(e) => setLicenseNo(e.target.value)} placeholder="DHQ-DIK-2024"
+                    className={inputClass} />
+                </Field>
               </>
             )}
 
               <div className="pt-1">
-                <button type="submit" disabled={loading}
-                  className="w-full bg-[#DC2626] hover:bg-[#B91C1C] disabled:bg-[#DC2626]/50 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-md transition-colors duration-150 text-sm shadow-lg shadow-red-900/20">
+                <button type="submit" disabled={loading} className={`w-full ${primaryBtn}`}>
                   {loading ? 'Creating account...' : 'Create account'}
+                  {!loading && <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />}
                 </button>
               </div>
 

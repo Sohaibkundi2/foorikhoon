@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
-import { Instrument_Serif, IBM_Plex_Mono } from 'next/font/google'
 import { motion } from 'motion/react'
 import {
   ArrowRight,
@@ -14,6 +13,7 @@ import {
   TriangleAlert,
   Zap,
 } from 'lucide-react'
+import { LiveDot, Reveal, SectionLabel } from '@/components/fk'
 
 const WeeklyHeroes = dynamic(() => import('@/components/WeeklyHeroes'), {
   ssr: false
@@ -46,27 +46,14 @@ const steps = [
 
 // ---- Type ----
 //
-// Three faces, each with one job: Inter (from the root layout) for reading,
-// Instrument Serif for the one line that has to land, IBM Plex Mono for labels
-// and figures. Loaded here rather than in layout.tsx so the rest of the app is
-// untouched while it is still on the old styling.
+// Three faces, each with one job: Inter for reading, Instrument Serif for the one
+// line that has to land, IBM Plex Mono for labels and figures.
 //
-// `variable` deliberately targets Tailwind's own --font-serif / --font-mono, so
-// `font-serif` and `font-mono` resolve to these two inside <main> and to the
-// defaults everywhere else. No config, no arbitrary-value syntax.
-
-const displaySerif = Instrument_Serif({
-  subsets: ['latin'],
-  weight: '400',
-  style: ['normal', 'italic'],
-  variable: '--font-serif',
-})
-
-const mono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  variable: '--font-mono',
-})
+// All three are now loaded once in layout.tsx, which publishes the serif and mono
+// as Tailwind's own --font-serif / --font-mono on <body>. This page used to load
+// its own copies because it was the only route on the new styling; every route is
+// on it now, and two loaders for the same family means two @font-face blocks and
+// two preload requests for one file.
 
 // ---- Live stats ----
 
@@ -143,29 +130,11 @@ const GROUP_LABELS: Record<string, string> = {
 const prettyGroup = (group: string) => GROUP_LABELS[group] ?? group
 
 // ---- Presentational pieces ----
-
-/** Section eyebrow: mono label, then a hairline running out to the right margin. */
-function SectionLabel({ children, aside }: { children: string; aside?: React.ReactNode }) {
-  return (
-    <div className="mb-8 flex items-center gap-4">
-      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-faint whitespace-nowrap">
-        {children}
-      </p>
-      <span className="h-px flex-1 bg-line-soft" />
-      {aside}
-    </div>
-  )
-}
-
-/** A dot with one expanding ring. Used wherever the page claims to be live. */
-function LiveDot({ className = 'bg-blood' }: { className?: string }) {
-  return (
-    <span className="relative flex h-1.5 w-1.5 shrink-0">
-      <span className={`fk-ring absolute inline-flex h-full w-full rounded-full ${className}`} />
-      <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${className}`} />
-    </span>
-  )
-}
+//
+// SectionLabel, LiveDot and Reveal used to live here. They are the three patterns
+// the rest of the app copied out of this file, so they now come from fk.tsx and
+// this page uses the same ones as every other route. StatBlock and MatchAlertCard
+// stay local — they are only ever used here.
 
 function StatBlock({
   index,
@@ -193,29 +162,6 @@ function StatBlock({
         )}
       </p>
     </div>
-  )
-}
-
-/** Fades a section in once as it scrolls into view. Short travel, no spring. */
-function Reveal({
-  children,
-  className,
-  delay = 0,
-}: {
-  children: React.ReactNode
-  className?: string
-  delay?: number
-}) {
-  return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y: 14 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-70px' }}
-      transition={{ duration: 0.55, delay, ease: [0.16, 1, 0.3, 1] }}
-    >
-      {children}
-    </motion.div>
   )
 }
 
@@ -341,7 +287,7 @@ export default function LandingPage() {
   })
 
   return (
-    <main className={`fk-landing w-full bg-ink text-bone ${displaySerif.variable} ${mono.variable}`}>
+    <main className="w-full bg-ink text-bone">
 
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-line-soft">

@@ -5,12 +5,24 @@ import api from '@/lib/api'
 import Link from 'next/link'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import { Check, Droplet, Link2, ShieldCheck, X } from 'lucide-react'
+import {
+  Chip,
+  EmptyState,
+  LiveDot,
+  PageHead,
+  Texture,
+  filterSelectClass,
+  primaryBtn,
+  quietBtn,
+  urgencyTone
+} from '@/components/fk'
 
 dayjs.extend(relativeTime)
 
 interface BloodRequest {
   id: string
-  bloodGroup: string 
+  bloodGroup: string
   units: number
   urgency: string
   status: string
@@ -21,7 +33,7 @@ interface BloodRequest {
     address: string
     verified: boolean
     user: {
-      city: string 
+      city: string
     } | null
   }
   matches: { id: string }[]
@@ -30,12 +42,6 @@ interface BloodRequest {
 const bloodGroupLabels: Record<string, string> = {
   A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
   AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
-}
-
-const urgencyColors: Record<string, string> = {
-  CRITICAL: 'text-red-400 bg-red-400/10 border-red-400/20',
-  URGENT: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
-  NORMAL: 'text-green-400 bg-green-400/10 border-green-400/20',
 }
 
 const urgencyOrder: Record<string, number> = {
@@ -53,7 +59,7 @@ export default function RequestsPage() {
   const [urgencyFilter, setUrgencyFilter] = useState('ALL')
   const [copied, setCopied] = useState<string | null>(null)
 
-  
+
   useEffect(() => {
     api.get('/api/requests')
       .then(res => setRequests(res.data.requests))
@@ -86,168 +92,201 @@ export default function RequestsPage() {
 
   const hasFilters = cityFilter !== 'ALL' || bloodGroupFilter !== 'ALL' || urgencyFilter !== 'ALL'
 
-  const selectClass = "bg-[#141414] border border-[#222] text-white text-sm px-3 py-2 rounded-md outline-none focus:border-[#DC2626] transition-colors cursor-pointer"
-
   return (
-    <div className="max-w-5xl mx-auto px-6 py-10">
+    <div className="relative overflow-hidden">
+      <Texture />
 
-      {/* Header */}
-      <div className="mb-8">
-        <p className="text-[#DC2626] text-xs font-medium tracking-widest uppercase mb-3">Live</p>
-        <h1 className="text-3xl font-bold text-white">Blood Requests</h1>
-        <p className="text-[#9CA3AF] text-sm mt-2">
-          Active requests from hospitals across Pakistan.
-          <Link href="/register" className="text-white hover:text-[#DC2626] transition-colors underline underline-offset-2 ml-1">
-            Register as a donor
-          </Link>
-          {' '}to respond.
-        </p>
-      </div>
+      <div className="relative mx-auto max-w-5xl px-6 py-12">
 
-      {/* Filters */}
-      <div className="bg-[#141414] border border-[#222] rounded-xl p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <select value={cityFilter} onChange={e => setCityFilter(e.target.value)} className={selectClass}>
-            <option value="ALL">All Cities</option>
-            {cities.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+        <PageHead
+          eyebrow={<><LiveDot /> Live feed</>}
+          title="Blood requests"
+          lede={
+            <>
+              Active requests from hospitals across Pakistan.{' '}
+              <Link
+                href="/register"
+                className="text-bone underline decoration-line underline-offset-4 transition-colors hover:decoration-blood"
+              >
+                Register as a donor
+              </Link>{' '}
+              to respond.
+            </>
+          }
+        />
 
-          <select value={bloodGroupFilter} onChange={e => setBloodGroupFilter(e.target.value)} className={selectClass}>
-            <option value="ALL">All Blood Groups</option>
-            {bloodGroups.map(bg => (
-              <option key={bg} value={bg}>{bloodGroupLabels[bg]}</option>
-            ))}
-          </select>
+        {/* Filters. A rule-bounded band rather than a card — it is a control strip
+            for the list below it, not a separate object sitting above it. */}
+        <div className="mb-7 border-y border-line-soft py-3.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span aria-hidden className="mr-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-line">
+              Filter
+            </span>
 
-          <select value={urgencyFilter} onChange={e => setUrgencyFilter(e.target.value)} className={selectClass}>
-            <option value="ALL">All Urgency</option>
-            {urgencies.map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
-
-          {hasFilters && (
-            <button
-              onClick={clearFilters}
-              className="text-xs text-[#9CA3AF] hover:text-white transition-colors px-3 py-2 border border-[#2A2A2A] rounded-md"
+            <select
+              aria-label="Filter by city"
+              value={cityFilter}
+              onChange={e => setCityFilter(e.target.value)}
+              className={filterSelectClass}
             >
-              Clear filters
-            </button>
-          )}
+              <option value="ALL">All Cities</option>
+              {cities.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
 
-          <span className="ml-auto text-xs text-[#6B7280]">
-            {filtered.length} request{filtered.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-      </div>
-
-      {/* Loading */}
-      {loading && (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-28 bg-[#141414] border border-[#222] rounded-xl animate-pulse" />
-          ))}
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!loading && filtered.length === 0 && (
-        <div className="bg-[#141414] border border-[#222] rounded-xl p-12 text-center">
-          <p className="text-4xl mb-4">🩸</p>
-          <p className="text-white font-semibold mb-1">No requests found</p>
-          <p className="text-[#6B7280] text-sm">
-            {hasFilters ? 'Try changing your filters.' : 'No active blood requests right now.'}
-          </p>
-          {hasFilters && (
-            <button onClick={clearFilters} className="mt-4 text-xs text-[#DC2626] hover:underline">
-              Clear all filters
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Request cards */}
-      {!loading && filtered.length > 0 && (
-        <div className="space-y-3">
-          {filtered.map(req => (
-            <div
-              key={req.id}
-              className={`bg-[#141414] border rounded-xl p-5 transition-colors duration-150 ${
-                req.urgency === 'CRITICAL'
-                  ? 'border-red-500/20 hover:border-red-500/40'
-                  : 'border-[#222] hover:border-[#2A2A2A]'
-              }`}
+            <select
+              aria-label="Filter by blood group"
+              value={bloodGroupFilter}
+              onChange={e => setBloodGroupFilter(e.target.value)}
+              className={filterSelectClass}
             >
-              <div className="flex items-start justify-between gap-4">
+              <option value="ALL">All Blood Groups</option>
+              {bloodGroups.map(bg => (
+                <option key={bg} value={bg}>{bloodGroupLabels[bg]}</option>
+              ))}
+            </select>
 
-                {/* Left */}
-                <div className="flex items-start gap-4 flex-1 min-w-0">
+            <select
+              aria-label="Filter by urgency"
+              value={urgencyFilter}
+              onChange={e => setUrgencyFilter(e.target.value)}
+              className={filterSelectClass}
+            >
+              <option value="ALL">All Urgency</option>
+              {urgencies.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
 
-                  {/* Blood group */}
-                  <div className="shrink-0 w-14 h-14 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/20 flex items-center justify-center">
-                    <span className="text-[#DC2626] font-bold text-lg">
-                      {bloodGroupLabels[req.bloodGroup] || req.bloodGroup}
-                    </span>
-                  </div>
+            {hasFilters && (
+              <button onClick={clearFilters} className={quietBtn}>
+                <X className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                Clear filters
+              </button>
+            )}
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="text-white font-semibold text-sm truncate">
-                        {req.hospital.name}
-                      </span>
-                      {req.hospital.verified && (
-                        <span className="text-xs text-green-400 bg-green-400/10 border border-green-400/20 px-1.5 py-0.5 rounded-full shrink-0">
-                          Verified
-                        </span>
-                      )}
-                      <span className={`text-xs px-2 py-0.5 rounded-full border shrink-0 ${urgencyColors[req.urgency]}`}>
-                        {req.urgency}
-                      </span>
-                    </div>
+            <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.16em] tabular-nums text-faint">
+              {filtered.length} request{filtered.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
 
-                    <p className="text-[#9CA3AF] text-xs mb-1">{req.hospital?.user?.city} · {req.hospital?.address}</p>
-
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <span className="text-[#6B7280] text-xs">
-                        {req.units} unit{req.units !== 1 ? 's' : ''} needed
-                      </span>
-                      <span className="text-[#6B7280] text-xs">·</span>
-                      <span className="text-[#6B7280] text-xs">
-                        {req.matches?.length} donor{req.matches?.length !== 1 ? 's' : ''} notified
-                      </span>
-                      <span className="text-[#6B7280] text-xs">·</span>
-                      <span className="text-[#6B7280] text-xs">
-                        {dayjs(req.createdAt).fromNow()}
-                      </span>
-                    </div>
-
-                    {req.notes && (
-                      <p className="text-[#9CA3AF] text-xs mt-2 italic">"{req.notes}"</p>
-                    )}
-                  </div>
+        {/* Loading */}
+        {loading && (
+          <div className="divide-y divide-line-soft overflow-hidden rounded-xl border border-line bg-surface">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="flex items-center gap-4 px-5 py-6 sm:px-6">
+                <div className="h-14 w-14 shrink-0 animate-pulse rounded-lg bg-raised" />
+                <div className="flex-1 space-y-2.5">
+                  <div className="h-3 w-44 animate-pulse rounded bg-raised" />
+                  <div className="h-2.5 w-64 animate-pulse rounded bg-raised" />
                 </div>
-
-                {/* Right — actions */}
-                <div className="flex flex-col items-end gap-2 shrink-0">
-                  <Link
-                    href="/register"
-                    className="text-xs bg-[#DC2626] hover:bg-[#B91C1C] text-white px-4 py-2 rounded-md transition-colors duration-150"
-                  >
-                    I can help
-                  </Link>
-                  <button
-                    onClick={() => handleShare(req.id)}
-                    className="text-xs text-[#6B7280] hover:text-white transition-colors px-4 py-2 border border-[#2A2A2A] hover:border-[#3A3A3A] rounded-md"
-                  >
-                    {copied === req.id ? 'Copied!' : 'Share'}
-                  </button>
-                </div>
-
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
+        {/* Empty state */}
+        {!loading && filtered.length === 0 && (
+          <EmptyState
+            icon={Droplet}
+            title="No requests found"
+            hint={hasFilters ? 'Try changing your filters.' : 'No active blood requests right now.'}
+          >
+            {hasFilters && (
+              <button onClick={clearFilters} className={quietBtn}>
+                <X className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                Clear all filters
+              </button>
+            )}
+          </EmptyState>
+        )}
+
+        {/* Request rows. One continuous list divided by hairlines: a queue of
+            comparable items, which detached cards would not communicate. */}
+        {!loading && filtered.length > 0 && (
+          <ul className="divide-y divide-line-soft overflow-hidden rounded-xl border border-line bg-surface">
+            {filtered.map(req => (
+              <li
+                key={req.id}
+                className="relative transition-colors duration-150 hover:bg-raised/40"
+              >
+                {/* Critical requests get an edge rather than a whole coloured
+                    border: it scans down the list without shouting per-row. */}
+                {req.urgency === 'CRITICAL' && (
+                  <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-blood" />
+                )}
+
+                <div className="flex items-start justify-between gap-5 px-5 py-6 sm:px-6">
+
+                  {/* Left */}
+                  <div className="flex min-w-0 flex-1 items-start gap-4">
+
+                    {/* Blood group. Mono, because it is an enum value out of the
+                        database and not a decorative badge. */}
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-blood/25 bg-blood/10">
+                      <span className="font-mono text-base font-medium tracking-[0.02em] text-blood">
+                        {bloodGroupLabels[req.bloodGroup] || req.bloodGroup}
+                      </span>
+                    </div>
+
+                    {/* Info */}
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                        <span className="truncate text-sm font-medium text-bone">
+                          {req.hospital.name}
+                        </span>
+                        {req.hospital.verified && (
+                          <Chip tone="text-life bg-life/10 border-life/25" icon={ShieldCheck}>
+                            Verified
+                          </Chip>
+                        )}
+                        <Chip tone={urgencyTone[req.urgency]}>{req.urgency}</Chip>
+                      </div>
+
+                      <p className="truncate text-xs text-mute">
+                        {req.hospital?.user?.city} · {req.hospital?.address}
+                      </p>
+
+                      <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[10px] uppercase tracking-[0.14em] tabular-nums text-faint">
+                        <span>
+                          {req.units} unit{req.units !== 1 ? 's' : ''} needed
+                        </span>
+                        <span aria-hidden className="h-2.5 w-px bg-line" />
+                        <span>
+                          {req.matches?.length} donor{req.matches?.length !== 1 ? 's' : ''} notified
+                        </span>
+                        <span aria-hidden className="h-2.5 w-px bg-line" />
+                        <span>{dayjs(req.createdAt).fromNow()}</span>
+                      </div>
+
+                      {req.notes && (
+                        <p className="mt-3 border-l border-line pl-3 text-xs leading-relaxed text-mute">
+                          {req.notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right — actions */}
+                  <div className="flex shrink-0 flex-col items-stretch gap-2">
+                    <Link href="/register" className={primaryBtn}>
+                      I can help
+                    </Link>
+                    <button onClick={() => handleShare(req.id)} className={quietBtn}>
+                      {copied === req.id ? (
+                        <Check className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+                      ) : (
+                        <Link2 className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                      )}
+                      {copied === req.id ? 'Copied' : 'Share'}
+                    </button>
+                  </div>
+
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+      </div>
     </div>
   )
 }

@@ -5,11 +5,63 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import api from '@/lib/api'
 import Link from 'next/link'
+import { ArrowLeft, Check, CircleAlert, MapPin } from 'lucide-react'
+import {
+  Field,
+  SectionLabel,
+  Texture,
+  inputClass,
+  noticeClass,
+  primaryBtn,
+  quietBtn
+} from '@/components/fk'
 
 const bloodGroups = ['A_POS', 'A_NEG', 'B_POS', 'B_NEG', 'AB_POS', 'AB_NEG', 'O_POS', 'O_NEG']
 const bloodGroupLabels: Record<string, string> = {
   A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
   AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
+}
+
+/**
+ * Settings switch.
+ *
+ * `role="switch"` + `aria-checked` + a real accessible name, because both toggles
+ * on this page used to be nameless `<button>`s whose only state signal was a
+ * background colour — a screen reader announced two unlabelled buttons and
+ * conveyed neither what they controlled nor whether they were on. The knob also
+ * changes width, not just position, so the state does not rest on hue alone.
+ */
+function Switch({
+  checked,
+  onChange,
+  label,
+  describedBy,
+}: {
+  checked: boolean
+  onChange: () => void
+  label: string
+  describedBy?: string
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      aria-describedby={describedBy}
+      onClick={onChange}
+      className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-200 ${
+        checked ? 'border-life/40 bg-life' : 'border-line bg-raised'
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`absolute left-1 top-1 h-4 rounded-full bg-bone transition-all duration-200 ${
+          checked ? 'w-4 translate-x-5' : 'w-3 translate-x-0'
+        }`}
+      />
+    </button>
+  )
 }
 
 export default function DonorProfilePage() {
@@ -60,7 +112,6 @@ export default function DonorProfilePage() {
       { enableHighAccuracy: true, timeout: 10000 }
     )
   }
-
 
   useEffect(() => {
     if (!user) { router.push('/login'); return }
@@ -122,236 +173,315 @@ export default function DonorProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center">
-        <div className="text-[#6B7280] text-sm">Loading...</div>
+      <div className="flex min-h-[80vh] items-center justify-center">
+        <div className="h-2 w-40 animate-pulse rounded-full bg-raised" />
       </div>
     )
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-10">
+    <div className="relative overflow-hidden">
+      <Texture />
 
-      {/* Header */}
-      <div className="mb-8">
-        <Link href="/donor/dashboard" className="text-xs text-[#6B7280] hover:text-white transition-colors mb-4 inline-block">
-          ← Back to dashboard
+      <div className="relative mx-auto max-w-3xl px-6 pb-32 pt-12">
+
+        {/* Masthead */}
+        <Link
+          href="/donor/dashboard"
+          className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-faint transition-colors hover:text-bone"
+        >
+          <ArrowLeft className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
+          Back to dashboard
         </Link>
-        <p className="text-[#DC2626] text-xs font-medium tracking-widest uppercase mb-3">Donor</p>
-        <h1 className="text-3xl font-bold text-white">Edit Profile</h1>
-        <p className="text-[#9CA3AF] text-sm mt-2">Update your personal and donation information.</p>
-      </div>
 
-      {error && (
-        <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-md">
-          {error}
+        <div className="relative mt-7 border-b border-line pb-7">
+          <span aria-hidden className="absolute -bottom-px left-0 h-px w-10 bg-blood" />
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">Donor</p>
+          <h1 className="mt-4 text-4xl font-semibold leading-none tracking-[-0.04em] text-bone">
+            Edit <span className="font-serif italic text-blood">Profile</span>
+          </h1>
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-mute">
+            Update your personal and donation information.
+          </p>
         </div>
-      )}
 
-      {success && (
-        <div className="mb-6 bg-green-500/10 border border-green-500/20 text-green-400 text-sm px-4 py-3 rounded-md">
-          Profile updated successfully.
-        </div>
-      )}
+        {error && (
+          <div className={`mt-7 ${noticeClass}`}>
+            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+            <span>{error}</span>
+          </div>
+        )}
 
-      <form onSubmit={handleSave} className="space-y-6">
+        {success && (
+          <div className="mt-7 flex items-start gap-2.5 rounded-md border border-life/25 bg-life/10 px-3.5 py-3 text-sm text-life-lite">
+            <Check className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
+            <span>Profile updated successfully.</span>
+          </div>
+        )}
 
-        {/* Personal info */}
-        <div className="bg-[#141414] border border-[#222] rounded-xl p-6">
-          <h2 className="text-white font-semibold mb-5">Personal Information</h2>
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-[#9CA3AF] mb-1.5">Full name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full bg-[#0F0F0F] border border-[#2A2A2A] focus:border-[#DC2626] rounded-md px-4 py-2.5 text-white text-sm outline-none transition-colors"
-              />
+        {/* Set as a spec sheet: numbered sections divided by rules, no nested card
+            boxes. Boxing each group makes them all look equally weighted and puts
+            three borders between the eye and the field it is trying to fill in. */}
+        <form onSubmit={handleSave}>
+
+          {/* ── 01 Personal ─────────────────────────────────────────────── */}
+          <section className="pt-11">
+            <SectionLabel heading index="01">Personal Information</SectionLabel>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <Field label="Full name" htmlFor="profile-name">
+                <input
+                  id="profile-name"
+                  type="text"
+                  autoComplete="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field label="Phone" htmlFor="profile-phone">
+                <input
+                  id="profile-phone"
+                  type="text"
+                  autoComplete="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="03001234567"
+                  className={inputClass}
+                />
+              </Field>
+
+              <div className="md:col-span-2">
+                <Field label="City" htmlFor="profile-city">
+                  <input
+                    id="profile-city"
+                    type="text"
+                    autoComplete="address-level2"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className={inputClass}
+                  />
+                </Field>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm text-[#9CA3AF] mb-1.5">Phone</label>
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="03001234567"
-                className="w-full bg-[#0F0F0F] border border-[#2A2A2A] focus:border-[#DC2626] rounded-md px-4 py-2.5 text-white text-sm outline-none transition-colors placeholder:text-[#6B7280]"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm text-[#9CA3AF] mb-1.5">City</label>
-              <input
-                type="text"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full bg-[#0F0F0F] border border-[#2A2A2A] focus:border-[#DC2626] rounded-md px-4 py-2.5 text-white text-sm outline-none transition-colors"
-              />
-            </div>
-            <div className="md:col-span-2">
-              {locationMethod === 'gps' && coords ? (
-                <div className="bg-green-500/10 border border-green-500/20 rounded-md px-4 py-3">
-                  <p className="text-green-400 text-sm">✓ We'll use this to match you with nearby    requests</p>
+          </section>
+
+          {/* ── 02 Match location ───────────────────────────────────────── */}
+          <section className="pt-11">
+            <SectionLabel heading index="02">Match Location</SectionLabel>
+
+            {locationMethod === 'gps' && coords ? (
+              <div className="flex items-start gap-2.5 rounded-md border border-life/25 bg-life/10 px-3.5 py-3">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-life" strokeWidth={2.5} aria-hidden />
+                <div>
+                  <p className="text-sm text-life-lite">
+                    We&apos;ll use this to match you with nearby requests
+                  </p>
                   <button
                     type="button"
                     onClick={() => { setLocationMethod(null); setCoords(null) }}
-                    className="text-xs text-[#6B7280] hover:text-white underline mt-1"
+                    className="mt-1.5 text-xs text-mute underline decoration-line underline-offset-4 transition-colors hover:text-bone"
                   >
                     Use a different method
                   </button>
                 </div>
-              ) : locationMethod === 'manual' ? (
-                <div>
-                  <label className="block text-sm text-[#9CA3AF] mb-1.5">
-                    Area / neighborhood <span className="text-[#6B7280]">(update to refresh your match location)</span>
-                  </label>
+              </div>
+            ) : locationMethod === 'manual' ? (
+              <div>
+                <Field
+                  label="Area / neighborhood"
+                  htmlFor="profile-area"
+                  aside={
+                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-line">
+                      Update to refresh
+                    </span>
+                  }
+                  hint="Leave blank to keep your current saved location."
+                >
                   <input
+                    id="profile-area"
                     type="text"
                     value={area}
                     onChange={(e) => setArea(e.target.value)}
                     placeholder="Hayatabad, Peshawar"
-                    className="w-full bg-[#0F0F0F] border border-[#2A2A2A] focus:border-[#DC2626] rounded-md px-4 py-2.5 text-white text-sm outline-none transition-colors placeholder:text-[#6B7280]"
+                    className={inputClass}
                   />
-                  <p className="text-xs text-[#6B7280] mt-1">Leave blank to keep your current saved location.</p>
-                  <button
-                    type="button"
-                    onClick={() => setLocationMethod(null)}
-                    className="text-xs text-[#6B7280] hover:text-white underline mt-2"
-                  >
-                    Use my location instead
-                  </button>
-                </div>
-              ) : (
-                <div className="bg-[#0F0F0F] border border-[#2A2A2A] rounded-md p-4 text-center">
-                  <p className="text-white text-sm mb-1">Update your location</p>
-                  <p className="text-[#6B7280] text-xs mb-3">
-                    Share your current location for more accurate matching, or enter your area manually.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={requestLocation}
-                    disabled={locatingInProgress}
-                    className="w-full bg-[#DC2626] hover:bg-[#B91C1C] disabled:bg-[#DC2626]/50 text-white text-sm font-medium py-2.5 rounded-md transition-colors mb-2"
-                  >
-                    {locatingInProgress ? 'Getting location...' : 'Use My Location'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLocationMethod('manual')}
-                    className="text-xs text-[#6B7280] hover:text-white underline"
-                  >
-                    Enter address instead
-                  </button>
-
-                  {locationError && (
-                    <p className="text-red-400 text-xs mt-2">
-                      {locationError === 'permission_denied'
-                        ? "We couldn't access your location. You can try again or enter your address manually."
-                        : 'Something went wrong getting your location. Please enter your address instead.'}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Donation info */}
-        <div className="bg-[#141414] border border-[#222] rounded-xl p-6">
-          <h2 className="text-white font-semibold mb-5">Donation Information</h2>
-
-          <div className="mb-4">
-            <label className="block text-sm text-[#9CA3AF] mb-3">
-              Blood group <span className="text-[#6B7280]">(optional)</span>
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {bloodGroups.map((bg) => (
+                </Field>
                 <button
-                  key={bg}
                   type="button"
-                  onClick={() => setBloodGroup(bloodGroup === bg ? '' : bg)}
-                  className={`py-2.5 rounded-md text-sm font-bold border transition-all duration-150 ${bloodGroup === bg
-                      ? 'bg-[#DC2626] border-[#DC2626] text-white'
-                      : 'bg-[#0F0F0F] border-[#2A2A2A] text-[#9CA3AF] hover:border-[#DC2626]/40 hover:text-white'
-                    }`}
+                  onClick={() => setLocationMethod(null)}
+                  className="mt-3 text-xs text-mute underline decoration-line underline-offset-4 transition-colors hover:text-bone"
                 >
-                  {bloodGroupLabels[bg]}
+                  Use my location instead
                 </button>
-              ))}
-            </div>
-          </div>
+              </div>
+            ) : (
+              /* Rule-topped block, left-aligned, rather than a bordered inset with
+                 centred text: it reads as part of the sheet instead of a dialog
+                 that has been dropped into the middle of it. */
+              <div className="relative border-t border-line pt-6">
+                <span aria-hidden className="absolute -top-px left-0 h-px w-10 bg-blood" />
+                <div className="flex items-start gap-3">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blood" strokeWidth={2} aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-bone">Update your location</p>
+                    <p className="mt-1.5 max-w-md text-xs leading-relaxed text-mute">
+                      Share your current location for more accurate matching, or enter your area
+                      manually.
+                    </p>
 
-          <div>
-            <label className="block text-sm text-[#9CA3AF] mb-1.5">
-              Last donated <span className="text-[#6B7280]">(optional)</span>
-            </label>
-            <input
-              type="date"
-              value={lastDonated}
-              onChange={(e) => setLastDonated(e.target.value)}
-              className="w-full bg-[#0F0F0F] border border-[#2A2A2A] focus:border-[#DC2626] rounded-md px-4 py-2.5 text-white text-sm outline-none transition-colors"
-            />
-          </div>
-        </div>
+                    <div className="mt-5 flex flex-wrap items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={requestLocation}
+                        disabled={locatingInProgress}
+                        className={primaryBtn}
+                      >
+                        {locatingInProgress ? 'Getting location...' : 'Use My Location'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLocationMethod('manual')}
+                        className="text-xs text-mute underline decoration-line underline-offset-4 transition-colors hover:text-bone"
+                      >
+                        Enter address instead
+                      </button>
+                    </div>
 
-        {/* Availability */}
-        <div className="bg-[#141414] border border-[#222] rounded-xl p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-white font-semibold">Availability</h2>
-              <p className="text-[#6B7280] text-sm mt-1">Allow hospitals to match you with requests.</p>
+                    {locationError && (
+                      <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-warn">
+                        <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                        {locationError === 'permission_denied'
+                          ? "We couldn't access your location. You can try again or enter your address manually."
+                          : 'Something went wrong getting your location. Please enter your address instead.'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* ── 03 Donation ─────────────────────────────────────────────── */}
+          <section className="pt-11">
+            <SectionLabel heading index="03">Donation Information</SectionLabel>
+
+            <div className="mb-6">
+              <div className="mb-2 flex items-baseline justify-between gap-3">
+                <p
+                  id="profile-bloodgroup-label"
+                  className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint"
+                >
+                  Blood group
+                </p>
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-line">
+                  Optional
+                </span>
+              </div>
+
+              {/* One continuous grid whose gaps are the rules, so the eight groups
+                  read as a single control rather than eight detached buttons. */}
+              <div
+                role="group"
+                aria-labelledby="profile-bloodgroup-label"
+                className="grid grid-cols-4 gap-px overflow-hidden rounded-lg border border-line-soft bg-line-soft"
+              >
+                {bloodGroups.map((bg) => (
+                  <button
+                    key={bg}
+                    type="button"
+                    aria-pressed={bloodGroup === bg}
+                    onClick={() => setBloodGroup(bloodGroup === bg ? '' : bg)}
+                    className={`py-3.5 font-mono text-sm font-medium tracking-[-0.01em] transition-colors duration-150 ${
+                      bloodGroup === bg
+                        ? 'bg-blood text-white'
+                        : 'bg-ink text-mute hover:bg-raised hover:text-bone'
+                    }`}
+                  >
+                    {bloodGroupLabels[bg]}
+                  </button>
+                ))}
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsAvailable(!isAvailable)}
-              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${isAvailable ? 'bg-green-500' : 'bg-[#333]'
-                }`}
+
+            <Field
+              label="Last donated"
+              htmlFor="profile-last-donated"
+              aside={
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-line">
+                  Optional
+                </span>
+              }
             >
-              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${isAvailable ? 'translate-x-1' : '-translate-x-4'
-                }`} />
-            </button>
-          </div>
-        </div>
+              <input
+                id="profile-last-donated"
+                type="date"
+                value={lastDonated}
+                onChange={(e) => setLastDonated(e.target.value)}
+                className={`${inputClass} [&::-webkit-calendar-picker-indicator]:opacity-40 [&::-webkit-calendar-picker-indicator]:invert`}
+              />
+            </Field>
+          </section>
 
-        {/* Share contact info */}
-        <div className="bg-[#141414] border border-[#222] rounded-xl p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-white font-semibold">Share Contact Info</h2>
-              <p className="text-[#6B7280] text-sm mt-1">
-                If enabled, the hospital can see your name and phone number when you accept their request, to help coordinate the donation.
-              </p>
+          {/* ── 04 Preferences ──────────────────────────────────────────── */}
+          <section className="pt-11">
+            <SectionLabel heading index="04">Preferences</SectionLabel>
+
+            <div className="divide-y divide-line-soft border-y border-line-soft">
+              <div className="flex items-start justify-between gap-6 py-5">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-medium text-bone">Availability</h3>
+                  <p id="profile-availability-hint" className="mt-1.5 text-xs leading-relaxed text-mute">
+                    Allow hospitals to match you with requests.
+                  </p>
+                </div>
+                <Switch
+                  checked={isAvailable}
+                  onChange={() => setIsAvailable(!isAvailable)}
+                  label="Availability"
+                  describedBy="profile-availability-hint"
+                />
+              </div>
+
+              <div className="flex items-start justify-between gap-6 py-5">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-medium text-bone">Share Contact Info</h3>
+                  <p id="profile-share-hint" className="mt-1.5 max-w-lg text-xs leading-relaxed text-mute">
+                    If enabled, the hospital can see your name and phone number when you accept
+                    their request, to help coordinate the donation.
+                  </p>
+                  {/* This one writes on click. Saying so is the only way a donor can
+                      tell it apart from the switch directly above it. */}
+                  <p className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.14em] text-line">
+                    Saves immediately
+                  </p>
+                </div>
+                <Switch
+                  checked={shareContactInfo}
+                  onChange={toggleShareContactInfo}
+                  label="Share Contact Info"
+                  describedBy="profile-share-hint"
+                />
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={toggleShareContactInfo}
-              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${shareContactInfo ? 'bg-green-500' : 'bg-[#333]'
-                }`}
-            >
-              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${shareContactInfo ? 'translate-x-1' : '-translate-x-4'
-                }`} />
-            </button>
+          </section>
+
+          {/* Save bar, pinned to the viewport: the sheet is long enough that a
+              button at its end is off-screen for most of the time spent editing.
+              Solid, not translucent — the grid texture showing through a blurred
+              action bar is exactly the effect this design is avoiding. */}
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-ink">
+            <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-4">
+              <Link href="/donor/dashboard" className={quietBtn}>Cancel</Link>
+              <button type="submit" disabled={saving} className={primaryBtn}>
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Save */}
-        <div className="flex items-center justify-between">
-          <Link
-            href="/donor/dashboard"
-            className="text-sm text-[#6B7280] hover:text-white transition-colors"
-          >
-            Cancel
-          </Link>
-          <button
-            type="submit"
-            disabled={saving}
-            className="bg-[#DC2626] hover:bg-[#B91C1C] disabled:bg-[#DC2626]/50 disabled:cursor-not-allowed text-white font-medium px-7 py-2.5 rounded-md transition-colors duration-150 text-sm shadow-lg shadow-red-900/20"
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
-
-      </form>
-
+        </form>
+      </div>
     </div>
   )
 }

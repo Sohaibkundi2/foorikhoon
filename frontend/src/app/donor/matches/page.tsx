@@ -4,6 +4,17 @@ import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { useRouter } from 'next/navigation'
 import api from '@/lib/api'
+import { Check, Inbox } from 'lucide-react'
+import {
+  Chip,
+  EmptyState,
+  SectionLabel,
+  Texture,
+  affirmBtn,
+  ghostBtn,
+  statusTone,
+  urgencyTone
+} from '@/components/fk'
 
 interface Match {
   id: string
@@ -24,19 +35,6 @@ interface Match {
 const bloodGroupLabels: Record<string, string> = {
   A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
   AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
-}
-
-const urgencyColors: Record<string, string> = {
-  CRITICAL: 'text-red-400 bg-red-400/10 border-red-400/20',
-  URGENT: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
-  NORMAL: 'text-green-400 bg-green-400/10 border-green-400/20',
-}
-
-const matchStatusColors: Record<string, string> = {
-  PENDING: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
-  ACCEPTED: 'text-green-400 bg-green-400/10 border-green-400/20',
-  DECLINED: 'text-red-400 bg-red-400/10 border-red-400/20',
-  COMPLETED: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
 }
 
 type Tab = 'ALL' | 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'COMPLETED'
@@ -88,122 +86,192 @@ export default function DonorMatchesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center">
-        <div className="text-[#6B7280] text-sm">Loading...</div>
+      <div className="flex min-h-[80vh] items-center justify-center">
+        <div className="h-2 w-40 animate-pulse rounded-full bg-raised" />
       </div>
     )
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-10">
+    <div className="relative overflow-hidden">
+      <Texture />
 
-      {/* Header */}
-      <div className="mb-8">
-        <p className="text-[#6B7280] text-xs uppercase tracking-widest mb-2">Donor</p>
-        <h1 className="text-3xl font-bold text-white">My Matches</h1>
-        <p className="text-[#9CA3AF] text-sm mt-2">
-          Blood requests you've been matched with.
-        </p>
-      </div>
+      <div className="relative mx-auto max-w-4xl px-6 pb-16 pt-12">
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-[#222]">
-        {TABS.map(tab => {
-          const count = tab === 'ALL'
-            ? matches.length
-            : matches.filter(m => m.status === tab).length
-
-          return (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`text-sm px-4 py-2 border-b-2 transition-colors duration-150 ${
-                activeTab === tab
-                  ? 'border-[#DC2626] text-white'
-                  : 'border-transparent text-[#6B7280] hover:text-[#9CA3AF]'
-              }`}
-            >
-              {tab} {count > 0 && <span className="ml-1 text-xs">({count})</span>}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* List */}
-      {filteredMatches.length === 0 ? (
-        <div className="bg-[#141414] border border-[#222] rounded-xl p-8 text-center">
-          <p className="text-[#6B7280] text-sm">No matches in this category.</p>
+        {/* Masthead. The count is the headline figure here — this page is a
+            record of what the donor has been asked for, so it leads with how
+            many, not with a restatement of the page name. */}
+        <div className="relative flex flex-wrap items-end justify-between gap-6 border-b border-line pb-7">
+          <span aria-hidden className="absolute -bottom-px left-0 h-px w-10 bg-blood" />
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">Donor</p>
+            <h1 className="mt-4 text-4xl font-semibold leading-none tracking-[-0.04em] text-bone">
+              My Matches
+            </h1>
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-mute">
+              Blood requests you&apos;ve been matched with.
+            </p>
+          </div>
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] tabular-nums text-faint">
+            {matches.length} total
+          </p>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredMatches.map((match) => (
-            <div key={match.id} className="bg-[#141414] border border-[#222] rounded-xl p-5 flex items-center justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-white font-semibold text-sm">{match.request.hospital.name}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${urgencyColors[match.request.urgency]}`}>
-                    {match.request.urgency}
-                  </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${matchStatusColors[match.status]}`}>
-                    {match.status}
-                  </span>
-                </div>
-                <p className="text-[#9CA3AF] text-xs">{match.request.hospital.address}</p>
-                <p className="text-[#6B7280] text-xs mt-1">
-                  Needs {match.request.units} unit{match.request.units > 1 ? 's' : ''} of{' '}
-                  <span className="text-[#DC2626] font-semibold">
-                    {bloodGroupLabels[match.request.bloodGroup] || match.request.bloodGroup}
-                  </span>
-                </p>
-                <p className="text-[#6B7280] text-xs mt-1">
-                  {new Date(match.createdAt).toLocaleDateString()}
-                </p>
 
-                {match.status === 'COMPLETED' && match.photoUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setLightboxUrl(match.photoUrl!)}
-                    className="mt-2.5 flex items-center gap-2 group"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={match.photoUrl}
-                      alt="Blood bag proof of donation"
-                      className="w-10 h-10 rounded-md object-cover border border-[#2A2A2A] group-hover:border-[#DC2626]/40 transition-colors duration-150"
-                    />
-                    <span className="text-green-400/80 group-hover:text-green-400 text-xs transition-colors duration-150">
-                      ✓ Collection verified by photo
-                    </span>
-                  </button>
-                )}
-              </div>
+        {/* Filter rail. A vertical mono list on wide screens instead of a tab
+            strip: the counts line up as a column of figures you can compare,
+            which a horizontal row of pills cannot do. */}
+        <div className="mt-10 grid gap-10 md:grid-cols-[11rem_1fr] md:gap-12">
 
-              {match.status === 'PENDING' && (
-                <div className="flex gap-2 shrink-0">
-                  <button
-                    onClick={() => respondToMatch(match.id, 'ACCEPTED')}
-                    disabled={respondingId === match.id}
-                    className="bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 text-green-400 text-xs px-4 py-2 rounded-md transition-all duration-150 disabled:opacity-50"
+          <nav aria-label="Filter matches" className="md:border-r md:border-line-soft md:pr-6">
+            <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.2em] text-line">
+              Status
+            </p>
+            <ul className="flex flex-wrap gap-x-4 gap-y-1 md:block">
+              {TABS.map(tab => {
+                const count = tab === 'ALL'
+                  ? matches.length
+                  : matches.filter(m => m.status === tab).length
+                const active = activeTab === tab
+
+                return (
+                  <li key={tab}>
+                    <button
+                      onClick={() => setActiveTab(tab)}
+                      aria-current={active ? 'true' : undefined}
+                      className={`group relative flex w-full items-center justify-between gap-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors duration-150 ${
+                        active ? 'text-bone' : 'text-faint hover:text-mute'
+                      }`}
+                    >
+                      {/* The active marker is a rule, not a fill — it reads as a
+                          cursor in a list rather than a selected chip. */}
+                      <span className="flex items-center gap-2.5">
+                        <span
+                          aria-hidden
+                          className={`h-px transition-all duration-200 ${
+                            active ? 'w-4 bg-blood' : 'w-0 bg-transparent group-hover:w-2 group-hover:bg-line'
+                          }`}
+                        />
+                        {tab}
+                      </span>
+                      <span className={`tabular-nums ${active ? 'text-blood' : 'text-line'}`}>
+                        {count}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </nav>
+
+          {/* Ledger. Each row carries the date in its own left gutter, so the
+              list reads chronologically down the page. */}
+          <div className="min-w-0">
+            <SectionLabel heading>
+              {activeTab === 'ALL' ? 'All matches' : activeTab.toLowerCase()}
+            </SectionLabel>
+
+            {filteredMatches.length === 0 ? (
+              <EmptyState
+                icon={Inbox}
+                title="No matches in this category."
+                hint={
+                  activeTab === 'ALL'
+                    ? 'Requests you are matched with will appear here.'
+                    : `You have no ${activeTab.toLowerCase()} matches.`
+                }
+              />
+            ) : (
+              <ul className="border-t border-line">
+                {filteredMatches.map((match) => (
+                  <li
+                    key={match.id}
+                    className="relative border-b border-line-soft py-6 transition-colors duration-150 hover:bg-surface/50"
                   >
-                    Accept
-                  </button>
-                  <button
-                    onClick={() => respondToMatch(match.id, 'DECLINED')}
-                    disabled={respondingId === match.id}
-                    className="bg-[#1A1A1A] hover:bg-[#222] border border-[#2A2A2A] text-[#9CA3AF] text-xs px-4 py-2 rounded-md transition-all duration-150 disabled:opacity-50"
-                  >
-                    Decline
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+                    {match.request.urgency === 'CRITICAL' && match.status === 'PENDING' && (
+                      <span aria-hidden className="absolute inset-y-0 -left-4 w-[2px] bg-blood" />
+                    )}
+
+                    <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+
+                      <div className="min-w-0 flex-1">
+                        {/* Date sits above the hospital name as a dateline —
+                            small, mono, unemphasised. */}
+                        <p className="font-mono text-[10px] uppercase tracking-[0.16em] tabular-nums text-line">
+                          {new Date(match.createdAt).toLocaleDateString()}
+                        </p>
+
+                        <div className="mt-2 flex flex-wrap items-center gap-2.5">
+                          <span className="truncate text-base font-medium tracking-[-0.01em] text-bone">
+                            {match.request.hospital.name}
+                          </span>
+                          <Chip tone={urgencyTone[match.request.urgency]}>
+                            {match.request.urgency}
+                          </Chip>
+                          <Chip tone={statusTone[match.status]}>{match.status}</Chip>
+                        </div>
+
+                        <p className="mt-1.5 truncate text-xs text-mute">
+                          {match.request.hospital.address}
+                        </p>
+
+                        <p className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.14em] tabular-nums text-faint">
+                          Needs {match.request.units} unit{match.request.units > 1 ? 's' : ''} of{' '}
+                          <span className="text-blood">
+                            {bloodGroupLabels[match.request.bloodGroup] || match.request.bloodGroup}
+                          </span>
+                        </p>
+
+                        {match.status === 'COMPLETED' && match.photoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setLightboxUrl(match.photoUrl!)}
+                            className="group mt-3.5 flex items-center gap-2.5"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={match.photoUrl}
+                              alt="Blood bag proof of donation"
+                              className="h-10 w-10 rounded-md border border-line object-cover transition-colors duration-150 group-hover:border-blood/40"
+                            />
+                            <span className="flex items-center gap-1.5 text-xs text-life/80 transition-colors duration-150 group-hover:text-life">
+                              <Check className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
+                              Collection verified by photo
+                            </span>
+                          </button>
+                        )}
+                      </div>
+
+                      {match.status === 'PENDING' && (
+                        <div className="flex shrink-0 gap-2">
+                          <button
+                            onClick={() => respondToMatch(match.id, 'ACCEPTED')}
+                            disabled={respondingId === match.id}
+                            className={affirmBtn}
+                          >
+                            <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                            Accept
+                          </button>
+                          <button
+                            onClick={() => respondToMatch(match.id, 'DECLINED')}
+                            disabled={respondingId === match.id}
+                            className={ghostBtn}
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
-      )}
+      </div>
 
       {lightboxUrl && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6"
           onClick={() => setLightboxUrl(null)}
         >
           <div className="flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
@@ -211,9 +279,9 @@ export default function DonorMatchesPage() {
             <img
               src={lightboxUrl}
               alt="Blood bag proof of donation"
-              className="max-w-full max-h-[75vh] rounded-xl border border-[#2A2A2A]"
+              className="max-h-[75vh] max-w-full rounded-xl border border-line"
             />
-            <p className="text-[#6B7280] text-xs text-center max-w-sm">
+            <p className="max-w-sm text-center text-xs text-faint">
               Photo uploaded by the hospital when your donation was collected. Only you and
               that hospital can view it.
             </p>
@@ -221,7 +289,7 @@ export default function DonorMatchesPage() {
           <button
             type="button"
             onClick={() => setLightboxUrl(null)}
-            className="absolute top-5 right-5 text-[#9CA3AF] hover:text-white text-sm bg-[#141414] border border-[#2A2A2A] rounded-lg px-3 py-1.5"
+            className="absolute right-5 top-5 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-mute transition-colors hover:text-bone"
           >
             Close
           </button>

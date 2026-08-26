@@ -327,7 +327,30 @@ const updateProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid user ID' })
     }
 
-    const { name, bloodGroup, city, phone, area, shareContactInfo, latitude, longitude } = req.body
+    const { name, bloodGroup, city, phone, area, shareContactInfo, latitude, longitude, lastDonated } = req.body
+
+    // Clients send lastDonated on every save, so an explicit null means "no date
+    // on record" and has to be persisted; only an absent field leaves it alone.
+    // This gates matching -- donorMatching.ts offers a donor only when
+    // lastDonated is null or at least 90 days old -- so a wrong value here can
+    // get someone called in too soon, which is why the future date is rejected
+    // rather than clamped.
+    let donationDate: Date | null | undefined = undefined
+
+    if ('lastDonated' in req.body) {
+      if (lastDonated === null || lastDonated === '') {
+        donationDate = null
+      } else {
+        const parsed = new Date(lastDonated)
+        if (isNaN(parsed.getTime())) {
+          return res.status(400).json({ message: 'Last donation date is not a valid date.' })
+        }
+        if (parsed.getTime() > Date.now()) {
+          return res.status(400).json({ message: 'Last donation date cannot be in the future.' })
+        }
+        donationDate = parsed
+      }
+    }
 
     let locationUpdate: { area: string; latitude: number; longitude: number } | null = null
 
@@ -365,7 +388,8 @@ const updateProfile = async (req: Request, res: Response) => {
       data: {
         bloodGroup,
         ...(locationUpdate && locationUpdate),
-        ...(typeof shareContactInfo === 'boolean' && { shareContactInfo })
+        ...(typeof shareContactInfo === 'boolean' && { shareContactInfo }),
+        ...(donationDate !== undefined && { lastDonated: donationDate })
       }
     })
 
