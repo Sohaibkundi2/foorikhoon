@@ -59,7 +59,9 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 
 | Layer | Technology |
 |---|---|
-| Web Frontend | Next.js 15, TypeScript, Tailwind CSS v4 |
+| Web Frontend | Next.js 15, TypeScript, Tailwind CSS v4 (CSS-first `@theme`, no `tailwind.config.js`) |
+| Web Icons / Motion | lucide-react, motion (Framer Motion) |
+| Web Type | `next/font` — Inter (text), Instrument Serif (display italic), IBM Plex Mono (labels, figures) |
 | Mobile App | React Native, Expo SDK 54, Expo Router |
 | Backend | Node.js, Express, TypeScript |
 | Database | PostgreSQL (Neon), Prisma ORM v7 |
@@ -105,9 +107,12 @@ Next.js Web App (port 3000)          React Native Mobile App
 ```
 foorikhoon/
 ├── frontend/                  Next.js web app
+│   ├── jest.config.js         serial by necessity — see the note in the file
+│   ├── tests/                 React Testing Library suites (register, donor, hospital)
 │   └── src/
 │       ├── app/               Pages (App Router)
 │       │   ├── page.tsx       Landing page
+│       │   ├── globals.css    Tailwind v4 @theme tokens + texture utilities
 │       │   ├── login/
 │       │   ├── register/
 │       │   ├── requests/
@@ -116,9 +121,11 @@ foorikhoon/
 │       │   ├── hospital/
 │       │   └── admin/
 │       ├── components/
+│       │   ├── fk.tsx         shared design-system primitives (see Design System)
 │       │   ├── Navbar.tsx
 │       │   ├── Map.tsx
 │       │   ├── BadgePopup.tsx
+│       │   ├── FulfillPhotoModal.tsx
 │       │   ├── HeroCertificate.tsx
 │       │   └── WeeklyHeroes.tsx
 │       ├── store/authStore.ts
@@ -402,6 +409,43 @@ When a hospital marks a request as fulfilled, the donor whose match is COMPLETED
 
 ---
 
+## Design System (web)
+
+The web app has one visual language, defined in two files.
+
+**`src/app/globals.css`** holds the palette and textures as Tailwind v4 `@theme` tokens, so
+they compile to ordinary utilities — `bg-ink`, `bg-surface`, `bg-raised`, `bg-blood`,
+`text-bone`, `text-mute`, `text-faint`, `text-life`, `text-warn`, `border-line`,
+`border-line-soft`. There is no `tailwind.config.js`; Tailwind v4 is configured in CSS.
+
+**`src/components/fk.tsx`** holds the shared primitives every route builds from —
+`PageHead`, `SectionLabel`, `Panel`, `Lattice`, `Stat`, `Chip`, `EmptyState`, `Field`,
+`SegmentMeter`, `Texture`, `Reveal`, `LiveDot` — plus named class strings (`primaryBtn`,
+`ghostBtn`, `inputClass`, `selectClass`, …) and the enum→colour maps (`urgencyTone`,
+`statusTone`, `riskTone`). The class strings are complete variants rather than a base to
+override, because Tailwind resolves conflicting utilities by CSS source order, not by the
+order they appear in a `className`.
+
+Three rules the whole UI holds to:
+
+- **Four colour families only** — blood red for danger and brand, amber for the middle
+  tier, green for confirmed good outcomes, and neutral bone/grey for everything else. A
+  fifth hue would mean colour is decorating rather than meaning something.
+- **No emoji.** Every glyph that carried meaning is a `lucide-react` icon, or geometry
+  where an icon cannot survive rasterisation (see below).
+- **Nothing implied that the page did not fetch.** Figures are labelled with what they
+  actually count — e.g. hospital analytics draws its low-stock rule at `units < 5` because
+  that is the threshold the analytics controller itself uses, and the admin shortage table
+  states outright that request counts are 30-day windowed while donor counts are not.
+
+`HeroCertificate.tsx` is the one deliberate exception: everything inside the captured card
+uses plain inline hex/rgba, since `html2canvas` cannot parse the `oklch()` values Tailwind
+v4 compiles its palette to. Every text node in it also carries an explicit `lineHeight`,
+without which the exported PNG mis-centres text that looks correct on screen. Its marks are
+CSS shapes rather than icons or glyphs for the same reason.
+
+---
+
 ## Local Setup
 
 ### Prerequisites
@@ -457,6 +501,25 @@ docker-compose up --build
 
 ---
 
+## Tests
+
+```bash
+cd frontend && npm test          # React Testing Library suites, jsdom
+cd backend  && npm run test:unit  # no database needed
+cd backend  && npm test           # unit + integration (needs .env.test)
+```
+
+The backend's integration tests run against **real Postgres** — create a second Neon branch,
+point `.env.test` at it, and run `npm run test:migrate` once. The loader refuses to run if
+`.env.test` and `.env` resolve to the same database. Full instructions, cleanup and the known
+gaps are in [`backend/tests/README.md`](./backend/tests/README.md).
+
+`frontend/jest.config.js` pins `maxWorkers: 1` deliberately: the SWC binary installed on the
+development machine cannot load inside a Jest worker process, so parallel runs fail whenever
+the transform cache is cold. The reasoning is documented in the file.
+
+---
+
 ## Test Accounts (after seeding)
 
 ```
@@ -491,7 +554,10 @@ Admin:    admin@321.com / (set via prisma/seed-admin.ts)
 ## Roadmap — Planned Features
 
 - Twilio SMS notifications for donors without smartphones
-- Chart.js analytics for admin and hospital dashboards
+- Chart.js analytics for admin and hospital dashboards — hospital analytics currently draws
+  its stock profile with hand-built CSS columns, since `/api/hospital/analytics` returns no
+  time series and there is nothing yet for a charting library to plot over time. Chart.js is
+  not a dependency
 - Real-time updates via WebSockets (Socket.io)
 - Redis caching for public stats, leaderboard, heatmap
 - Urdu language support (i18n) for web and mobile
@@ -500,7 +566,8 @@ Admin:    admin@321.com / (set via prisma/seed-admin.ts)
 - Donor health eligibility checklist before match acceptance
 - Streak & achievement system
 - Trained ML model (logistic regression) replacing rule-based scoring, once sufficient real/synthetic data is available
-- Unit + integration tests (Jest, Cypress), CI/CD via GitHub Actions
+- End-to-end tests (Cypress) and CI/CD via GitHub Actions — unit and integration suites
+  already exist for both backend and web frontend (see [Tests](#tests))
 - AWS deployment (EC2, S3, RDS, CloudWatch)
 - Small-scale user study (SUS usability testing) for FYP evaluation
 - Google Play Store release, including moving mobile builds to EAS/dev-client (also unlocks direct photo-library saving for certificates)

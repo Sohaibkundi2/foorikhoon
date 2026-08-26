@@ -1,11 +1,16 @@
 // app/hospital/analytics.tsx
-import { useEffect, useRef, useState } from 'react'
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Animated, Easing
-} from 'react-native'
+import { useEffect, useState } from 'react'
+import { View, Text, StyleSheet, Pressable } from 'react-native'
 import { router, Link } from 'expo-router'
+import { ArrowLeft, ArrowUpRight, Package } from 'lucide-react-native'
 import { useAuthStore } from '../../src/store/authStore'
 import api from '../../src/lib/api'
+
+import {
+  Screen, PageHead, Label, SectionLabel, Rule, Skeleton, SegmentMeter,
+  EmptyState, LiveDot,
+} from '../../src/components/fk'
+import { color, font, bloodLabel } from '../../src/theme'
 
 interface Inventory {
   id: string
@@ -23,36 +28,27 @@ interface Analytics {
   inventory: Inventory[]
 }
 
-const bloodGroupLabels: Record<string, string> = {
-  A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
-  AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−',
-}
+/** The meter's own scale. See the note on the inventory screen: no capacity is
+ *  stored anywhere, so twenty units is a shared reading scale, not a claim. */
+const SHELF_FULL = 20
 
-function getInventoryStyle(units: number) {
-  if (units === 0) return { text: '#F87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)', label: 'Out of stock' }
-  if (units < 5) return { text: '#FB923C', bg: 'rgba(251,146,60,0.1)', border: 'rgba(251,146,60,0.2)', label: 'Critical' }
-  if (units < 10) return { text: '#FACC15', bg: 'rgba(250,204,21,0.1)', border: 'rgba(250,204,21,0.2)', label: 'Low' }
-  return { text: '#4ADE80', bg: 'rgba(74,222,128,0.1)', border: 'rgba(74,222,128,0.2)', label: 'Good' }
-}
-
-function usePulse() {
-  const pulse = useRef(new Animated.Value(1)).current
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 0.35, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    ).start()
-  }, [])
-  return pulse
+/**
+ * Four stock tiers, three colours. Zero and one-to-four both sit below the
+ * five-unit line the backend alerts on, so both are red — the label separates
+ * them. Inventing a fourth hue to make them differ by colour would break the
+ * rule that a colour family means one thing across the app.
+ */
+function stockLevel(units: number): { label: string; tint: string } {
+  if (units === 0) return { label: 'Out', tint: color.bloodLite }
+  if (units < 5) return { label: 'Critical', tint: color.bloodLite }
+  if (units < 10) return { label: 'Low', tint: color.warnLite }
+  return { label: 'Good', tint: color.lifeLite }
 }
 
 export default function HospitalAnalyticsScreen() {
   const { user } = useAuthStore()
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
   const [loading, setLoading] = useState(true)
-  const pulse = usePulse()
 
   useEffect(() => {
     if (!user) { router.replace('/login'); return }
@@ -66,216 +62,267 @@ export default function HospitalAnalyticsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centerScreen}>
-        <ActivityIndicator color="#DC2626" />
-      </View>
+      <Screen>
+        <View style={styles.gutter}>
+          <Rule tick />
+          <View style={{ marginTop: 22, gap: 12 }}>
+            <Skeleton width="30%" height={11} />
+            <Skeleton width="72%" height={26} />
+          </View>
+          <View style={{ marginTop: 36, gap: 14 }}>
+            <Skeleton width="42%" height={44} />
+            <Skeleton height={5} />
+          </View>
+          <View style={{ marginTop: 34, gap: 1 }}>
+            {[0, 1, 2, 3].map(i => (
+              <View key={i} style={styles.loadRow}>
+                <Skeleton width="40%" height={11} />
+                <Skeleton width={30} height={16} />
+              </View>
+            ))}
+          </View>
+        </View>
+      </Screen>
     )
   }
 
   if (!analytics) return null
 
+  const lowCount = analytics.lowStock.length
+  const lowList = analytics.lowStock
+    .map(item => `${bloodLabel(item.bloodGroup)} at ${item.units}`)
+    .join(', ')
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {/* Header */}
-      <Link href="/hospital/dashboard" asChild>
-        <TouchableOpacity style={styles.backLink}>
-          <Text style={styles.backLinkText}>← Back to dashboard</Text>
-        </TouchableOpacity>
-      </Link>
-
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>HOSPITAL</Text>
-        <Text style={styles.title}>Analytics</Text>
-        <Text style={styles.subtitle}>Overview of your blood request activity and inventory.</Text>
+    <Screen ember grid tail={40}>
+      <View style={[styles.gutter, { paddingTop: 6 }]}>
+        <Link href="/hospital/dashboard" asChild>
+          <Pressable style={styles.backLink} hitSlop={8}>
+            {/* Was a ← text arrow. */}
+            <ArrowLeft size={13} color={color.mute} strokeWidth={2} />
+            <Text style={styles.backLinkText}>Dashboard</Text>
+          </Pressable>
+        </Link>
       </View>
 
-      {/* Low stock alert */}
-      {analytics.lowStock.length > 0 && (
-        <View style={styles.lowStockCard}>
-          <View style={styles.lowStockHeader}>
-            <Animated.View style={[styles.lowStockDot, { opacity: pulse }]} />
-            <Text style={styles.lowStockTitle}>Low Stock Alert</Text>
+      <PageHead
+        eyebrow="Hospital · Analytics"
+        title="How your requests"
+        accent="actually land."
+        sub="Counted from your own requests and your own shelf. Nothing here is projected or estimated."
+      />
+
+      {/* ── Fulfilment ─────────────────────────────────────────────────────
+          The rate leads, because it is the one figure that says whether the
+          rest of the screen is working. The meter is brand red at every value:
+          tinting it by threshold would invent a pass mark the backend has no
+          opinion about. */}
+      <View style={styles.band}>
+        <View style={styles.bandTick} />
+        <View style={styles.gutter}>
+          <Label>Fulfilment rate · all time</Label>
+          <View style={styles.rateRow}>
+            <Text style={styles.rateFigure}>{analytics.fulfillmentRate}</Text>
+            <Text style={styles.ratePct}>%</Text>
           </View>
-          <Text style={styles.lowStockDesc}>
-            {analytics.lowStock.length} blood group{analytics.lowStock.length !== 1 ? 's' : ''} running low. Consider restocking soon.
+          <SegmentMeter
+            value={analytics.fulfillmentRate}
+            max={100}
+            segments={20}
+            tint={color.blood}
+            style={{ marginTop: 16 }}
+          />
+          <Text style={styles.rateNote}>
+            {analytics.fulfilled} of {analytics.totalRequests} request
+            {analytics.totalRequests !== 1 ? 's' : ''} closed as fulfilled.
+            {analytics.totalRequests === 0 ? ' Nothing posted yet.' : ''}
           </Text>
-          <View style={styles.lowStockPillRow}>
-            {analytics.lowStock.map((item) => (
-              <View key={item.id} style={styles.lowStockPill}>
-                <Text style={styles.lowStockPillText}>
-                  {bloodGroupLabels[item.bloodGroup]} — {item.units} units
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Stats grid */}
-      <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>THIS MONTH</Text>
-          <Text style={styles.statValue}>{analytics.totalRequestsThisMonth}</Text>
-          <Text style={styles.statSub}>requests posted</Text>
-        </View>
-
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>TOTAL</Text>
-          <Text style={styles.statValue}>{analytics.totalRequests}</Text>
-          <Text style={styles.statSub}>all time requests</Text>
-        </View>
-
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>FULFILLED</Text>
-          <Text style={[styles.statValue, { color: '#4ADE80' }]}>{analytics.fulfilled}</Text>
-          <Text style={styles.statSub}>donations completed</Text>
-        </View>
-
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>SUCCESS RATE</Text>
-          <Text style={[styles.statValue, { color: '#DC2626' }]}>{analytics.fulfillmentRate}%</Text>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${analytics.fulfillmentRate}%` }]} />
-          </View>
         </View>
       </View>
 
-      {/* Most requested */}
-      {analytics.mostRequested && (
-        <View style={styles.card}>
-          <Text style={styles.eyebrowSmall}>MOST REQUESTED BLOOD GROUP</Text>
-          <View style={styles.mostRequestedRow}>
-            <View style={styles.mostRequestedIcon}>
-              <Text style={styles.mostRequestedIconText}>
-                {bloodGroupLabels[analytics.mostRequested]}
-              </Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.mostRequestedTitle}>
-                {bloodGroupLabels[analytics.mostRequested]} Blood
-              </Text>
-              <Text style={styles.mostRequestedDesc}>Most frequently needed at your hospital</Text>
-            </View>
-          </View>
-        </View>
-      )}
+      {/* ── Volume ─────────────────────────────────────────────────────────
+          A ledger, not four cards. Figures in one right-hand column share a
+          decimal position, which is what makes them comparable at a glance. */}
+      <View style={styles.gutter}>
+        <SectionLabel index="01">Request volume</SectionLabel>
 
-      {/* Inventory overview */}
-      <View style={styles.card}>
-        <View style={styles.inventoryHeader}>
-          <Text style={styles.eyebrowSmall}>INVENTORY STATUS</Text>
-          <Link href="/hospital/inventory" asChild>
-            <TouchableOpacity>
-              <Text style={styles.manageLink}>Manage →</Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
-        <View style={styles.inventoryGrid}>
-          {analytics.inventory.map((item) => {
-            const s = getInventoryStyle(item.units)
+        <LedgerRow label="Posted since the 1st" value={analytics.totalRequestsThisMonth} />
+        <LedgerRow label="Posted all time" value={analytics.totalRequests} />
+        <LedgerRow label="Fulfilled" value={analytics.fulfilled} tint={color.lifeLite} />
+        <LedgerRow
+          label="Most requested group"
+          value={analytics.mostRequested ? bloodLabel(analytics.mostRequested) : '—'}
+          tint={analytics.mostRequested ? color.bloodLite : color.faint}
+        />
+
+        <Text style={styles.footnote}>
+          The month figure counts requests created since the first of this
+          calendar month. The most-requested group is counted across every
+          request you have ever posted.
+        </Text>
+      </View>
+
+      {/* ── Inventory ──────────────────────────────────────────────────────*/}
+      <View style={[styles.gutter, { marginTop: 34 }]}>
+        <SectionLabel
+          index="02"
+          aside={
+            <Link href="/hospital/inventory" asChild>
+              <Pressable hitSlop={6} style={styles.manageLink}>
+                {/* Was a → text arrow. */}
+                <Text style={styles.manageText}>Manage</Text>
+                <ArrowUpRight size={12} color={color.bloodLite} strokeWidth={2} />
+              </Pressable>
+            </Link>
+          }
+        >
+          Inventory status
+        </SectionLabel>
+
+        {lowCount > 0 && (
+          /* Was a card with a pulsing orange dot animated by the legacy
+             Animated API. Same signal, one row, using the kit's LiveDot. */
+          <View style={styles.alertRow}>
+            <LiveDot size={7} tint={color.warn} />
+            <Text style={styles.alertText}>
+              <Text style={styles.alertStrong}>
+                {lowCount} group{lowCount !== 1 ? 's' : ''} under five units
+              </Text>
+              {' — '}{lowList}
+            </Text>
+          </View>
+        )}
+
+        {analytics.inventory.length === 0 ? (
+          <EmptyState
+            icon={Package}
+            title="No inventory recorded"
+            body="Once you record what is on the shelf, this section flags every group that drops below five units."
+          />
+        ) : (
+          analytics.inventory.map((item) => {
+            const level = stockLevel(item.units)
             return (
-              <View key={item.id} style={[styles.inventoryTile, { backgroundColor: s.bg, borderColor: s.border }]}>
-                <Text style={[styles.inventoryGroup, { color: s.text }]}>
-                  {bloodGroupLabels[item.bloodGroup]}
-                </Text>
-                <Text style={[styles.inventoryUnits, { color: s.text }]}>{item.units}</Text>
-                <Text style={[styles.inventoryLabel, { color: s.text }]}>{s.label}</Text>
+              <View key={item.id} style={styles.stockRow}>
+                <Text style={styles.stockGroup}>{bloodLabel(item.bloodGroup)}</Text>
+                <SegmentMeter
+                  value={item.units}
+                  max={SHELF_FULL}
+                  segments={10}
+                  tint={level.tint}
+                  style={{ flex: 1 }}
+                />
+                <Text style={styles.stockUnits}>{item.units}</Text>
+                <Text style={[styles.stockLevel, { color: level.tint }]}>{level.label}</Text>
               </View>
             )
-          })}
-        </View>
+          })
+        )}
       </View>
-    </ScrollView>
+    </Screen>
+  )
+}
+
+/** One line of the volume ledger: name left, hairline, figure right. */
+function LedgerRow({ label, value, tint }: {
+  label: string
+  value: string | number
+  tint?: string
+}) {
+  return (
+    <View style={styles.ledgerRow}>
+      <Text style={styles.ledgerLabel}>{label}</Text>
+      <View style={styles.ledgerFill} />
+      <Text style={[styles.ledgerValue, tint ? { color: tint } : null]}>{value}</Text>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0F0F0F' },
-  content: { padding: 20, paddingBottom: 48 },
-  centerScreen: { flex: 1, backgroundColor: '#0F0F0F', alignItems: 'center', justifyContent: 'center' },
+  gutter: { paddingHorizontal: 20 },
 
-  backLink: { marginBottom: 16 },
-  backLinkText: { color: '#6B7280', fontSize: 12 },
-
-  header: { marginBottom: 20 },
-  eyebrow: { color: '#DC2626', fontSize: 11, letterSpacing: 1.5, marginBottom: 8, fontWeight: '600' },
-  title: { color: '#FFFFFF', fontSize: 26, fontWeight: '700' },
-  subtitle: { color: '#9CA3AF', fontSize: 13, marginTop: 6 },
-
-  // Low stock
-  lowStockCard: {
-    backgroundColor: 'rgba(251,146,60,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(251,146,60,0.2)',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
+  loadRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderTopWidth: 1, borderTopColor: color.lineSoft, paddingVertical: 16,
   },
-  lowStockHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  lowStockDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#FB923C', marginRight: 8 },
-  lowStockTitle: { color: '#FB923C', fontSize: 14, fontWeight: '700' },
-  lowStockDesc: { color: '#9CA3AF', fontSize: 12.5, marginBottom: 10 },
-  lowStockPillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  lowStockPill: {
-    backgroundColor: 'rgba(251,146,60,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(251,146,60,0.25)',
-    borderRadius: 999,
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-  },
-  lowStockPillText: { color: '#FB923C', fontSize: 11.5, fontWeight: '600' },
 
-  // Stats
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
-  statCard: {
-    width: '47.5%',
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 12,
-    padding: 16,
+  backLink: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 4 },
+  backLinkText: {
+    fontFamily: font.mono.medium, fontSize: 9.5, color: color.mute,
+    letterSpacing: 1.4, textTransform: 'uppercase',
   },
-  statLabel: { color: '#6B7280', fontSize: 10, letterSpacing: 1.5, marginBottom: 8 },
-  statValue: { color: '#FFFFFF', fontSize: 26, fontWeight: '700' },
-  statSub: { color: '#6B7280', fontSize: 11, marginTop: 4 },
-  progressTrack: { height: 4, backgroundColor: '#222', borderRadius: 99, marginTop: 10, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#DC2626', borderRadius: 99 },
 
-  // Generic card
-  card: {
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 16,
+  // Fulfilment band
+  band: {
+    borderTopWidth: 1, borderTopColor: color.line,
+    borderBottomWidth: 1, borderBottomColor: color.line,
+    paddingBottom: 22, marginBottom: 34,
   },
-  eyebrowSmall: { color: '#6B7280', fontSize: 10.5, letterSpacing: 1.5, fontWeight: '600', marginBottom: 14 },
+  bandTick: { height: 2, marginBottom: 20, backgroundColor: color.blood },
+  rateRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 10 },
+  rateFigure: {
+    fontFamily: font.mono.medium, fontSize: 58, lineHeight: 60,
+    color: color.bone, letterSpacing: -4, fontVariant: ['tabular-nums'],
+  },
+  ratePct: {
+    fontFamily: font.mono.regular, fontSize: 20, color: color.mute,
+    marginTop: 8, marginLeft: 3,
+  },
+  rateNote: {
+    fontFamily: font.sans.regular, fontSize: 12.5, lineHeight: 19,
+    color: color.mute, marginTop: 14,
+  },
 
-  // Most requested
-  mostRequestedRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  mostRequestedIcon: {
-    width: 60, height: 60, borderRadius: 14,
-    backgroundColor: 'rgba(220,38,38,0.1)', borderWidth: 1, borderColor: 'rgba(220,38,38,0.25)',
-    alignItems: 'center', justifyContent: 'center',
+  // Volume ledger
+  ledgerRow: {
+    flexDirection: 'row', alignItems: 'baseline', gap: 10,
+    borderTopWidth: 1, borderTopColor: color.lineSoft, paddingVertical: 15,
   },
-  mostRequestedIconText: { color: '#DC2626', fontSize: 22, fontWeight: '700' },
-  mostRequestedTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-  mostRequestedDesc: { color: '#9CA3AF', fontSize: 12.5, marginTop: 3 },
+  ledgerLabel: { fontFamily: font.sans.regular, fontSize: 13, color: color.mute },
+  ledgerFill: { flex: 1, height: 1, backgroundColor: color.lineSoft, alignSelf: 'center' },
+  ledgerValue: {
+    fontFamily: font.mono.medium, fontSize: 17, color: color.bone,
+    letterSpacing: -0.7, fontVariant: ['tabular-nums'],
+  },
 
-  // Inventory
-  inventoryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 },
-  manageLink: { color: '#9CA3AF', fontSize: 12.5, marginBottom: 14 },
-  inventoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  inventoryTile: {
-    width: '31%',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
+  footnote: {
+    fontFamily: font.sans.regular, fontSize: 11.5, lineHeight: 17.5,
+    color: color.faint, marginTop: 16,
   },
-  inventoryGroup: { fontSize: 16, fontWeight: '700' },
-  inventoryUnits: { fontSize: 22, fontWeight: '700', marginTop: 4 },
-  inventoryLabel: { fontSize: 10.5, marginTop: 3, opacity: 0.85 },
+
+  // Low-stock alert
+  alertRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderLeftWidth: 2, borderLeftColor: color.warn,
+    paddingLeft: 12, paddingVertical: 10, marginBottom: 18,
+  },
+  alertText: {
+    flex: 1, fontFamily: font.sans.regular, fontSize: 12.5, lineHeight: 18,
+    color: color.mute,
+  },
+  alertStrong: { fontFamily: font.sans.medium, color: color.warnLite },
+
+  // Inventory rows
+  manageLink: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 0 },
+  manageText: {
+    fontFamily: font.mono.medium, fontSize: 9.5, color: color.bloodLite,
+    letterSpacing: 1.3, textTransform: 'uppercase',
+  },
+
+  stockRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderTopWidth: 1, borderTopColor: color.lineSoft, paddingVertical: 14,
+  },
+  stockGroup: {
+    fontFamily: font.mono.medium, fontSize: 14, color: color.bloodLite,
+    letterSpacing: -0.4, width: 34,
+  },
+  stockUnits: {
+    fontFamily: font.mono.medium, fontSize: 15, color: color.bone,
+    fontVariant: ['tabular-nums'], width: 26, textAlign: 'right',
+  },
+  stockLevel: {
+    fontFamily: font.mono.regular, fontSize: 9, letterSpacing: 1.1,
+    textTransform: 'uppercase', width: 48, textAlign: 'right',
+  },
 })

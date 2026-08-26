@@ -1,12 +1,21 @@
 // app/admin/dashboard.tsx
-import {
-  View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator
-} from 'react-native'
+import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native'
 import { useEffect, useState } from 'react'
 import { router } from 'expo-router'
+import {
+  Ban, Building2, LogOut, ShieldCheck, TriangleAlert,
+} from 'lucide-react-native'
 import { useAuthStore } from '../../src/store/authStore'
 import api from '../../src/lib/api'
+
+import {
+  Screen, PageHead, Label, SectionLabel, Rule, Chip, Button, Skeleton,
+  EmptyState, Notice, useTabBarInset,
+} from '../../src/components/fk'
+import {
+  color, wash, font, radius, urgencyTone, statusTone, riskTone, toneFor,
+  bloodLabel, Tone,
+} from '../../src/theme'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Stats {
@@ -49,46 +58,39 @@ interface BloodRequest {
   hospital: { name: string; user: { city: string } }
 }
 
-// ── Lookup maps ──────────────────────────────────────────────────────────────
-const bloodGroupLabels: Record<string, string> = {
-  A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
-  AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−',
+/**
+ * Roles get tones from the same four families as everything else. The previous
+ * version painted ADMIN violet and HOSPITAL blue, which read as two more colour
+ * families with no meaning attached to them.
+ */
+const roleTone: Record<string, Tone> = {
+  ADMIN: { fg: color.bloodLite, bg: wash.blood, border: wash.bloodEdge, label: 'Admin' },
+  HOSPITAL: { fg: color.bone, bg: wash.bone, border: wash.boneEdge, label: 'Hospital' },
+  DONOR: { fg: color.lifeLite, bg: wash.life, border: wash.lifeEdge, label: 'Donor' },
 }
 
-type PillStyle = { bg: string; border: string; text: string }
-
-const urgencyStyle: Record<string, PillStyle> = {
-  CRITICAL: { bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)', text: '#F87171' },
-  URGENT:   { bg: 'rgba(251,146,60,0.1)',  border: 'rgba(251,146,60,0.2)',  text: '#FB923C' },
-  NORMAL:   { bg: 'rgba(74,222,128,0.1)',  border: 'rgba(74,222,128,0.2)',  text: '#4ADE80' },
+const verifiedTone: Tone = {
+  fg: color.lifeLite, bg: wash.life, border: wash.lifeEdge, label: 'Verified',
 }
-
-const statusStyle: Record<string, PillStyle> = {
-  PENDING:   { bg: 'rgba(250,204,21,0.1)', border: 'rgba(250,204,21,0.2)', text: '#FACC15' },
-  MATCHED:   { bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.2)', text: '#60A5FA' },
-  FULFILLED: { bg: 'rgba(74,222,128,0.1)', border: 'rgba(74,222,128,0.2)', text: '#4ADE80' },
-  EXPIRED:   { bg: 'rgba(107,114,128,0.1)',border: 'rgba(107,114,128,0.2)',text: '#6B7280' },
-}
-
-const roleStyle: Record<string, PillStyle> = {
-  ADMIN:    { bg: 'rgba(192,132,252,0.1)', border: 'rgba(192,132,252,0.2)', text: '#C084FC' },
-  HOSPITAL: { bg: 'rgba(96,165,250,0.1)',  border: 'rgba(96,165,250,0.2)',  text: '#60A5FA' },
-  DONOR:    { bg: 'rgba(74,222,128,0.1)',  border: 'rgba(74,222,128,0.2)',  text: '#4ADE80' },
-}
-
-const riskStyle: Record<string, PillStyle> = {
-  CRITICAL: { bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)', text: '#F87171' },
-  HIGH:     { bg: 'rgba(251,146,60,0.1)',  border: 'rgba(251,146,60,0.2)',  text: '#FB923C' },
-  MODERATE: { bg: 'rgba(250,204,21,0.1)',  border: 'rgba(250,204,21,0.2)',  text: '#FACC15' },
-  LOW:      { bg: 'rgba(74,222,128,0.1)',  border: 'rgba(74,222,128,0.2)',  text: '#4ADE80' },
+const unverifiedTone: Tone = {
+  fg: color.warnLite, bg: wash.warn, border: wash.warnEdge, label: 'Pending',
 }
 
 type Tab = 'OVERVIEW' | 'HOSPITALS' | 'USERS' | 'REQUESTS' | 'SHORTAGE'
 const TABS: Tab[] = ['OVERVIEW', 'HOSPITALS', 'USERS', 'REQUESTS', 'SHORTAGE']
 
+/** Display strings for the rail. The enum values stay the state keys. */
+const TAB_LABEL: Record<Tab, string> = {
+  OVERVIEW: 'Overview',
+  HOSPITALS: 'Hospitals',
+  USERS: 'Users',
+  REQUESTS: 'Requests',
+  SHORTAGE: 'Shortage',
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
-  const { user } = useAuthStore()
+  const { user, logout } = useAuthStore()
 
   const [stats, setStats]           = useState<Stats | null>(null)
   const [hospitals, setHospitals]   = useState<Hospital[]>([])
@@ -98,6 +100,8 @@ export default function AdminDashboard() {
   const [loading, setLoading]       = useState(true)
   const [activeTab, setActiveTab]   = useState<Tab>('OVERVIEW')
   const [verifyingId, setVerifyingId] = useState<string | null>(null)
+
+  const bottomInset = useTabBarInset()
 
   useEffect(() => {
     if (!user) { router.replace('/login'); return }
@@ -138,132 +142,210 @@ export default function AdminDashboard() {
     }
   }
 
+  /* ADMIN has no profile screen, so this is the only way out of the session on
+     mobile. Same two steps every other sign-out uses. */
+  const handleLogout = () => {
+    logout()
+    router.replace('/')
+  }
+
   // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color="#DC2626" />
-      </View>
+      <Screen>
+        <View style={styles.gutter}>
+          <Rule tick />
+          <View style={{ marginTop: 22, gap: 12 }}>
+            <Skeleton width="26%" height={11} />
+            <Skeleton width="58%" height={26} />
+          </View>
+          <View style={{ marginTop: 34, gap: 1 }}>
+            {[0, 1, 2, 3, 4, 5].map(i => (
+              <View key={i} style={styles.loadRow}>
+                <Skeleton width="44%" height={12} />
+                <Skeleton width={38} height={20} />
+              </View>
+            ))}
+          </View>
+        </View>
+      </Screen>
     )
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <View style={styles.screen}>
+    /* The inner ScrollView owns the scrolling, so the Screen is a plain frame. */
+    <Screen scroll={false} grid>
+      <PageHead
+        eyebrow="Admin · Console"
+        title="The whole"
+        accent="register."
+        sub="Every account, hospital, request and shortage reading the platform holds, read straight from the admin endpoints."
+        aside={
+          <Pressable onPress={handleLogout} style={styles.signOut} hitSlop={8}>
+            <LogOut size={12} color={color.mute} strokeWidth={2} />
+            <Text style={styles.signOutText}>Sign out</Text>
+          </Pressable>
+        }
+      />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>ADMIN</Text>
-        <Text style={styles.title}>Dashboard</Text>
-        {stats && stats.pendingVerification > 0 && (
-          <Text style={styles.pendingWarning}>
-            ⚠ {stats.pendingVerification} hospital{stats.pendingVerification > 1 ? 's' : ''} pending verification
-          </Text>
-        )}
+      {/* Tab rail — same chip vocabulary as the donor match filter, so a rail of
+          switches looks the same wherever it appears. */}
+      <View style={styles.railWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.railContent}
+        >
+          {TABS.map(tab => {
+            const active = activeTab === tab
+            const count =
+              tab === 'HOSPITALS' ? hospitals.length
+              : tab === 'USERS' ? users.length
+              : tab === 'REQUESTS' ? requests.length
+              : tab === 'SHORTAGE' ? predictions.length
+              : 0
+            return (
+              <Pressable
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                style={[styles.railChip, active && styles.railChipOn]}
+              >
+                <Text style={[styles.railText, active && styles.railTextOn]}>
+                  {TAB_LABEL[tab]}
+                </Text>
+                {count > 0 && (
+                  <Text style={[styles.railCount, active && { color: color.bloodLite }]}>
+                    {count}
+                  </Text>
+                )}
+              </Pressable>
+            )
+          })}
+        </ScrollView>
       </View>
 
-      {/* Tab bar */}
       <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabBar}
-        contentContainerStyle={styles.tabBarContent}
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}
       >
-        {TABS.map(tab => (
-          <TouchableOpacity
-            key={tab}
-            onPress={() => setActiveTab(tab)}
-            style={[styles.tab, activeTab === tab && styles.tabActive]}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Content */}
-      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 48 }}>
-
         {/* ── OVERVIEW ── */}
         {activeTab === 'OVERVIEW' && stats && (
-          <View style={styles.statsGrid}>
-            {[
-              { label: 'Total Users',          value: stats.totalUsers,           color: '#FFFFFF' },
-              { label: 'Donors',               value: stats.totalDonors,          color: '#4ADE80' },
-              { label: 'Hospitals',            value: stats.totalHospitals,       color: '#60A5FA' },
-              { label: 'Blood Requests',       value: stats.totalRequests,        color: '#DC2626' },
-              { label: 'Total Matches',        value: stats.totalMatches,         color: '#C084FC' },
-              { label: 'Pending Verification', value: stats.pendingVerification,  color: '#FACC15' },
-            ].map(({ label, value, color }) => (
-              <View key={label} style={styles.statCard}>
-                <Text style={styles.statLabel}>{label.toUpperCase()}</Text>
-                <Text style={[styles.statValue, { color }]}>{value}</Text>
-              </View>
-            ))}
+          <View style={styles.gutter}>
+            {stats.pendingVerification > 0 && (
+              /* Was a ⚠ text glyph in the header. It belongs with the thing it
+                 is about, and it now takes you there — the tap only sets the
+                 tab state that already exists. */
+              <Pressable onPress={() => setActiveTab('HOSPITALS')}>
+                <Notice tone={unverifiedTone} icon={TriangleAlert} style={{ marginBottom: 26 }}>
+                  {stats.pendingVerification} hospital
+                  {stats.pendingVerification > 1 ? 's' : ''} waiting on verification. Tap to review.
+                </Notice>
+              </Pressable>
+            )}
+
+            {/* The headline figure gets the size; the rest is a ledger of
+                hairline rows. Six equal cards in a grid say nothing about which
+                number matters. */}
+            <Label loud>Accounts on the platform</Label>
+            <Text style={styles.bigFigure}>{stats.totalUsers}</Text>
+
+            <View style={{ marginTop: 26 }}>
+              <LedgerRow label="Donors" value={stats.totalDonors} tint={color.lifeLite} />
+              <LedgerRow label="Hospitals" value={stats.totalHospitals} />
+              <LedgerRow label="Blood requests" value={stats.totalRequests} tint={color.bloodLite} />
+              <LedgerRow label="Matches created" value={stats.totalMatches} />
+              <LedgerRow
+                label="Pending verification"
+                value={stats.pendingVerification}
+                tint={stats.pendingVerification > 0 ? color.warnLite : undefined}
+              />
+            </View>
+
+            <Rule style={{ marginTop: 28 }} />
+            <Text style={styles.footnote}>
+              Counts are whole-table totals, not a window. Nothing here is filtered by date.
+            </Text>
           </View>
         )}
 
         {/* ── HOSPITALS ── */}
         {activeTab === 'HOSPITALS' && (
-          <View style={styles.list}>
-            {hospitals.map(hospital => {
-              const verPill: PillStyle = hospital.verified
-                ? { bg: 'rgba(74,222,128,0.1)', border: 'rgba(74,222,128,0.2)', text: '#4ADE80' }
-                : { bg: 'rgba(250,204,21,0.1)', border: 'rgba(250,204,21,0.2)', text: '#FACC15' }
-
-              return (
-                <View key={hospital.id} style={styles.card}>
-                  <View style={styles.cardBody}>
-                    <View style={styles.rowWrap}>
-                      <Text style={styles.cardTitle}>{hospital.name}</Text>
-                      <Pill s={verPill} label={hospital.verified ? 'Verified' : 'Pending'} />
-                    </View>
-                    <Text style={styles.cardSub}>{hospital.address}</Text>
-                    <Text style={styles.cardMeta}>
-                      License: {hospital.licenseNo} · {hospital.user.city} · {hospital.requests.length} requests
-                    </Text>
-                  </View>
-                  <TouchableOpacity
+          <View>
+            {hospitals.length === 0 ? (
+              <EmptyState
+                icon={Building2}
+                title="No hospitals registered"
+                body="A hospital appears here as soon as it registers, and stays unverified until you verify it."
+                style={styles.emptyInset}
+              />
+            ) : (
+              hospitals.map(hospital => (
+                <View key={hospital.id} style={styles.row}>
+                  <View
                     style={[
-                      styles.verifyBtn,
-                      hospital.verified ? styles.verifyBtnRevoke : styles.verifyBtnVerify,
+                      styles.edge,
+                      { backgroundColor: hospital.verified ? color.life : color.warn },
                     ]}
-                    onPress={() => toggleVerify(hospital.id)}
-                    disabled={verifyingId === hospital.id}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[
-                      styles.verifyBtnText,
-                      { color: hospital.verified ? '#F87171' : '#4ADE80' }
-                    ]}>
-                      {verifyingId === hospital.id ? '...' : hospital.verified ? 'Revoke' : 'Verify'}
-                    </Text>
-                  </TouchableOpacity>
+                  />
+                  <View style={styles.rowBody}>
+                    <View style={styles.rowTop}>
+                      <Text style={styles.rowTitle} numberOfLines={1}>{hospital.name}</Text>
+                      <Chip tone={hospital.verified ? verifiedTone : unverifiedTone} />
+                    </View>
+
+                    <Text style={styles.rowSub} numberOfLines={1}>{hospital.address}</Text>
+
+                    <View style={styles.metaRow}>
+                      <Text style={styles.metaMono}>{hospital.licenseNo}</Text>
+                      <View style={styles.metaDot} />
+                      <Text style={styles.meta}>{hospital.user.city}</Text>
+                      <View style={styles.metaDot} />
+                      <Text style={styles.meta}>
+                        {hospital.requests.length} request{hospital.requests.length !== 1 ? 's' : ''}
+                      </Text>
+                    </View>
+
+                    <Button
+                      tone={hospital.verified ? 'ghost' : 'affirm'}
+                      size="sm"
+                      icon={hospital.verified ? Ban : ShieldCheck}
+                      busy={verifyingId === hospital.id}
+                      disabled={verifyingId === hospital.id}
+                      onPress={() => toggleVerify(hospital.id)}
+                      style={{ alignSelf: 'flex-start', marginTop: 13 }}
+                    >
+                      {hospital.verified ? 'Revoke verification' : 'Verify hospital'}
+                    </Button>
+                  </View>
                 </View>
-              )
-            })}
+              ))
+            )}
           </View>
         )}
 
         {/* ── USERS ── */}
         {activeTab === 'USERS' && (
-          <View style={styles.list}>
+          <View style={styles.gutter}>
+            <SectionLabel index="01" aside={<Label>{`${users.length} total`}</Label>}>
+              Accounts
+            </SectionLabel>
             {users.map(u => {
-              const rp = roleStyle[u.role] ?? roleStyle.DONOR
+              const rt = toneFor(roleTone, u.role)
               return (
-                <View key={u.id} style={[styles.card, { alignItems: 'center' }]}>
-                  <View style={styles.cardBody}>
-                    <View style={styles.rowWrap}>
-                      <Text style={styles.cardTitle}>{u.name || '—'}</Text>
-                      <Pill s={rp} label={u.role} />
+                <View key={u.id} style={styles.userRow}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.rowTitle} numberOfLines={1}>{u.name || '—'}</Text>
+                    <Text style={styles.rowSub} numberOfLines={1}>{u.email}</Text>
+                    <View style={styles.metaRow}>
+                      <Text style={styles.meta}>{u.city}</Text>
+                      <View style={styles.metaDot} />
+                      <Text style={styles.metaMono}>
+                        {new Date(u.createdAt).toLocaleDateString()}
+                      </Text>
                     </View>
-                    <Text style={styles.cardMeta}>{u.email} · {u.city}</Text>
                   </View>
-                  <Text style={styles.cardMeta}>
-                    {new Date(u.createdAt).toLocaleDateString()}
-                  </Text>
+                  <Chip tone={rt} />
                 </View>
               )
             })}
@@ -272,26 +354,39 @@ export default function AdminDashboard() {
 
         {/* ── REQUESTS ── */}
         {activeTab === 'REQUESTS' && (
-          <View style={styles.list}>
+          <View>
             {requests.map(req => {
-              const up = urgencyStyle[req.urgency] ?? urgencyStyle.NORMAL
-              const sp = statusStyle[req.status]  ?? statusStyle.PENDING
+              const up = toneFor(urgencyTone, req.urgency)
+              const sp = toneFor(statusTone, req.status)
               return (
-                <View key={req.id} style={styles.card}>
-                  <View style={styles.cardBody}>
-                    <View style={styles.rowWrap}>
-                      <Text style={styles.bloodLabel}>
-                        {bloodGroupLabels[req.bloodGroup] || req.bloodGroup}
-                      </Text>
-                      <Pill s={up} label={req.urgency} />
-                      <Pill s={sp} label={req.status}  />
+                <View key={req.id} style={styles.row}>
+                  <View style={[styles.edge, { backgroundColor: sp.fg }]} />
+                  <View style={styles.rowBody}>
+                    <View style={styles.reqTop}>
+                      <Text style={styles.reqGroup}>{bloodLabel(req.bloodGroup)}</Text>
+                      <View style={styles.reqChips}>
+                        <Chip tone={up} />
+                        <Chip tone={sp} />
+                      </View>
                     </View>
-                    <Text style={styles.cardSub}>
+
+                    <Text style={styles.rowSub} numberOfLines={1}>
                       {req.hospital.name} · {req.hospital.user.city}
                     </Text>
-                    <Text style={styles.cardMeta}>
-                      {req.units} unit{req.units > 1 ? 's' : ''} · {req.matches.length} match{req.matches.length !== 1 ? 'es' : ''} · {new Date(req.createdAt).toLocaleDateString()}
-                    </Text>
+
+                    <View style={styles.metaRow}>
+                      <Text style={styles.metaMono}>
+                        {req.units} unit{req.units > 1 ? 's' : ''}
+                      </Text>
+                      <View style={styles.metaDot} />
+                      <Text style={styles.meta}>
+                        {req.matches.length} match{req.matches.length !== 1 ? 'es' : ''}
+                      </Text>
+                      <View style={{ flex: 1 }} />
+                      <Text style={styles.metaMono}>
+                        {new Date(req.createdAt).toLocaleDateString()}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               )
@@ -301,116 +396,162 @@ export default function AdminDashboard() {
 
         {/* ── SHORTAGE ── */}
         {activeTab === 'SHORTAGE' && (
-          <View style={styles.list}>
+          <View style={styles.gutter}>
+            <SectionLabel index="01" aside={<Label>Eight groups</Label>}>
+              Risk by group
+            </SectionLabel>
             {predictions.map((pred) => {
-              const rp = riskStyle[pred.risk] ?? riskStyle.LOW
+              const rp = toneFor(riskTone, pred.risk)
               return (
-                <View key={pred.bloodGroup} style={[styles.card, { alignItems: 'center' }]}>
-                  <View style={styles.bloodIcon}>
-                    <Text style={styles.bloodIconText}>
-                      {bloodGroupLabels[pred.bloodGroup]}
+                <View key={pred.bloodGroup} style={styles.predRow}>
+                  <View style={[styles.groupTile, { borderColor: rp.border, backgroundColor: rp.bg }]}>
+                    <Text style={[styles.groupTileText, { color: rp.fg }]}>
+                      {bloodLabel(pred.bloodGroup)}
                     </Text>
                   </View>
-                  <View style={[styles.cardBody, { flex: 1 }]}>
-                    <Text style={styles.cardTitle}>{bloodGroupLabels[pred.bloodGroup]}</Text>
-                    <Text style={styles.cardMeta}>
-                      {pred.requestCount} requests · {pred.donorCount} donors · ratio {pred.ratio}
-                    </Text>
+
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Chip tone={rp} />
+                    <View style={[styles.metaRow, { marginTop: 9 }]}>
+                      <Text style={styles.metaMono}>{pred.requestCount}</Text>
+                      <Text style={styles.meta}>requests</Text>
+                      <View style={styles.metaDot} />
+                      <Text style={styles.metaMono}>{pred.donorCount}</Text>
+                      <Text style={styles.meta}>donors</Text>
+                    </View>
                   </View>
-                  <Pill s={rp} label={pred.risk} bold />
+
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.ratio}>{pred.ratio}</Text>
+                    <Label>Ratio</Label>
+                  </View>
                 </View>
               )
             })}
+
+            <Rule style={{ marginTop: 26 }} />
+            <Text style={styles.footnote}>
+              Ratio is requests against available donors for that group. The prediction service
+              serves these; if it is down the list comes back empty.
+            </Text>
           </View>
         )}
-
       </ScrollView>
-    </View>
+    </Screen>
   )
 }
 
-// ── Pill helper ──────────────────────────────────────────────────────────────
-function Pill({ s, label, bold }: { s: PillStyle; label: string; bold?: boolean }) {
+/** One line of the overview ledger: name left, figure right, hairline above. */
+function LedgerRow({
+  label, value, tint,
+}: { label: string; value: number; tint?: string }) {
   return (
-    <View style={[styles.pill, { backgroundColor: s.bg, borderColor: s.border }]}>
-      <Text style={[styles.pillText, { color: s.text }, bold && { fontWeight: '700' }]}>
-        {label}
-      </Text>
+    <View style={styles.ledgerRow}>
+      <Text style={styles.ledgerLabel}>{label}</Text>
+      <View style={styles.ledgerFill} />
+      <Text style={[styles.ledgerValue, tint ? { color: tint } : null]}>{value}</Text>
     </View>
   )
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  screen:  { flex: 1, backgroundColor: '#0A0A0A' },
-  center:  { flex: 1, backgroundColor: '#0A0A0A', alignItems: 'center', justifyContent: 'center' },
+  gutter: { paddingHorizontal: 20 },
+  content: { paddingTop: 22 },
+  emptyInset: { marginHorizontal: 20 },
 
-  // Header
-  header:          { paddingHorizontal: 24, paddingTop: 48, paddingBottom: 16 },
-  eyebrow:         { color: '#6B7280', fontSize: 11, letterSpacing: 2, marginBottom: 4 },
-  title:           { color: '#FFFFFF', fontSize: 28, fontWeight: '700' },
-  pendingWarning:  { color: '#FACC15', fontSize: 13, marginTop: 6 },
-
-  // Tabs
-  tabBar:        { borderBottomWidth: 1, borderBottomColor: '#222', flexGrow: 0 },
-  tabBarContent: { paddingHorizontal: 20, gap: 4 },
-  tab:           { paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabActive:     { borderBottomColor: '#DC2626' },
-  tabText:       { color: '#6B7280', fontSize: 13, fontWeight: '500' },
-  tabTextActive: { color: '#FFFFFF' },
-
-  // Content
-  content: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
-
-  // Stats grid
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  statCard:  {
-    width: '47.5%',
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 12,
-    padding: 16,
+  signOut: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
+  signOutText: {
+    fontFamily: font.mono.medium, fontSize: 9.5, color: color.mute,
+    letterSpacing: 1.4, textTransform: 'uppercase',
   },
-  statLabel: { color: '#6B7280', fontSize: 10, letterSpacing: 1.5, marginBottom: 8 },
-  statValue: { fontSize: 28, fontWeight: '700' },
 
-  // Cards
-  list:     { gap: 10 },
-  card:     {
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    gap: 12,
+  loadRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderTopWidth: 1, borderTopColor: color.lineSoft, paddingVertical: 17,
   },
-  cardBody: { flex: 1, gap: 4 },
-  rowWrap:  { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 2 },
-  cardTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
-  cardSub:   { color: '#9CA3AF', fontSize: 12 },
-  cardMeta:  { color: '#6B7280', fontSize: 11 },
 
-  // Blood label (requests tab)
-  bloodLabel: { color: '#DC2626', fontSize: 18, fontWeight: '700' },
+  // Tab rail
+  railWrap: { borderBottomWidth: 1, borderBottomColor: color.line },
+  railContent: { paddingHorizontal: 20, paddingBottom: 14, gap: 7 },
+  railChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    borderWidth: 1, borderColor: color.line, backgroundColor: color.surface,
+    borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 7,
+  },
+  railChipOn: { backgroundColor: wash.blood, borderColor: wash.bloodEdge },
+  railText: {
+    fontFamily: font.mono.regular, fontSize: 10, color: color.mute,
+    letterSpacing: 1.2, textTransform: 'uppercase',
+  },
+  railTextOn: { fontFamily: font.mono.medium, color: color.bone },
+  railCount: {
+    fontFamily: font.mono.medium, fontSize: 10, color: color.faint,
+    fontVariant: ['tabular-nums'],
+  },
 
-  // Verify button
-  verifyBtn:       { alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
-  verifyBtnVerify: { backgroundColor: 'rgba(74,222,128,0.1)', borderColor: 'rgba(74,222,128,0.2)' },
-  verifyBtnRevoke: { backgroundColor: 'transparent', borderColor: '#2A2A2A' },
-  verifyBtnText:   { fontSize: 12, fontWeight: '500' },
+  // Overview
+  bigFigure: {
+    fontFamily: font.mono.medium, fontSize: 52, lineHeight: 56, color: color.bone,
+    letterSpacing: -3, fontVariant: ['tabular-nums'], marginTop: 6,
+  },
+  ledgerRow: {
+    flexDirection: 'row', alignItems: 'baseline', gap: 10,
+    borderTopWidth: 1, borderTopColor: color.lineSoft, paddingVertical: 15,
+  },
+  ledgerLabel: { fontFamily: font.sans.regular, fontSize: 13.5, color: color.mute },
+  ledgerFill: { flex: 1, height: 1, backgroundColor: color.lineSoft, alignSelf: 'center' },
+  ledgerValue: {
+    fontFamily: font.mono.medium, fontSize: 19, color: color.bone,
+    letterSpacing: -0.8, fontVariant: ['tabular-nums'],
+  },
 
-  // Blood icon (shortage tab)
-  bloodIcon:     {
-    width: 52, height: 52, borderRadius: 10,
-    backgroundColor: 'rgba(220,38,38,0.1)',
-    borderWidth: 1, borderColor: 'rgba(220,38,38,0.2)',
+  // Shared rows
+  row: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: color.lineSoft },
+  edge: { width: 2 },
+  rowBody: { flex: 1, minWidth: 0, paddingHorizontal: 18, paddingVertical: 16 },
+  rowTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  rowTitle: {
+    flex: 1, fontFamily: font.sans.medium, fontSize: 14.5,
+    color: color.bone, letterSpacing: -0.3,
+  },
+  rowSub: { fontFamily: font.sans.regular, fontSize: 12, color: color.mute, marginTop: 5 },
+
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10 },
+  meta: { fontFamily: font.sans.regular, fontSize: 11.5, color: color.faint },
+  metaMono: { fontFamily: font.mono.regular, fontSize: 10.5, color: color.mute },
+  metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: color.faint },
+
+  // Users
+  userRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderTopWidth: 1, borderTopColor: color.lineSoft, paddingVertical: 15,
+  },
+
+  // Requests
+  reqTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  reqGroup: {
+    fontFamily: font.mono.medium, fontSize: 20, color: color.bloodLite, letterSpacing: -1,
+  },
+  reqChips: { flexDirection: 'row', gap: 6, flex: 1, justifyContent: 'flex-end' },
+
+  // Shortage
+  predRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderTopWidth: 1, borderTopColor: color.lineSoft, paddingVertical: 16,
+  },
+  groupTile: {
+    width: 46, height: 46, borderRadius: radius.md, borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',
   },
-  bloodIconText: { color: '#DC2626', fontSize: 16, fontWeight: '700' },
+  groupTileText: { fontFamily: font.mono.medium, fontSize: 14, letterSpacing: -0.5 },
+  ratio: {
+    fontFamily: font.mono.medium, fontSize: 17, color: color.bone,
+    letterSpacing: -0.6, fontVariant: ['tabular-nums'], marginBottom: 4,
+  },
 
-  // Pill
-  pill:     { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
-  pillText: { fontSize: 11, fontWeight: '500' },
+  footnote: {
+    fontFamily: font.sans.regular, fontSize: 11.5, lineHeight: 17,
+    color: color.faint, marginTop: 13,
+  },
 })

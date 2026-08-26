@@ -1,9 +1,8 @@
 // app/index.tsx
-import { useEffect, useRef, useState } from 'react'
-import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Easing
-} from 'react-native'
+import { useEffect, useState } from 'react'
+import { View, Text, StyleSheet } from 'react-native'
 import { Link } from 'expo-router'
+import { ArrowRight, Siren, TriangleAlert } from 'lucide-react-native'
 import api from '../src/lib/api'
 import WeeklyHeroes from '../src/components/WeeklyHeroes'
 import CityStats from '../src/components/CityStats'
@@ -12,7 +11,10 @@ import { useNetwork } from '../src/hooks/useNetwork'
 import { saveCache, loadCache } from '../src/lib/cache'
 import OfflineBanner from '../src/components/OfflineBanner'
 
-const bloodGroups = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−']
+import {
+  Screen, SectionLabel, Panel, Chip, LiveDot, Stat, Button, TextAction, Label, Rule,
+} from '../src/components/fk'
+import { color, font, radius, riskTone, toneFor, bloodLabel, BLOOD_GROUPS } from '../src/theme'
 
 const steps = [
   {
@@ -48,24 +50,10 @@ function formatCount(n: number) {
   return `${n.toLocaleString('en-US')}+`
 }
 
-function usePulse() {
-  const pulse = useRef(new Animated.Value(1)).current
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 0.35, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    ).start()
-  }, [])
-  return pulse
-}
-
 export default function LandingScreen() {
   const [stats, setStats] = useState<PublicStats | null>(null)
   const [statsStatus, setStatsStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [shortage, setShortage] = useState<ShortagePrediction[]>([])
-  const pulse = usePulse()
 
   const { isOnline } = useNetwork()
   const [cacheTime, setCacheTime] = useState<number | null>(null)
@@ -146,21 +134,42 @@ export default function LandingScreen() {
 
   const loadingStats = statsStatus === 'loading'
 
+  /**
+   * Which lattice cells to mark. Built from the shortage response, so a marked
+   * cell always means the engine actually flagged that group — nothing is
+   * highlighted for visual balance. Compared on display labels because
+   * /api/map/shortage has been seen returning both the Prisma enum (`A_POS`)
+   * and the display form; bloodLabel() is a no-op on the latter.
+   */
+  const flagged = new Map(shortage.map((p) => [bloodLabel(p.bloodGroup), p.risk]))
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-
-      {!isOnline && <OfflineBanner lastUpdated={cacheTime} />}
-
-      {/* Hero */}
-      <View style={styles.hero}>
-        <View style={styles.liveBadge}>
-          <Animated.View style={[styles.liveDot, { opacity: pulse }]} />
-          <Text style={styles.liveBadgeText}>Live donor matching — Pakistan</Text>
+    <Screen>
+      {!isOnline && (
+        <View style={styles.gutter}>
+          <OfflineBanner lastUpdated={cacheTime} />
         </View>
+      )}
+
+      {/* ---- Masthead. Small, ranged left, with the live indicator opposite —
+              the app names itself once and then gets out of the way. ---- */}
+      <View style={[styles.gutter, styles.masthead]}>
+        <Text style={styles.wordmark}>
+          <Text style={styles.wordmarkAccent}>Fori</Text>Khoon
+        </Text>
+        <View style={styles.liveWrap}>
+          <LiveDot />
+          <Label>Live · Pakistan</Label>
+        </View>
+      </View>
+
+      {/* ---- Hero ---- */}
+      <View style={[styles.gutter, styles.hero]}>
+        <Rule tick style={{ marginBottom: 22 }} />
 
         <Text style={styles.heroTitle}>
-          The right blood,{'\n'}
-          <Text style={styles.heroTitleAccent}>at the right time.</Text>
+          The right blood,{'\n'}at the{' '}
+          <Text style={styles.heroTitleAccent}>right time.</Text>
         </Text>
 
         <Text style={styles.heroSub}>
@@ -170,218 +179,282 @@ export default function LandingScreen() {
 
         <View style={styles.heroActions}>
           <Link href="/register?role=donor" asChild>
-            <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85}>
-              <Text style={styles.primaryBtnText}>Become a donor</Text>
-            </TouchableOpacity>
+            <Button tone="primary" size="lg" icon={ArrowRight} full>Become a donor</Button>
           </Link>
-          <Link href="/register?role=hospital" asChild>
-            <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.8}>
-              <Text style={styles.secondaryBtnText}>Register your hospital</Text>
-            </TouchableOpacity>
-          </Link>
-          <Link href="/requests" asChild>
-            <TouchableOpacity style={styles.tertiaryBtn} activeOpacity={0.8}>
-              <Text style={styles.tertiaryBtnText}>Active Requests →</Text>
-            </TouchableOpacity>
-          </Link>
+
+          <View style={styles.heroRow}>
+            <Link href="/register?role=hospital" asChild>
+              <TextAction>Register a hospital</TextAction>
+            </Link>
+            <View style={styles.heroRowDivider} />
+            <Link href="/requests" asChild>
+              <TextAction tint={color.bloodLite}>Active requests</TextAction>
+            </Link>
+          </View>
         </View>
       </View>
 
-      {/* Stats */}
-      <View style={styles.statsSection}>
+      {/* ---- Stats band. Ruled top and bottom, figures split by hairlines, so
+              it reads as a table of record rather than three feature cards. ---- */}
+      <View style={styles.statsBand}>
         <View style={styles.statsRow}>
-          <StatBlock value={stats ? formatCount(stats.totalDonors) : '—'} label="Donors Registered" loading={loadingStats} />
-          <StatBlock value={stats ? formatCount(stats.totalHospitals) : '—'} label="Hospitals Connected" loading={loadingStats} />
-          <StatBlock value={stats ? formatCount(stats.totalMatches) : '—'} label="Successful Matches" loading={loadingStats} />
+          <Stat
+            value={stats ? formatCount(stats.totalDonors) : '—'}
+            label={'Donors\nregistered'}
+            loading={loadingStats}
+            style={styles.statCell}
+          />
+          <View style={styles.statDivider} />
+          <Stat
+            value={stats ? formatCount(stats.totalHospitals) : '—'}
+            label={'Hospitals\nconnected'}
+            loading={loadingStats}
+            style={styles.statCell}
+          />
+          <View style={styles.statDivider} />
+          <Stat
+            value={stats ? formatCount(stats.totalMatches) : '—'}
+            label={'Matches\ncompleted'}
+            loading={loadingStats}
+            style={styles.statCell}
+          />
         </View>
+
         {statsStatus === 'error' && (
-          <Text style={styles.statsError}>Live stats are temporarily unavailable. Showing last known data.</Text>
+          <Text style={styles.statsError}>
+            Live figures are unavailable right now. Showing the last values this device stored.
+          </Text>
         )}
       </View>
 
-      {/* Shortage alert */}
+      {/* ---- Shortage. Only rendered when the engine returned CRITICAL or HIGH
+              groups, so an empty band never implies "all clear". ---- */}
       {shortage.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.shortageHeader}>
-            <Animated.View style={[styles.shortageDot, { opacity: pulse }]} />
-            <Text style={styles.shortageEyebrow}>Shortage Alert</Text>
-          </View>
-          <View style={styles.shortageRow}>
-            {shortage.map((pred) => {
-              const critical = pred.risk === 'CRITICAL'
-              return (
-                <View
-                  key={pred.bloodGroup}
-                  style={[
-                    styles.shortagePill,
-                    {
-                      backgroundColor: critical ? 'rgba(248,113,113,0.1)' : 'rgba(251,146,60,0.1)',
-                      borderColor: critical ? 'rgba(248,113,113,0.25)' : 'rgba(251,146,60,0.25)'
-                    },
-                  ]}
-                >
-                  <Text style={[styles.shortagePillGroup, { color: critical ? '#F87171' : '#FB923C' }]}>
-                    {pred.bloodGroup}
-                  </Text>
-                  <Text style={styles.shortagePillRisk}>{pred.risk}</Text>
-                </View>
-              )
-            })}
-          </View>
-          <Link href="/register?role=donor" asChild>
-            <TouchableOpacity style={styles.shortageLink}>
-              <Text style={styles.shortageLinkText}>Donate now →</Text>
-            </TouchableOpacity>
-          </Link>
+        <View style={[styles.gutter, styles.section]}>
+          <SectionLabel index="01" aside={<LiveDot size={5} />}>Shortage forecast</SectionLabel>
+
+          <Panel>
+            <View style={styles.shortageHead}>
+              <TriangleAlert size={14} color={color.warnLite} strokeWidth={2} />
+              <Text style={styles.shortageHeadText}>
+                {shortage.length === 1
+                  ? 'One group is projected short'
+                  : `${shortage.length} groups are projected short`}
+              </Text>
+            </View>
+
+            <View style={styles.shortageList}>
+              {shortage.map((pred) => {
+                const tone = toneFor(riskTone, pred.risk)
+                return (
+                  <View key={pred.bloodGroup} style={styles.shortageRow}>
+                    <Text style={[styles.shortageGroup, { color: tone.fg }]}>
+                      {bloodLabel(pred.bloodGroup)}
+                    </Text>
+                    <View style={styles.shortageRule} />
+                    <Chip tone={tone} />
+                  </View>
+                )
+              })}
+            </View>
+
+            <Link href="/register?role=donor" asChild>
+              <TextAction tint={color.bloodLite} style={{ marginTop: 18 }}>
+                Register to help ↗
+              </TextAction>
+            </Link>
+          </Panel>
         </View>
       )}
 
-      {/* Weekly heroes */}
-      <View style={styles.section}>
+      {/* ---- Weekly heroes ---- */}
+      <View style={[styles.gutter, styles.section]}>
+        <SectionLabel index="02">This week</SectionLabel>
         <WeeklyHeroes />
       </View>
 
-      {/* Blood groups */}
-      <View style={styles.section}>
-        <Text style={styles.eyebrow}>Blood groups we match</Text>
-        <View style={styles.bloodGrid}>
-          {bloodGroups.map((bg) => (
-            <View key={bg} style={styles.bloodCard}>
-              <Text style={styles.bloodCardText}>{bg}</Text>
-            </View>
-          ))}
+      {/* ---- Blood group lattice ---- */}
+      <View style={[styles.gutter, styles.section]}>
+        <SectionLabel index="03">Groups we match</SectionLabel>
+
+        <View style={styles.lattice}>
+          {BLOOD_GROUPS.map((group) => {
+            const display = bloodLabel(group)
+            const risk = flagged.get(display)
+            const tone = risk ? toneFor(riskTone, risk) : null
+            return (
+              <View
+                key={group}
+                style={[styles.latticeCell, tone && { borderColor: tone.border, backgroundColor: tone.bg }]}
+              >
+                <Text style={[styles.latticeText, tone && { color: tone.fg }]}>{display}</Text>
+                {tone && <View style={[styles.latticeTick, { backgroundColor: tone.fg }]} />}
+              </View>
+            )
+          })}
         </View>
-      </View>
 
-      {/* City activity */}
-      <View style={styles.section}>
-        <Text style={styles.eyebrow}>Live city activity</Text>
-        <CityStats />
-      </View>
-
-      {/* How it works */}
-      <View style={styles.section}>
-        <Text style={styles.eyebrow}>How it works</Text>
-        <View style={styles.stepsWrap}>
-          {steps.map((step) => (
-            <View key={step.num} style={styles.stepCard}>
-              <Text style={styles.stepNum}>{step.num}</Text>
-              <Text style={styles.stepLabel}>{step.label}</Text>
-              <Text style={styles.stepDesc}>{step.desc}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* CTA */}
-      <View style={styles.ctaSection}>
-        <Text style={styles.ctaTitle}>Ready to save a life?</Text>
-        <Text style={styles.ctaSub}>Register in two minutes. We handle the matching.</Text>
-        <Link href="/register" asChild>
-          <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.85}>
-            <Text style={styles.ctaBtnText}>Get started</Text>
-          </TouchableOpacity>
-        </Link>
-      </View>
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          <Text style={styles.footerAccent}>Fori</Text>Khoon
+        <Text style={styles.latticeNote}>
+          All eight groups are matched on the compatibility matrix, not on an exact-type rule —
+          an O− donor can answer any request.
         </Text>
       </View>
 
-    </ScrollView>
-  )
-}
+      {/* ---- City activity ---- */}
+      <View style={[styles.gutter, styles.section]}>
+        <SectionLabel index="04">City activity</SectionLabel>
+        <CityStats />
+      </View>
 
-function StatBlock({ value, label, loading }: { value: string; label: string; loading: boolean }) {
-  return (
-    <View style={styles.statBlock}>
-      {loading ? (
-        <View style={styles.statSkeleton} />
-      ) : (
-        <Text style={styles.statValue}>{value}</Text>
-      )}
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
+      {/* ---- How it works. Numbered rows on hairlines — a sequence, which is
+              what it is, rather than three equal cards. ---- */}
+      <View style={[styles.gutter, styles.section]}>
+        <SectionLabel index="05">How it works</SectionLabel>
+
+        <View>
+          {steps.map((step, i) => (
+            <View key={step.num} style={[styles.step, i === 0 && { borderTopWidth: 0, paddingTop: 0 }]}>
+              <Text style={styles.stepNum}>{step.num}</Text>
+              <View style={styles.stepBody}>
+                <Text style={styles.stepLabel}>{step.label}</Text>
+                <Text style={styles.stepDesc}>{step.desc}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* ---- Closing call. Left-aligned against a red rule; a centred stack
+              with a glow behind it is the shape this design set out to avoid. ---- */}
+      <View style={[styles.gutter, styles.cta]}>
+        <View style={styles.ctaRule} />
+        <Text style={styles.ctaTitle}>
+          Two minutes now.{'\n'}
+          <Text style={styles.ctaTitleAccent}>An instant match later.</Text>
+        </Text>
+        <Text style={styles.ctaSub}>
+          Register once with your group and city. From then on the matching is automatic — you
+          only hear from us when a nearby hospital posts a request you can actually answer.
+        </Text>
+        <Link href="/register" asChild>
+          <Button tone="primary" size="lg" icon={Siren} style={{ marginTop: 22 }}>
+            Get started
+          </Button>
+        </Link>
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={styles.footerMark}>
+          <Text style={styles.wordmarkAccent}>Fori</Text>Khoon
+        </Text>
+        <Label>Dera Ismail Khan</Label>
+      </View>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0A0A0A' },
-  content: { paddingBottom: 48 },
+  gutter: { paddingHorizontal: 20 },
+  section: { paddingTop: 34 },
+
+  // Masthead
+  masthead: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingTop: 6, paddingBottom: 30,
+  },
+  wordmark: { fontFamily: font.sans.semibold, fontSize: 15, color: color.bone, letterSpacing: -0.3 },
+  wordmarkAccent: { color: color.blood },
+  liveWrap: { flexDirection: 'row', alignItems: 'center', gap: 7 },
 
   // Hero
-  hero: { padding: 24, paddingTop: 32 },
-  liveBadge: {
-    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start',
-    backgroundColor: 'rgba(220,38,38,0.1)', borderWidth: 1, borderColor: 'rgba(220,38,38,0.25)',
-    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 20,
+  hero: { paddingBottom: 36 },
+  heroTitle: {
+    fontFamily: font.sans.semibold, fontSize: 36, lineHeight: 41,
+    letterSpacing: -1.4, color: color.bone,
   },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#DC2626', marginRight: 7 },
-  liveBadgeText: { color: '#F87171', fontSize: 11.5, fontWeight: '600' },
-
-  heroTitle: { color: '#FFFFFF', fontSize: 38, fontWeight: '800', lineHeight: 44, marginBottom: 14 },
-  heroTitleAccent: { color: '#DC2626' },
-  heroSub: { color: '#9CA3AF', fontSize: 15, lineHeight: 22, marginBottom: 24 },
-
-  heroActions: { gap: 10 },
-  primaryBtn: { backgroundColor: '#DC2626', borderRadius: 10, paddingVertical: 15, alignItems: 'center' },
-  primaryBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-  secondaryBtn: { backgroundColor: '#141414', borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 10, paddingVertical: 15, alignItems: 'center' },
-  secondaryBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
-  tertiaryBtn: { backgroundColor: '#141414', borderWidth: 1, borderColor: 'rgba(220,38,38,0.3)', borderRadius: 10, paddingVertical: 15, alignItems: 'center' },
-  tertiaryBtnText: { color: '#F87171', fontSize: 15, fontWeight: '600' },
+  heroTitleAccent: {
+    fontFamily: font.serif.italic, fontSize: 40, lineHeight: 41,
+    color: color.bloodLite, letterSpacing: -0.5,
+  },
+  heroSub: {
+    fontFamily: font.sans.regular, fontSize: 14.5, lineHeight: 22,
+    color: color.mute, marginTop: 16, maxWidth: 420,
+  },
+  heroActions: { marginTop: 28, gap: 18 },
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  heroRowDivider: { width: 1, height: 11, backgroundColor: color.line },
 
   // Stats
-  statsSection: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#1A1A1A', paddingVertical: 24, marginBottom: 8 },
-  statsRow: { flexDirection: 'row', paddingHorizontal: 20 },
-  statBlock: { flex: 1, alignItems: 'center' },
-  statValue: { color: '#FFFFFF', fontSize: 24, fontWeight: '800', marginBottom: 4 },
-  statSkeleton: { width: 60, height: 24, backgroundColor: '#1A1A1A', borderRadius: 6, marginBottom: 4 },
-  statLabel: { color: '#9CA3AF', fontSize: 11.5, textAlign: 'center' },
-  statsError: { color: '#6B7280', fontSize: 11, textAlign: 'center', marginTop: 12, paddingHorizontal: 20 },
-
-  // Generic section
-  section: { paddingHorizontal: 20, paddingVertical: 24 },
-  eyebrow: { color: '#6B7280', fontSize: 11, letterSpacing: 1.5, fontWeight: '600', marginBottom: 14 },
+  statsBand: {
+    borderTopWidth: 1, borderBottomWidth: 1, borderColor: color.line,
+    paddingVertical: 24, marginTop: 4,
+  },
+  statsRow: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 20 },
+  statCell: { flex: 1 },
+  statDivider: { width: 1, alignSelf: 'stretch', backgroundColor: color.lineSoft, marginHorizontal: 14 },
+  statsError: {
+    fontFamily: font.sans.regular, fontSize: 11.5, lineHeight: 17,
+    color: color.faint, paddingHorizontal: 20, paddingTop: 16,
+  },
 
   // Shortage
-  shortageHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  shortageDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#DC2626', marginRight: 8 },
-  shortageEyebrow: { color: '#F87171', fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
-  shortageRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  shortagePill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
-  shortagePillGroup: { fontSize: 14, fontWeight: '700' },
-  shortagePillRisk: { color: '#9CA3AF', fontSize: 10.5 },
-  shortageLink: { alignSelf: 'flex-start' },
-  shortageLinkText: { color: '#9CA3AF', fontSize: 13, fontWeight: '500' },
-
-  // Blood groups grid
-  bloodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  bloodCard: {
-    width: '22%', backgroundColor: '#141414', borderWidth: 1, borderColor: '#222',
-    borderRadius: 10, paddingVertical: 18, alignItems: 'center',
+  shortageHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 18 },
+  shortageHeadText: { fontFamily: font.sans.medium, fontSize: 13.5, color: color.bone, letterSpacing: -0.2 },
+  shortageList: { gap: 13 },
+  shortageRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  shortageGroup: {
+    fontFamily: font.mono.medium, fontSize: 17, letterSpacing: -0.5,
+    minWidth: 44, fontVariant: ['tabular-nums'],
   },
-  bloodCardText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  shortageRule: { flex: 1, height: 1, backgroundColor: color.lineSoft },
+
+  // Lattice
+  lattice: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  latticeCell: {
+    width: '22.6%',
+    aspectRatio: 1.12,
+    borderWidth: 1, borderColor: color.line, backgroundColor: color.surface,
+    borderRadius: radius.md,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  latticeText: {
+    fontFamily: font.mono.medium, fontSize: 15, color: color.bone, letterSpacing: -0.4,
+  },
+  latticeTick: { position: 'absolute', top: 7, right: 7, width: 4, height: 4, borderRadius: 1 },
+  latticeNote: {
+    fontFamily: font.sans.regular, fontSize: 12, lineHeight: 18,
+    color: color.faint, marginTop: 14, maxWidth: 400,
+  },
 
   // Steps
-  stepsWrap: { gap: 12 },
-  stepCard: { backgroundColor: '#141414', borderWidth: 1, borderColor: '#222', borderRadius: 14, padding: 18 },
-  stepNum: { color: '#DC2626', fontSize: 13, fontWeight: '700', marginBottom: 10 },
-  stepLabel: { color: '#FFFFFF', fontSize: 15, fontWeight: '700', marginBottom: 6 },
-  stepDesc: { color: '#9CA3AF', fontSize: 13, lineHeight: 19 },
+  step: {
+    flexDirection: 'row', gap: 16,
+    borderTopWidth: 1, borderTopColor: color.lineSoft,
+    paddingTop: 18, paddingBottom: 18,
+  },
+  stepNum: { fontFamily: font.mono.regular, fontSize: 11, color: color.blood, paddingTop: 3, width: 20 },
+  stepBody: { flex: 1, minWidth: 0 },
+  stepLabel: { fontFamily: font.sans.medium, fontSize: 14.5, color: color.bone, letterSpacing: -0.2 },
+  stepDesc: { fontFamily: font.sans.regular, fontSize: 13, lineHeight: 19, color: color.mute, marginTop: 6 },
 
   // CTA
-  ctaSection: { paddingVertical: 48, paddingHorizontal: 24, alignItems: 'center' },
-  ctaTitle: { color: '#FFFFFF', fontSize: 26, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
-  ctaSub: { color: '#9CA3AF', fontSize: 14, marginBottom: 20, textAlign: 'center' },
-  ctaBtn: { backgroundColor: '#DC2626', borderRadius: 10, paddingHorizontal: 32, paddingVertical: 14 },
-  ctaBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  cta: { paddingTop: 46, paddingBottom: 40 },
+  ctaRule: { width: 34, height: 2, backgroundColor: color.blood, marginBottom: 20 },
+  ctaTitle: {
+    fontFamily: font.sans.semibold, fontSize: 24, lineHeight: 30,
+    letterSpacing: -0.9, color: color.bone,
+  },
+  ctaTitleAccent: { fontFamily: font.serif.italic, fontSize: 27, color: color.bloodLite },
+  ctaSub: {
+    fontFamily: font.sans.regular, fontSize: 13.5, lineHeight: 21,
+    color: color.mute, marginTop: 14, maxWidth: 420,
+  },
 
   // Footer
-  footer: { borderTopWidth: 1, borderTopColor: '#1A1A1A', paddingVertical: 20, alignItems: 'center' },
-  footerText: { color: '#6B7280', fontSize: 12 },
-  footerAccent: { color: '#DC2626', fontWeight: '700' },
+  footer: {
+    borderTopWidth: 1, borderTopColor: color.line,
+    marginHorizontal: 20, paddingTop: 20,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  footerMark: { fontFamily: font.sans.medium, fontSize: 13, color: color.mute },
 })

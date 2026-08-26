@@ -4,15 +4,16 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
+  Pressable,
   Switch,
   Platform,
   KeyboardAvoidingView,
 } from 'react-native'
 import { router } from 'expo-router'
+import {
+  ArrowLeft, ArrowUpRight, CalendarDays, Check, CircleCheck, LogOut, MapPin,
+  TriangleAlert,
+} from 'lucide-react-native'
 import { useAuthStore } from '../../src/store/authStore'
 import api from '../../src/lib/api'
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker'
@@ -20,14 +21,16 @@ import { useNetwork } from '../../src/hooks/useNetwork'
 import { saveCache, loadCache } from '../../src/lib/cache'
 import OfflineBanner from '../../src/components/OfflineBanner'
 
-const bloodGroups = ['A_POS', 'A_NEG', 'B_POS', 'B_NEG', 'AB_POS', 'AB_NEG', 'O_POS', 'O_NEG']
-const bloodGroupLabels: Record<string, string> = {
-  A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
-  AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−',
-}
+import {
+  Screen, PageHead, Panel, Field, Input, Button, Notice, Rule, Label, SectionLabel,
+  Skeleton, TextAction, LiveDot,
+} from '../../src/components/fk'
+import {
+  color, wash, font, radius, statusTone, toneFor, bloodLabel, BLOOD_GROUPS,
+} from '../../src/theme'
 
 export default function DonorProfileScreen() {
-  const { user } = useAuthStore()
+  const { user, logout } = useAuthStore()
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -171,156 +174,205 @@ export default function DonorProfileScreen() {
   }
 }
 
+  /* Restores the sign-out that lived in the drawer before the bottom bar
+     replaced it. Same two steps the drawer used: clear the store, go home. */
+  const handleLogout = () => {
+    logout()
+    router.replace('/')
+  }
+
   if (loading) {
     return (
-      <View style={styles.centerScreen}>
-        <ActivityIndicator color="#DC2626" />
-      </View>
+      <Screen>
+        <View style={styles.gutter}>
+          <Rule tick />
+          <View style={{ marginTop: 22, gap: 12 }}>
+            <Skeleton width="32%" height={11} />
+            <Skeleton width="64%" height={26} />
+          </View>
+          <View style={{ gap: 18, marginTop: 34 }}>
+            <Skeleton width="24%" height={10} />
+            <Skeleton height={46} />
+            <Skeleton height={46} />
+            <Skeleton height={46} />
+          </View>
+        </View>
+      </Screen>
     )
   }
 
+  const errorTone = toneFor(statusTone, 'NO_SHOW')
+  const okTone = toneFor(statusTone, 'FULFILLED')
+
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#0F0F0F' }}
+      style={{ flex: 1, backgroundColor: color.ink }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <Screen keyboardShouldPersistTaps="handled" tail={40}>
+        {!isOnline && (
+          <View style={[styles.gutter, { paddingTop: 10 }]}>
+            <OfflineBanner lastUpdated={cacheTime} />
+          </View>
+        )}
 
-      {!isOnline && <OfflineBanner lastUpdated={cacheTime} />}
-
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* Header */}
-        <TouchableOpacity onPress={() => router.push('/donor/dashboard')} style={styles.backLink}>
-          <Text style={styles.backLinkText}>← Back to dashboard</Text>
-        </TouchableOpacity>
-
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>DONOR</Text>
-          <Text style={styles.title}>Edit Profile</Text>
-          <Text style={styles.subtitle}>Update your personal and donation information.</Text>
+        <View style={[styles.gutter, { paddingTop: 6 }]}>
+          <Pressable
+            onPress={() => router.push('/donor/dashboard')}
+            style={styles.backLink}
+            hitSlop={8}
+          >
+            {/* Was a ← text arrow. */}
+            <ArrowLeft size={13} color={color.mute} strokeWidth={2} />
+            <Text style={styles.backLinkText}>Dashboard</Text>
+          </Pressable>
         </View>
 
-        {error ? (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorBannerText}>{error}</Text>
+        <PageHead
+          eyebrow="Donor · Profile"
+          title="Your details,"
+          accent="kept current."
+          sub="Group, city and location are what a hospital's search reads. Everything else is how they reach you once you accept."
+        />
+
+        <View style={styles.gutter}>
+          {error ? (
+            <Notice tone={errorTone} icon={TriangleAlert} style={{ marginBottom: 22 }}>
+              {error}
+            </Notice>
+          ) : null}
+
+          {success ? (
+            <Notice tone={okTone} icon={CircleCheck} style={{ marginBottom: 22 }}>
+              Profile updated successfully.
+            </Notice>
+          ) : null}
+
+          {/* ── Identity ──────────────────────────────────────────────────── */}
+          <SectionLabel index="01">Identity</SectionLabel>
+
+          <Field label="Full name">
+            <Input value={name} onChangeText={setName} autoCapitalize="words" />
+          </Field>
+
+          <View style={styles.row}>
+            <View style={{ flex: 1 }}>
+              <Field label="Phone">
+                <Input
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="03001234567"
+                  keyboardType="phone-pad"
+                />
+              </Field>
+            </View>
+            <View style={{ width: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Field label="City">
+                <Input value={city} onChangeText={setCity} />
+              </Field>
+            </View>
           </View>
-        ) : null}
 
-        {success ? (
-          <View style={styles.successBanner}>
-            <Text style={styles.successBannerText}>Profile updated successfully.</Text>
-          </View>
-        ) : null}
+          {/* ── Location ──────────────────────────────────────────────────── */}
+          <SectionLabel index="02" style={{ marginTop: 14 }}>Location</SectionLabel>
 
-        {/* Personal info */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Personal Information</Text>
-
-          <Text style={styles.label}>Full name</Text>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            style={styles.input}
-            placeholderTextColor="#6B7280"
-          />
-
-          <Text style={styles.label}>Phone</Text>
-          <TextInput
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="03001234567"
-            keyboardType="phone-pad"
-            style={styles.input}
-            placeholderTextColor="#6B7280"
-          />
-
-          <Text style={styles.label}>City</Text>
-          <TextInput
-            value={city}
-            onChangeText={setCity}
-            style={styles.input}
-            placeholderTextColor="#6B7280"
-          />
-
-          <View style={{ marginBottom: 14 }}>
-            {locationMethod === 'gps' && coords ? (
-              <View style={styles.locationConfirmedBox}>
-                <Text style={styles.locationConfirmedText}>✓ We'll use this to match you with nearby requests</Text>
-                <TouchableOpacity onPress={() => { setLocationMethod(null); setCoords(null) }}>
-                  <Text style={styles.locationSwitchText}>Use a different method</Text>
-                </TouchableOpacity>
+          {locationMethod === 'gps' && coords ? (
+            <Panel tone={okTone}>
+              <View style={styles.confirmRow}>
+                {/* Was a ✓ text glyph. */}
+                <Check size={14} color={color.lifeLite} strokeWidth={2.5} />
+                <Text style={styles.confirmText}>
+                  We&apos;ll use this to match you with nearby requests
+                </Text>
               </View>
-            ) : locationMethod === 'manual' ? (
-              <View>
-                <Text style={styles.label}>Area / neighborhood</Text>
-                <TextInput
+              <Text style={styles.confirmSub}>
+                Coordinates are fuzzed before they are stored — hospitals see a radius, never your
+                doorstep.
+              </Text>
+              <TextAction onPress={() => { setLocationMethod(null); setCoords(null) }}>
+                Use a different method
+              </TextAction>
+            </Panel>
+          ) : locationMethod === 'manual' ? (
+            <View>
+              <Field
+                label="Area / neighbourhood"
+                hint="Leave blank to keep your current saved location."
+              >
+                <Input
                   value={area}
                   onChangeText={setArea}
                   placeholder="Hayatabad, Peshawar"
-                  style={styles.input}
-                  placeholderTextColor="#6B7280"
                 />
-                <Text style={styles.helperTextArea}>Leave blank to keep your current saved location.</Text>
-                <TouchableOpacity onPress={() => setLocationMethod(null)}>
-                  <Text style={styles.locationSwitchText}>Use my location instead</Text>
-                </TouchableOpacity>
+              </Field>
+              <TextAction onPress={() => setLocationMethod(null)}>
+                Use my location instead
+              </TextAction>
+            </View>
+          ) : (
+            <Panel>
+              <View style={styles.promptHead}>
+                <MapPin size={15} color={color.bloodLite} strokeWidth={2} />
+                <Text style={styles.promptTitle}>Update your location</Text>
               </View>
-            ) : (
-              <View style={styles.locationPromptBox}>
-                <Text style={styles.locationPromptTitle}>Update your location</Text>
-                <Text style={styles.locationPromptDesc}>
-                  Share your current location for more accurate matching, or enter your area manually.
-                </Text>
-                <TouchableOpacity style={styles.locationButton} onPress={requestLocation} activeOpacity={0.85}>
-                  <Text style={styles.locationButtonText}>Use My Location</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setLocationMethod('manual')}>
-                  <Text style={styles.locationManualText}>Enter address instead</Text>
-                </TouchableOpacity>
+              <Text style={styles.promptDesc}>
+                Share your current location for more accurate matching, or enter your area
+                manually.
+              </Text>
+              <Button tone="primary" full onPress={requestLocation} style={{ marginTop: 16 }}>
+                Use my location
+              </Button>
+              <TextAction onPress={() => setLocationMethod('manual')} style={{ marginTop: 14 }}>
+                Enter address instead
+              </TextAction>
 
-                {locationError ? (
-                  <Text style={styles.locationErrorText}>
-                    {locationError === 'permission_denied'
-                      ? "We couldn't access your location. You can try again or enter your address manually."
-                      : 'Something went wrong getting your location. Please enter your address instead.'}
-                  </Text>
-                ) : null}
-              </View>
-            )}
-          </View> 
-        </View>
+              {locationError ? (
+                <Notice tone={errorTone} icon={TriangleAlert} style={{ marginTop: 16 }}>
+                  {locationError === 'permission_denied'
+                    ? "We couldn't access your location. You can try again or enter your address manually."
+                    : 'Something went wrong getting your location. Please enter your address instead.'}
+                </Notice>
+              ) : null}
+            </Panel>
+          )}
 
-        {/* Donation info */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Donation Information</Text>
+          {/* ── Donation ──────────────────────────────────────────────────── */}
+          <SectionLabel index="03" style={{ marginTop: 32 }}>Donation</SectionLabel>
 
-          <Text style={styles.label}>
-            Blood group <Text style={styles.optional}>(optional)</Text>
-          </Text>
-          <View style={styles.bloodGrid}>
-            {bloodGroups.map((bg) => {
+          <View style={styles.labelRow}>
+            <Label loud>Blood group</Label>
+            <Label>Optional</Label>
+          </View>
+
+          <View style={styles.lattice}>
+            {BLOOD_GROUPS.map((bg) => {
               const active = bloodGroup === bg
               return (
-                <TouchableOpacity
+                <Pressable
                   key={bg}
                   onPress={() => setBloodGroup(active ? '' : bg)}
-                  style={[styles.bloodButton, active && styles.bloodButtonActive]}
+                  style={[styles.latticeCell, active && styles.latticeCellOn]}
                 >
-                  <Text style={[styles.bloodButtonText, active && styles.bloodButtonTextActive]}>
-                    {bloodGroupLabels[bg]}
+                  <Text style={[styles.latticeText, active && styles.latticeTextOn]}>
+                    {bloodLabel(bg)}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               )
             })}
           </View>
+          <Text style={styles.latticeNote}>Tap the selected group again to clear it.</Text>
 
-          <Text style={[styles.label, { marginTop: 16 }]}>
-            Last donated <Text style={styles.optional}>(optional)</Text>
-          </Text>
-          <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
-            <Text style={{ color: lastDonated ? '#FFFFFF' : '#6B7280', fontSize: 14 }}>
+          <View style={[styles.labelRow, { marginTop: 24 }]}>
+            <Label loud>Last donated</Label>
+            <Label>Optional</Label>
+          </View>
+          <Pressable style={styles.dateRow} onPress={() => setShowDatePicker(true)}>
+            <CalendarDays size={14} color={color.faint} strokeWidth={2} />
+            <Text style={[styles.dateText, !lastDonated && { color: color.faint }]}>
               {lastDonated ? lastDonated.toLocaleDateString() : 'Select a date'}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
           {showDatePicker && (
             <DateTimePicker
               value={lastDonated || new Date()}
@@ -334,189 +386,154 @@ export default function DonorProfileScreen() {
                 }}
             />
           )}
-        </View>
 
-        {/* Availability */}
-        <View style={styles.card}>
-          <View style={styles.availabilityRow}>
+          {/* ── Visibility ────────────────────────────────────────────────── */}
+          <SectionLabel index="04" style={{ marginTop: 32 }}>Visibility</SectionLabel>
+
+          {/* Read-only here on purpose. The switch that actually writes
+              /api/donor/availability lives on the dashboard; this row reports
+              the fetched value and sends you there rather than showing a second
+              control that looks authoritative and isn't. */}
+          <View style={styles.toggleRow}>
+            {isAvailable
+              ? <LiveDot size={7} tint={color.life} />
+              : <View style={styles.dotOff} />}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.toggleTitle}>
+                {isAvailable ? 'Available for matching' : 'Not available for matching'}
+              </Text>
+              <Text style={styles.toggleSub}>
+                Set on the dashboard, where it takes effect immediately.
+              </Text>
+            </View>
+            <Pressable onPress={() => router.push('/donor/dashboard')} hitSlop={8}>
+              <ArrowUpRight size={15} color={color.mute} strokeWidth={2} />
+            </Pressable>
+          </View>
+
+          <View style={styles.toggleRow}>
             <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={styles.cardTitle}>Availability</Text>
-              <Text style={styles.availabilitySubtext}>
-                Allow hospitals to match you with requests.
+              <Text style={styles.toggleTitle}>Share contact info</Text>
+              <Text style={styles.toggleSub}>
+                If enabled, the hospital can see your name and phone number when you accept their
+                request, to help coordinate the donation.
               </Text>
             </View>
             <Switch
-              value={isAvailable}
-              onValueChange={setIsAvailable}
-              trackColor={{ false: '#333', true: '#22C55E' }}
-              thumbColor="#FFFFFF"
+              value={shareContactInfo}
+              onValueChange={toggleShareContactInfo}
+              trackColor={{ false: color.line, true: color.life }}
+              thumbColor={color.bone}
+              ios_backgroundColor={color.line}
             />
           </View>
-        </View>
 
-        <View style={styles.card}>
-        <View style={styles.availabilityRow}>
-          <View style={{ flex: 1, paddingRight: 12 }}>
-            <Text style={styles.cardTitle}>Share Contact Info</Text>
-            <Text style={styles.availabilitySubtext}>
-              If enabled, the hospital can see your name and phone number when you accept their request, to help coordinate the donation.
-            </Text>
-          </View>
-          <Switch
-            value={shareContactInfo}
-            onValueChange={toggleShareContactInfo}
-            trackColor={{ false: '#333', true: '#22C55E' }}
-            thumbColor="#FFFFFF"
-          />
-        </View>
-      </View>
-
-        {/* Save */}
-        <View style={styles.footerRow}>
-          <TouchableOpacity onPress={() => router.push('/donor/dashboard')}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          {/* ── Save ──────────────────────────────────────────────────────── */}
+          <Button
+            tone="primary"
+            size="lg"
+            full
+            icon={Check}
+            busy={saving}
             onPress={handleSave}
-            disabled={saving}
-            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+            style={{ marginTop: 26 }}
           >
-            {saving ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.saveButtonText}>Save Changes</Text>
-            )}
-          </TouchableOpacity>
+            {saving ? 'Saving…' : 'Save changes'}
+          </Button>
+          <TextAction
+            onPress={() => router.push('/donor/dashboard')}
+            style={{ marginTop: 18, alignSelf: 'center' }}
+          >
+            Cancel
+          </TextAction>
+
+          {/* ── Session ───────────────────────────────────────────────────── */}
+          <Rule style={{ marginTop: 34 }} />
+          <Pressable onPress={handleLogout} style={styles.logoutRow} hitSlop={6}>
+            <LogOut size={13} color={color.bloodLite} strokeWidth={2} />
+            <Text style={styles.logoutText}>Sign out</Text>
+          </Pressable>
         </View>
-      </ScrollView>
+      </Screen>
     </KeyboardAvoidingView>
   )
 }
 
 const styles = StyleSheet.create({
-  centerScreen: { flex: 1, backgroundColor: '#0F0F0F', alignItems: 'center', justifyContent: 'center' },
-  scrollContent: { padding: 20, paddingBottom: 48 },
+  gutter: { paddingHorizontal: 20 },
+  row: { flexDirection: 'row' },
 
-  backLink: { marginBottom: 16 },
-  backLinkText: { color: '#6B7280', fontSize: 12 },
-
-  header: { marginBottom: 24 },
-  eyebrow: { color: '#DC2626', fontSize: 11, letterSpacing: 1.5, marginBottom: 8, fontWeight: '600' },
-  title: { color: '#FFFFFF', fontSize: 26, fontWeight: '700' },
-  subtitle: { color: '#9CA3AF', fontSize: 13, marginTop: 6 },
-
-  errorBanner: {
-    backgroundColor: 'rgba(239,68,68,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.2)',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorBannerText: { color: '#F87171', fontSize: 13 },
-
-  successBanner: {
-    backgroundColor: 'rgba(34,197,94,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.2)',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  successBannerText: { color: '#4ADE80', fontSize: 13 },
-
-  card: {
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  cardTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '600', marginBottom: 12 },
-
-  label: { color: '#9CA3AF', fontSize: 13, marginBottom: 6 },
-  optional: { color: '#6B7280' },
-  input: {
-    backgroundColor: '#0F0F0F',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#FFFFFF',
-    fontSize: 14,
-    marginBottom: 14,
-    justifyContent: 'center',
+  backLink: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 4 },
+  backLinkText: {
+    fontFamily: font.mono.medium, fontSize: 9.5, color: color.mute,
+    letterSpacing: 1.4, textTransform: 'uppercase',
   },
 
-  locationConfirmedBox: {
-  backgroundColor: 'rgba(34,197,94,0.1)',
-  borderWidth: 1,
-  borderColor: 'rgba(34,197,94,0.2)',
-  borderRadius: 8,
-  padding: 12,
-},
-locationConfirmedText: { color: '#4ADE80', fontSize: 14, marginBottom: 4 },
-locationSwitchText: { color: '#6B7280', fontSize: 12, textDecorationLine: 'underline' },
-
-locationPromptBox: {
-  backgroundColor: '#0F0F0F',
-  borderWidth: 1,
-  borderColor: '#2A2A2A',
-  borderRadius: 8,
-  padding: 16,
-  alignItems: 'center',
-},
-locationPromptTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '600', marginBottom: 4 },
-locationPromptDesc: { color: '#6B7280', fontSize: 12, textAlign: 'center', marginBottom: 12 },
-locationButton: {
-  backgroundColor: '#DC2626',
-  borderRadius: 8,
-  paddingVertical: 12,
-  paddingHorizontal: 24,
-  width: '100%',
-  alignItems: 'center',
-  marginBottom: 8,
-},
-locationButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
-locationManualText: { color: '#6B7280', fontSize: 12, textDecorationLine: 'underline' },
-locationErrorText: { color: '#F87171', fontSize: 12, marginTop: 8, textAlign: 'center' },
-
-  helperTextArea: { color: '#6B7280', fontSize: 11, marginTop: -8, marginBottom: 14 },
-
-  bloodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  bloodButton: {
-    width: '22.5%',
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    backgroundColor: '#0F0F0F',
-    alignItems: 'center',
+  labelRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: 9,
   },
-  bloodButtonActive: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
-  bloodButtonText: { color: '#9CA3AF', fontSize: 14, fontWeight: '700' },
-  bloodButtonTextActive: { color: '#FFFFFF' },
 
-  availabilityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  availabilitySubtext: { color: '#6B7280', fontSize: 13, marginTop: 4 },
+  // Location
+  confirmRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  confirmText: {
+    flex: 1, fontFamily: font.sans.medium, fontSize: 13.5,
+    color: color.lifeLite, letterSpacing: -0.2,
+  },
+  confirmSub: {
+    fontFamily: font.sans.regular, fontSize: 12.5, lineHeight: 18.5,
+    color: color.mute, marginTop: 9, marginBottom: 14,
+  },
+  promptHead: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  promptTitle: { fontFamily: font.sans.medium, fontSize: 14.5, color: color.bone, letterSpacing: -0.2 },
+  promptDesc: {
+    fontFamily: font.sans.regular, fontSize: 12.5, lineHeight: 19,
+    color: color.mute, marginTop: 9,
+  },
 
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
+  // Blood group lattice
+  lattice: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  latticeCell: {
+    width: '22.6%', aspectRatio: 1.35,
+    borderWidth: 1, borderColor: color.line, backgroundColor: color.surface,
+    borderRadius: radius.md, alignItems: 'center', justifyContent: 'center',
   },
-  cancelText: { color: '#6B7280', fontSize: 14 },
-  saveButton: {
-    backgroundColor: '#DC2626',
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-    borderRadius: 8,
-    minWidth: 140,
-    alignItems: 'center',
+  latticeCellOn: { borderColor: color.blood, backgroundColor: wash.bloodDeep },
+  latticeText: { fontFamily: font.mono.regular, fontSize: 14.5, color: color.mute, letterSpacing: -0.3 },
+  latticeTextOn: { fontFamily: font.mono.medium, color: color.bone },
+  latticeNote: {
+    fontFamily: font.sans.regular, fontSize: 11.5, color: color.faint, marginTop: 11,
   },
-  saveButtonDisabled: { backgroundColor: 'rgba(220,38,38,0.5)' },
-  saveButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+
+  // Date
+  dateRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: color.surface,
+    borderWidth: 1, borderColor: color.line, borderRadius: radius.md,
+    paddingHorizontal: 14, paddingVertical: 14,
+  },
+  dateText: { fontFamily: font.sans.regular, fontSize: 14.5, color: color.bone },
+
+  // Toggles
+  toggleRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderTopWidth: 1, borderTopColor: color.lineSoft,
+    paddingVertical: 16,
+  },
+  dotOff: { width: 7, height: 7, borderRadius: 4, backgroundColor: color.faint },
+  toggleTitle: { fontFamily: font.sans.medium, fontSize: 13.5, color: color.bone, letterSpacing: -0.2 },
+  toggleSub: {
+    fontFamily: font.sans.regular, fontSize: 11.5, lineHeight: 16.5,
+    color: color.faint, marginTop: 4,
+  },
+
+  // Session
+  logoutRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 16,
+  },
+  logoutText: {
+    fontFamily: font.mono.medium, fontSize: 10, color: color.bloodLite,
+    letterSpacing: 1.4, textTransform: 'uppercase',
+  },
 })

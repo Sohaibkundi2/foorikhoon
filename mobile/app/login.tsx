@@ -1,16 +1,20 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native'
+import { View, Text, StyleSheet } from 'react-native'
 import { useState } from 'react'
 import { router, Link } from 'expo-router'
+import { ArrowRight, Eye, EyeOff, TriangleAlert } from 'lucide-react-native'
 import { useAuthStore } from '../src/store/authStore'
 import api from '../src/lib/api'
+import { Screen, PageHead, Field, Input, Button, Notice, Rule, Label } from '../src/components/fk'
+import { color, font, statusTone, toneFor } from '../src/theme'
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [emailFocused, setEmailFocused] = useState(false)
-  const [passwordFocused, setPasswordFocused] = useState(false)
+  /* Purely presentational: the eye toggle. Typing a password blind on a phone
+     keyboard is the most common cause of a failed sign-in on this app. */
+  const [reveal, setReveal] = useState(false)
 
   const { setAuth } = useAuthStore()
 
@@ -39,85 +43,97 @@ export default function LoginScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-      <View style={styles.container}>
+    <Screen keyboardShouldPersistTaps="handled" tail={40}>
+      {/* Ranged left and top-anchored rather than a card floating in the middle
+          of the viewport. A centred 400px box is the web login form ported
+          without thinking about the device it landed on. */}
+      <PageHead
+        eyebrow="ForiKhoon · Sign in"
+        title="Welcome"
+        accent="back."
+        sub="Your matches, your commitment score and your donation history are on the other side of this form."
+      />
 
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>WELCOME BACK</Text>
-          <Text style={styles.title}>Sign in</Text>
-          <Text style={styles.subtitle}>
-            Don't have an account?{' '}
-            <Link href="/register" style={styles.link}>Register</Link>
-          </Text>
-        </View>
-
+      <View style={styles.gutter}>
         {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
+          <Notice tone={toneFor(statusTone, 'NO_SHOW')} icon={TriangleAlert} style={{ marginBottom: 22 }}>
+            {error}
+          </Notice>
         ) : null}
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Email address</Text>
-          <TextInput
-            style={[styles.input, emailFocused && styles.inputFocused]}
+        <Field label="Email address">
+          <Input
             placeholder="you@example.com"
-            placeholderTextColor="#6B7280"
             value={email}
             onChangeText={setEmail}
-            onFocus={() => setEmailFocused(true)}
-            onBlur={() => setEmailFocused(false)}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            autoComplete="email"
           />
-        </View>
+        </Field>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={[styles.input, passwordFocused && styles.inputFocused]}
-            placeholder="••••••••"
-            placeholderTextColor="#6B7280"
-            value={password}
-            onChangeText={setPassword}
-            onFocus={() => setPasswordFocused(true)}
-            onBlur={() => setPasswordFocused(false)}
-            secureTextEntry
-          />
-        </View>
+        <Field label="Password">
+          <View style={styles.passwordWrap}>
+            <Input
+              placeholder="Your password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!reveal}
+              autoCapitalize="none"
+              autoComplete="password"
+              style={styles.passwordInput}
+            />
+            <Button
+              tone="quiet"
+              size="sm"
+              icon={reveal ? EyeOff : Eye}
+              onPress={() => setReveal((v) => !v)}
+              haptic={false}
+              style={styles.revealBtn}
+            >
+              {reveal ? 'Hide' : 'Show'}
+            </Button>
+          </View>
+        </Field>
 
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
+        <Button
+          tone="primary"
+          size="lg"
+          full
+          icon={ArrowRight}
+          busy={loading}
           onPress={handleLogin}
-          disabled={loading}
-          activeOpacity={0.85}
+          style={{ marginTop: 10 }}
         >
-          <Text style={styles.buttonText}>
-            {loading ? 'Signing in...' : 'Sign in'}
-          </Text>
-        </TouchableOpacity>
+          {loading ? 'Signing in…' : 'Sign in'}
+        </Button>
 
+        <Rule style={{ marginTop: 34 }} />
+        <View style={styles.footerRow}>
+          <Label>No account yet</Label>
+          <Link href="/register" style={styles.footerLink}>Register</Link>
+        </View>
       </View>
-    </ScrollView>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  scroll: { flexGrow: 1, backgroundColor: '#0A0A0A', justifyContent: 'center' },
-  container: { flex: 1, paddingHorizontal: 24, paddingVertical: 48, justifyContent: 'center', maxWidth: 400, alignSelf: 'center', width: '100%' },
-  header: { marginBottom: 32 },
-  eyebrow: { color: '#DC2626', fontSize: 11, fontWeight: '600', letterSpacing: 2, marginBottom: 12 },
-  title: { color: '#FFFFFF', fontSize: 30, fontWeight: '700', marginBottom: 8 },
-  subtitle: { color: '#9CA3AF', fontSize: 14 },
-  link: { color: '#FFFFFF', textDecorationLine: 'underline' },
-  errorBox: { backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', borderRadius: 8, padding: 12, marginBottom: 20 },
-  errorText: { color: '#F87171', fontSize: 14 },
-  field: { marginBottom: 16 },
-  label: { color: '#9CA3AF', fontSize: 14, marginBottom: 6 },
-  input: { backgroundColor: '#141414', borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 12, color: '#FFFFFF', fontSize: 14 },
-  inputFocused: { borderColor: '#DC2626' },
-  button: { backgroundColor: '#DC2626', borderRadius: 8, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+  gutter: { paddingHorizontal: 20 },
+
+  /* The reveal control sits in the field, not beside it — a separate button
+     below the input reads as a second action rather than as part of the input. */
+  passwordWrap: { position: 'relative', justifyContent: 'center' },
+  passwordInput: { paddingRight: 92 },
+  revealBtn: { position: 'absolute', right: 7, paddingVertical: 7 },
+
+  footerRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingTop: 16,
+  },
+  footerLink: {
+    fontFamily: font.mono.medium, fontSize: 10, letterSpacing: 1.5,
+    textTransform: 'uppercase', color: color.bloodLite,
+  },
 })

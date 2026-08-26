@@ -1,24 +1,38 @@
 // app/register.tsx
-import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ScrollView, Pressable
-} from 'react-native'
+import { View, Text, StyleSheet, Pressable } from 'react-native'
 import { useState } from 'react'
-import { Link, router } from 'expo-router'
+import { Link, router, useLocalSearchParams } from 'expo-router'
+import {
+  ArrowRight, Check, ChevronRight, Droplet, Hospital, MapPin, TriangleAlert,
+} from 'lucide-react-native'
 import { useAuthStore } from '../src/store/authStore'
 import api from '../src/lib/api'
 import * as Location from 'expo-location'
 
+import {
+  Screen, PageHead, Panel, Field, Input, Button, Notice, Rule, Label, SectionLabel, Chip,
+} from '../src/components/fk'
+import {
+  color, wash, font, radius, statusTone, toneFor, bloodLabel, BLOOD_GROUPS,
+} from '../src/theme'
+
 type Role = 'DONOR' | 'HOSPITAL' | null
 
-const bloodGroups = ['A_POS', 'A_NEG', 'B_POS', 'B_NEG', 'AB_POS', 'AB_NEG', 'O_POS', 'O_NEG']
-const bloodGroupLabels: Record<string, string> = {
-  A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
-  AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−',
-}
-
 export default function Register() {
-  const [role, setRole] = useState<Role>(null)
+  /**
+   * The landing page's two hero CTAs link to `/register?role=donor` and
+   * `?role=hospital`. The screen used to ignore the param and always open the
+   * picker, so both buttons landed on the same generic step — the param is read
+   * here so the href means what it says. Anything other than those two values
+   * (or no param at all) still opens the picker.
+   */
+  const params = useLocalSearchParams<{ role?: string }>()
+  const preset: Role =
+    params.role === 'donor' ? 'DONOR'
+    : params.role === 'hospital' ? 'HOSPITAL'
+    : null
+
+  const [role, setRole] = useState<Role>(preset)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [email, setEmail] = useState('')
@@ -44,10 +58,8 @@ export default function Register() {
       setError('Please fill in all required fields')
       return
     }
-    if (role === 'HOSPITAL' && (!hospitalName || !address || !licenseNo)) {
-      setError('Please fill in all hospital details')
-      return
-    }
+    /* This check appeared twice, identically, in the previous version. One copy
+       kept — the second could never change the outcome. */
     if (role === 'HOSPITAL' && (!hospitalName || !address || !licenseNo)) {
       setError('Please fill in all hospital details')
       return
@@ -108,110 +120,119 @@ export default function Register() {
       setLocationError('unavailable')
     }
   }
+
+  const errorTone = toneFor(statusTone, 'NO_SHOW')
+
   // ── Step 1: Role picker ──────────────────────────────────────────────────
   if (!role) {
     return (
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <Text style={styles.eyebrow}>CREATE ACCOUNT</Text>
-            <Text style={styles.title}>Register</Text>
-            <Text style={styles.subtitle}>
-              Already have an account?{' '}
-              <Link href="/login" style={styles.link}>Sign in</Link>
-            </Text>
+      <Screen keyboardShouldPersistTaps="handled" tail={40}>
+        <PageHead
+          eyebrow="ForiKhoon · New account"
+          title="Two questions,"
+          accent="then you're in."
+          sub="The first one decides which side of a match you're on. Everything after it is a short form."
+        />
+
+        <View style={styles.gutter}>
+          <StepRail step={1} />
+
+          <SectionLabel index="01" style={{ marginTop: 26 }}>Choose a side</SectionLabel>
+
+          <RoleCard
+            index="A"
+            icon={Droplet}
+            title="I want to donate blood"
+            desc="You give your group, city and availability. When a hospital near you needs your type, you are notified — nothing else asks for your time."
+            onPress={() => setRole('DONOR')}
+          />
+
+          <RoleCard
+            index="B"
+            icon={Hospital}
+            title="I need blood for my hospital"
+            desc="Post a request with the group and units you need. Compatible donors in radius are approached automatically, widening until one accepts."
+            onPress={() => setRole('HOSPITAL')}
+          />
+
+          <Rule style={{ marginTop: 30 }} />
+          <View style={styles.footerRow}>
+            <Label>Already registered</Label>
+            <Link href="/login" style={styles.footerLink}>Sign in</Link>
           </View>
-
-          <Text style={styles.rolePrompt}>I want to...</Text>
-
-          <TouchableOpacity style={styles.roleCard} onPress={() => setRole('DONOR')} activeOpacity={0.8}>
-            <Text style={styles.roleTitle}>Donate blood</Text>
-            <Text style={styles.roleDesc}>Register as a donor and help save lives</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.roleCard} onPress={() => setRole('HOSPITAL')} activeOpacity={0.8}>
-            <Text style={styles.roleTitle}>Request blood for my hospital</Text>
-            <Text style={styles.roleDesc}>Register your hospital and post blood requests</Text>
-          </TouchableOpacity>
         </View>
-      </ScrollView>
+      </Screen>
     )
   }
 
+  const isDonor = role === 'DONOR'
+
   // ── Step 2: Registration form ────────────────────────────────────────────
   return (
-    <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-      <View style={styles.container}>
+    <Screen keyboardShouldPersistTaps="handled" tail={40}>
+      <PageHead
+        eyebrow="ForiKhoon · New account"
+        title={isDonor ? 'Your details,' : 'Hospital details,'}
+        accent="and you're set."
+        sub={isDonor
+          ? 'Group and location are what the matcher reads. Everything else is how the hospital reaches you.'
+          : 'The licence number is checked before your hospital can post requests.'}
+      />
 
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>CREATE ACCOUNT</Text>
-          <Text style={styles.title}>Register</Text>
-          <Text style={styles.subtitle}>
-            Already have an account?{' '}
-            <Link href="/login" style={styles.link}>Sign in</Link>
-          </Text>
-        </View>
+      <View style={styles.gutter}>
+        <StepRail step={2} />
 
-        {/* Role badge + change */}
-        <View style={styles.roleBadgeRow}>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>
-              {role === 'DONOR' ? 'Registering as Donor' : 'Registering as Hospital'}
-            </Text>
-          </View>
-          <TouchableOpacity onPress={() => { setRole(null); setError('') }}>
+        <View style={styles.roleRow}>
+          <Chip
+            tone={{ fg: color.bloodLite, bg: wash.blood, border: wash.bloodEdge, label: '' }}
+            icon={isDonor ? Droplet : Hospital}
+          >
+            {isDonor ? 'Donor' : 'Hospital'}
+          </Chip>
+          <Pressable onPress={() => { setRole(null); setError('') }} hitSlop={8}>
             <Text style={styles.changeText}>Change</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
-        {/* Error */}
         {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
+          <Notice tone={errorTone} icon={TriangleAlert} style={{ marginBottom: 24 }}>
+            {error}
+          </Notice>
         ) : null}
 
-        {/* Common fields */}
+        <SectionLabel index="02">Account</SectionLabel>
+
         <Field label="Full name">
-          <TextInput
-            style={styles.input} placeholderTextColor="#6B7280"
+          <Input
             placeholder="Ali Khan" value={name} onChangeText={setName}
             autoCapitalize="words"
           />
         </Field>
 
         <Field label="Email address">
-          <TextInput
-            style={styles.input} placeholderTextColor="#6B7280"
+          <Input
             placeholder="you@example.com" value={email} onChangeText={setEmail}
             keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
           />
         </Field>
 
         <Field label="Password">
-          <TextInput
-            style={styles.input} placeholderTextColor="#6B7280"
-            placeholder="••••••••" value={password} onChangeText={setPassword}
-            secureTextEntry
+          <Input
+            placeholder="At least 8 characters" value={password} onChangeText={setPassword}
+            secureTextEntry autoCapitalize="none"
           />
         </Field>
 
-        {/* City + Phone row */}
         <View style={styles.row}>
           <View style={{ flex: 1 }}>
             <Field label="City">
-              <TextInput
-                style={styles.input} placeholderTextColor="#6B7280"
-                placeholder="DI Khan" value={city} onChangeText={setCity}
-              />
+              <Input placeholder="DI Khan" value={city} onChangeText={setCity} />
             </Field>
           </View>
           <View style={{ width: 12 }} />
           <View style={{ flex: 1 }}>
-            <Field label="Phone (optional)">
-              <TextInput
-                style={styles.input} placeholderTextColor="#6B7280"
+            <Field label="Phone · optional">
+              <Input
                 placeholder="03001234567" value={phone} onChangeText={setPhone}
                 keyboardType="phone-pad"
               />
@@ -219,101 +240,128 @@ export default function Register() {
           </View>
         </View>
 
-        {/* Donor: blood group */}
-        {role === 'DONOR' && (
-          <View style={styles.field}>
-            <Text style={styles.label}>Blood group <Text style={styles.optional}>(optional)</Text></Text>
-            <View style={styles.bloodGrid}>
-              {bloodGroups.map((bg) => (
-                <TouchableOpacity
-                  key={bg}
-                  style={[styles.bloodBtn, bloodGroup === bg && styles.bloodBtnActive]}
-                  onPress={() => setBloodGroup(bg)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.bloodBtnText, bloodGroup === bg && styles.bloodBtnTextActive]}>
-                    {bloodGroupLabels[bg]}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity
-              style={[styles.unknownBtn, bloodGroup === '' && styles.unknownBtnActive]}
-              onPress={() => setBloodGroup('')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.unknownText, bloodGroup === '' && styles.unknownTextActive]}>
-                I don't know my blood group
-              </Text>
-            </TouchableOpacity>
+        {/* ---- Donor: group + location ---- */}
+        {isDonor && (
+          <>
+            <SectionLabel index="03" style={{ marginTop: 14 }}>Blood group</SectionLabel>
 
-            <View style={styles.field}>
-              <Text style={styles.label}>Your location</Text>
-
-              {locationMethod === 'gps' && coords ? (
-                <View style={styles.locationConfirmedBox}>
-                  <Text style={styles.locationConfirmedText}>✓ Your location has been saved for matching</Text>
-                  <TouchableOpacity onPress={() => { setLocationMethod(null); setCoords(null) }}>
-                    <Text style={styles.locationSwitchText}>Use a different method</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : locationMethod === 'manual' ? (
-                <View>
-                  <TextInput
-                    style={styles.input} placeholderTextColor="#6B7280"
-                    placeholder="Hayatabad, Peshawar" value={area} onChangeText={setArea}
-                  />
-                  <Text style={styles.helperText}>Used to match you with nearby requests — not your exact address.</Text>
-                  <TouchableOpacity onPress={() => setLocationMethod(null)}>
-                    <Text style={styles.locationSwitchText}>Use my location instead</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.locationPromptBox}>
-                  <Text style={styles.locationPromptTitle}>Share your location</Text>
-                  <Text style={styles.locationPromptDesc}>
-                    For faster, more accurate matching in an emergency, we recommend sharing your location.
-                  </Text>
-                  <TouchableOpacity style={styles.locationButton} onPress={requestLocation} activeOpacity={0.85}>
-                    <Text style={styles.locationButtonText}>Use My Location</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setLocationMethod('manual')}>
-                    <Text style={styles.locationManualText}>Enter address instead</Text>
-                  </TouchableOpacity>
-
-                  {locationError ? (
-                    <Text style={styles.locationErrorText}>
-                      {locationError === 'permission_denied'
-                        ? "We couldn't access your location. You can try again or enter your address manually."
-                        : 'Something went wrong getting your location. Please enter your address instead.'}
+            <View style={styles.lattice}>
+              {BLOOD_GROUPS.map((bg) => {
+                const on = bloodGroup === bg
+                return (
+                  <Pressable
+                    key={bg}
+                    onPress={() => setBloodGroup(bg)}
+                    style={[styles.latticeCell, on && styles.latticeCellOn]}
+                  >
+                    <Text style={[styles.latticeText, on && styles.latticeTextOn]}>
+                      {bloodLabel(bg)}
                     </Text>
-                  ) : null}
-                </View>
-              )}
+                  </Pressable>
+                )
+              })}
             </View>
-          </View>
+
+            <Pressable
+              onPress={() => setBloodGroup('')}
+              style={[styles.unknownRow, bloodGroup === '' && styles.unknownRowOn]}
+            >
+              <View style={[styles.unknownMark, bloodGroup === '' && styles.unknownMarkOn]}>
+                {bloodGroup === '' && <Check size={10} color={color.bloodLite} strokeWidth={3} />}
+              </View>
+              <Text style={[styles.unknownText, bloodGroup === '' && styles.unknownTextOn]}>
+                I don&apos;t know my blood group
+              </Text>
+            </Pressable>
+
+            <Text style={styles.groupNote}>
+              You can add it later from your profile. Without a group you will not appear in
+              matching, since compatibility is what the matcher searches on.
+            </Text>
+
+            <SectionLabel index="04" style={{ marginTop: 30 }}>Location</SectionLabel>
+
+            {locationMethod === 'gps' && coords ? (
+              <Panel tone={toneFor(statusTone, 'FULFILLED')}>
+                <View style={styles.confirmRow}>
+                  {/* Was a ✓ text glyph. */}
+                  <Check size={14} color={color.lifeLite} strokeWidth={2.5} />
+                  <Text style={styles.confirmText}>Coordinates saved for matching</Text>
+                </View>
+                <Text style={styles.confirmSub}>
+                  Requests are matched by distance from this point, in widening tiers of 10, 25,
+                  50 and 100 km.
+                </Text>
+                <Pressable onPress={() => { setLocationMethod(null); setCoords(null) }} hitSlop={8}>
+                  <Text style={styles.switchText}>Use a different method</Text>
+                </Pressable>
+              </Panel>
+            ) : locationMethod === 'manual' ? (
+              <View>
+                <Input
+                  placeholder="Hayatabad, Peshawar" value={area} onChangeText={setArea}
+                />
+                <Text style={styles.helperText}>
+                  Used to match you with nearby requests — not your exact address.
+                </Text>
+                <Pressable onPress={() => setLocationMethod(null)} hitSlop={8}>
+                  <Text style={styles.switchText}>Use my location instead</Text>
+                </Pressable>
+              </View>
+            ) : (
+              /* Ranged left, not a centred prompt card. A permission ask reads
+                 as more trustworthy when it states what the data is for before
+                 the button, in the same voice as the rest of the form. */
+              <Panel>
+                <View style={styles.promptHead}>
+                  <MapPin size={15} color={color.bloodLite} strokeWidth={2} />
+                  <Text style={styles.promptTitle}>Share your location</Text>
+                </View>
+                <Text style={styles.promptDesc}>
+                  In an emergency the matcher searches outward from a point. Coordinates make that
+                  search accurate; a typed area name puts you at the centre of the area instead.
+                </Text>
+                <Button tone="primary" full onPress={requestLocation} style={{ marginTop: 16 }}>
+                  Use my location
+                </Button>
+                <Pressable onPress={() => setLocationMethod('manual')} hitSlop={8} style={{ marginTop: 14 }}>
+                  <Text style={styles.switchText}>Enter my area instead</Text>
+                </Pressable>
+
+                {locationError ? (
+                  <Notice tone={errorTone} icon={TriangleAlert} style={{ marginTop: 16 }}>
+                    {locationError === 'permission_denied'
+                      ? "We couldn't access your location. You can try again or enter your area manually."
+                      : 'Something went wrong getting your location. Please enter your area instead.'}
+                  </Notice>
+                ) : null}
+              </Panel>
+            )}
+          </>
         )}
 
-        {/* Hospital fields */}
+        {/* ---- Hospital ---- */}
         {role === 'HOSPITAL' && (
           <>
+            <SectionLabel index="03" style={{ marginTop: 14 }}>Facility</SectionLabel>
+
             <Field label="Hospital name">
-              <TextInput
-                style={styles.input} placeholderTextColor="#6B7280"
+              <Input
                 placeholder="DHQ Hospital DI Khan" value={hospitalName}
                 onChangeText={setHospitalName}
               />
             </Field>
             <Field label="Address">
-              <TextInput
-                style={styles.input} placeholderTextColor="#6B7280"
+              <Input
                 placeholder="Hospital Road, DI Khan" value={address}
                 onChangeText={setAddress}
               />
             </Field>
-            <Field label="License number">
-              <TextInput
-                style={styles.input} placeholderTextColor="#6B7280"
+            <Field
+              label="Licence number"
+              hint="Verified by an administrator. Until then your hospital shows as unverified on requests."
+            >
+              <Input
                 placeholder="DHQ-DIK-2024" value={licenseNo}
                 onChangeText={setLicenseNo}
               />
@@ -321,192 +369,166 @@ export default function Register() {
           </>
         )}
 
-        {/* Submit */}
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
+        <Button
+          tone="primary"
+          size="lg"
+          full
+          icon={ArrowRight}
+          busy={loading}
           onPress={handleSubmit}
-          disabled={loading}
-          activeOpacity={0.85}
+          style={{ marginTop: 22 }}
         >
-          <Text style={styles.buttonText}>
-            {loading ? 'Creating account...' : 'Create account'}
-          </Text>
-        </TouchableOpacity>
+          {loading ? 'Creating account…' : 'Create account'}
+        </Button>
 
+        <Rule style={{ marginTop: 32 }} />
+        <View style={styles.footerRow}>
+          <Label>Already registered</Label>
+          <Link href="/login" style={styles.footerLink}>Sign in</Link>
+        </View>
       </View>
-    </ScrollView>
+    </Screen>
   )
 }
 
-// ── Small helper component ──────────────────────────────────────────────────
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/* ---------------------------------------------------------------------------
+   Local pieces
+--------------------------------------------------------------------------- */
+
+/** Two segments, filled to the current step. The form is genuinely two steps
+ *  long, so saying so up front is worth the four lines. */
+function StepRail({ step }: { step: 1 | 2 }) {
   return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      {children}
+    <View style={styles.stepRail}>
+      <View style={[styles.stepSeg, styles.stepSegOn]} />
+      <View style={[styles.stepSeg, step >= 2 && styles.stepSegOn]} />
+      <Text style={styles.stepText}>Step {step} of 2</Text>
     </View>
   )
 }
 
-// ── Styles ──────────────────────────────────────────────────────────────────
+function RoleCard({ index, icon: Icon, title, desc, onPress }: {
+  index: string
+  icon: typeof Droplet
+  title: string
+  desc: string
+  onPress: () => void
+}) {
+  return (
+    <Pressable onPress={onPress} style={styles.roleCard}>
+      <View style={styles.roleCardHead}>
+        <Text style={styles.roleIndex}>{index}</Text>
+        <View style={styles.roleIcon}>
+          <Icon size={16} color={color.bloodLite} strokeWidth={2} />
+        </View>
+        <Text style={styles.roleTitle}>{title}</Text>
+        <ChevronRight size={16} color={color.faint} strokeWidth={1.75} />
+      </View>
+      <Text style={styles.roleDesc}>{desc}</Text>
+    </Pressable>
+  )
+}
+
 const styles = StyleSheet.create({
-  scroll: {
-    flexGrow: 1,
-    backgroundColor: '#0A0A0A',
-    justifyContent: 'center',
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 48,
-    maxWidth: 400,
-    alignSelf: 'center',
-    width: '100%',
-  },
-
-  // Header
-  header: { marginBottom: 32 },
-  eyebrow: { color: '#DC2626', fontSize: 11, fontWeight: '600', letterSpacing: 2, marginBottom: 12 },
-  title: { color: '#FFFFFF', fontSize: 30, fontWeight: '700', marginBottom: 8 },
-  subtitle: { color: '#9CA3AF', fontSize: 14, lineHeight: 20 },
-  link: { color: '#FFFFFF', textDecorationLine: 'underline' },
-
-  // Role picker
-  rolePrompt: { color: '#9CA3AF', fontSize: 14, marginBottom: 16 },
-  roleCard: {
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    borderRadius: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginBottom: 12,
-  },
-  roleTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '500', marginBottom: 4 },
-  roleDesc: { color: '#6B7280', fontSize: 12 },
-
-  // Role badge
-  roleBadgeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  roleBadge: {
-    backgroundColor: 'rgba(220,38,38,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(220,38,38,0.2)',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  roleBadgeText: { color: '#DC2626', fontSize: 12 },
-  changeText: { color: '#6B7280', fontSize: 12 },
-
-  // Error
-  errorBox: {
-    backgroundColor: 'rgba(239,68,68,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.2)',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 20,
-  },
-  errorText: { color: '#F87171', fontSize: 14, lineHeight: 20 },
-
-  // Fields
-  field: { marginBottom: 16 },
-  label: { color: '#9CA3AF', fontSize: 14, marginBottom: 6 },
-  optional: { color: '#6B7280' },
-  input: {
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#FFFFFF',
-    fontSize: 14,
-  },
+  gutter: { paddingHorizontal: 20 },
   row: { flexDirection: 'row' },
 
-  helperText: { color: '#6B7280', fontSize: 11, marginTop: 4 },
+  // Step rail
+  stepRail: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  stepSeg: { width: 26, height: 2, borderRadius: 1, backgroundColor: color.line },
+  stepSegOn: { backgroundColor: color.blood },
+  stepText: {
+    fontFamily: font.mono.regular, fontSize: 9.5, color: color.faint,
+    letterSpacing: 1.2, textTransform: 'uppercase', marginLeft: 4,
+  },
 
-  locationConfirmedBox: {
-  backgroundColor: 'rgba(34,197,94,0.1)',
-  borderWidth: 1,
-  borderColor: 'rgba(34,197,94,0.2)',
-  borderRadius: 8,
-  padding: 12,
-},
-locationConfirmedText: { color: '#4ADE80', fontSize: 14, marginBottom: 4 },
-locationSwitchText: { color: '#6B7280', fontSize: 12, textDecorationLine: 'underline' },
+  // Role picker
+  roleCard: {
+    borderTopWidth: 1, borderTopColor: color.line,
+    paddingTop: 18, paddingBottom: 22,
+  },
+  roleCardHead: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  roleIndex: { fontFamily: font.mono.regular, fontSize: 10, color: color.blood, width: 12 },
+  roleIcon: {
+    width: 30, height: 30, borderRadius: radius.sm,
+    backgroundColor: wash.blood, borderWidth: 1, borderColor: wash.bloodEdge,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  roleTitle: { flex: 1, fontFamily: font.sans.medium, fontSize: 15, color: color.bone, letterSpacing: -0.3 },
+  roleDesc: {
+    fontFamily: font.sans.regular, fontSize: 13, lineHeight: 19.5,
+    color: color.mute, marginTop: 12, paddingLeft: 23,
+  },
 
-locationPromptBox: {
-  backgroundColor: '#141414',
-  borderWidth: 1,
-  borderColor: '#2A2A2A',
-  borderRadius: 8,
-  padding: 16,
-  alignItems: 'center',
-},
-locationPromptTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '600', marginBottom: 4 },
-locationPromptDesc: { color: '#6B7280', fontSize: 12, textAlign: 'center', marginBottom: 12 },
-locationButton: {
-  backgroundColor: '#DC2626',
-  borderRadius: 8,
-  paddingVertical: 12,
-  paddingHorizontal: 24,
-  width: '100%',
-  alignItems: 'center',
-  marginBottom: 8,
-},
-locationButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
-locationManualText: { color: '#6B7280', fontSize: 12, textDecorationLine: 'underline' },
-locationErrorText: { color: '#F87171', fontSize: 12, marginTop: 8, textAlign: 'center' },
+  // Role badge row
+  roleRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: 26, marginBottom: 26,
+  },
+  changeText: {
+    fontFamily: font.mono.medium, fontSize: 10, letterSpacing: 1.4,
+    textTransform: 'uppercase', color: color.mute,
+  },
 
-  // Blood group grid
-  bloodGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 8,
+  // Blood group lattice
+  lattice: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  latticeCell: {
+    width: '22.6%', aspectRatio: 1.35,
+    borderWidth: 1, borderColor: color.line, backgroundColor: color.surface,
+    borderRadius: radius.md, alignItems: 'center', justifyContent: 'center',
   },
-  bloodBtn: {
-    width: '22%',
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    backgroundColor: '#141414',
-    alignItems: 'center',
-  },
-  bloodBtnActive: {
-    backgroundColor: '#DC2626',
-    borderColor: '#DC2626',
-  },
-  bloodBtnText: { color: '#9CA3AF', fontSize: 14, fontWeight: '600' },
-  bloodBtnTextActive: { color: '#FFFFFF' },
+  latticeCellOn: { borderColor: color.blood, backgroundColor: wash.bloodDeep },
+  latticeText: { fontFamily: font.mono.regular, fontSize: 14.5, color: color.mute, letterSpacing: -0.3 },
+  latticeTextOn: { fontFamily: font.mono.medium, color: color.bone },
 
-  unknownBtn: {
-    width: '100%',
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    alignItems: 'center',
+  unknownRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginTop: 10, paddingVertical: 12, paddingHorizontal: 13,
+    borderWidth: 1, borderColor: color.line, borderRadius: radius.md,
   },
-  unknownBtnActive: {
-    borderColor: 'rgba(220,38,38,0.4)',
-    backgroundColor: 'rgba(220,38,38,0.05)',
+  unknownRowOn: { borderColor: wash.bloodEdge, backgroundColor: wash.blood },
+  unknownMark: {
+    width: 15, height: 15, borderRadius: 3,
+    borderWidth: 1, borderColor: color.line,
+    alignItems: 'center', justifyContent: 'center',
   },
-  unknownText: { color: '#6B7280', fontSize: 12 },
-  unknownTextActive: { color: '#DC2626' },
+  unknownMarkOn: { borderColor: wash.bloodEdge, backgroundColor: 'rgba(220,38,38,0.18)' },
+  unknownText: { fontFamily: font.sans.regular, fontSize: 13, color: color.mute },
+  unknownTextOn: { fontFamily: font.sans.medium, color: color.bloodLite },
+  groupNote: {
+    fontFamily: font.sans.regular, fontSize: 11.5, lineHeight: 17,
+    color: color.faint, marginTop: 12,
+  },
 
-  // Submit button
-  button: {
-    backgroundColor: '#DC2626',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 8,
+  // Location
+  confirmRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  confirmText: { fontFamily: font.sans.medium, fontSize: 13.5, color: color.lifeLite, letterSpacing: -0.2 },
+  confirmSub: {
+    fontFamily: font.sans.regular, fontSize: 12.5, lineHeight: 18.5,
+    color: color.mute, marginTop: 9, marginBottom: 14,
   },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+  promptHead: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  promptTitle: { fontFamily: font.sans.medium, fontSize: 14.5, color: color.bone, letterSpacing: -0.2 },
+  promptDesc: {
+    fontFamily: font.sans.regular, fontSize: 12.5, lineHeight: 19,
+    color: color.mute, marginTop: 9,
+  },
+  helperText: {
+    fontFamily: font.sans.regular, fontSize: 11.5, lineHeight: 17,
+    color: color.faint, marginTop: 9, marginBottom: 12,
+  },
+  switchText: {
+    fontFamily: font.mono.medium, fontSize: 9.5, letterSpacing: 1.3,
+    textTransform: 'uppercase', color: color.mute,
+  },
+
+  // Footer
+  footerRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingTop: 16,
+  },
+  footerLink: {
+    fontFamily: font.mono.medium, fontSize: 10, letterSpacing: 1.5,
+    textTransform: 'uppercase', color: color.bloodLite,
+  },
 })

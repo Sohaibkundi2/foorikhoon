@@ -4,17 +4,24 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
 } from 'react-native'
 import { useRouter } from 'expo-router'
+import { Check, Inbox, MapPin, X } from 'lucide-react-native'
 import { useAuthStore } from '../../src/store/authStore'
 import api from '../../src/lib/api'
 import { useNetwork } from '../../src/hooks/useNetwork'
 import { saveCache, loadCache } from '../../src/lib/cache'
 import OfflineBanner from '../../src/components/OfflineBanner'
+
+import {
+  Screen, PageHead, Chip, Button, Skeleton, EmptyState, Rule, useTabBarInset,
+} from '../../src/components/fk'
+import {
+  color, wash, font, radius, urgencyTone, statusTone, toneFor, bloodLabel,
+} from '../../src/theme'
 
 interface Match {
   id: string
@@ -31,27 +38,18 @@ interface Match {
   }
 }
 
-const bloodGroupLabels: Record<string, string> = {
-  A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
-  AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−',
-}
-
-const urgencyColors: Record<string, { text: string; bg: string; border: string }> = {
-  CRITICAL: { text: '#F87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
-  URGENT: { text: '#FB923C', bg: 'rgba(251,146,60,0.1)', border: 'rgba(251,146,60,0.2)' },
-  NORMAL: { text: '#4ADE80', bg: 'rgba(74,222,128,0.1)', border: 'rgba(74,222,128,0.2)' },
-}
-
-const matchStatusColors: Record<string, { text: string; bg: string; border: string }> = {
-  PENDING: { text: '#FACC15', bg: 'rgba(250,204,21,0.1)', border: 'rgba(250,204,21,0.2)' },
-  ACCEPTED: { text: '#4ADE80', bg: 'rgba(74,222,128,0.1)', border: 'rgba(74,222,128,0.2)' },
-  DECLINED: { text: '#F87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
-  COMPLETED: { text: '#60A5FA', bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.2)' },
-  NO_SHOW: { text: '#F87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
-}
-
 type Tab = 'ALL' | 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'COMPLETED' | 'NO_SHOW'
 const TABS: Tab[] = ['ALL', 'PENDING', 'ACCEPTED', 'DECLINED', 'COMPLETED', 'NO_SHOW']
+
+/** Sentence-case labels for the rail. The enum values stay the filter keys. */
+const TAB_LABEL: Record<Tab, string> = {
+  ALL: 'All',
+  PENDING: 'Pending',
+  ACCEPTED: 'Accepted',
+  DECLINED: 'Declined',
+  COMPLETED: 'Completed',
+  NO_SHOW: 'No show',
+}
 
 export default function DonorMatchesScreen() {
   const { user } = useAuthStore()
@@ -65,6 +63,7 @@ export default function DonorMatchesScreen() {
 
   const { isOnline } = useNetwork()
   const [cacheTime, setCacheTime] = useState<number | null>(null)
+  const bottomInset = useTabBarInset()
 
   useEffect(() => {
     if (!user) {
@@ -130,192 +129,225 @@ export default function DonorMatchesScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centerScreen}>
-        <ActivityIndicator color="#DC2626" />
-      </View>
+      <Screen>
+        <View style={styles.gutter}>
+          <Rule tick />
+          <View style={{ marginTop: 22, gap: 12 }}>
+            <Skeleton width="30%" height={11} />
+            <Skeleton width="66%" height={26} />
+          </View>
+          <View style={{ gap: 1, marginTop: 30 }}>
+            {[0, 1, 2, 3].map((i) => (
+              <View key={i} style={styles.loadRow}>
+                <Skeleton width="52%" height={14} />
+                <Skeleton width="34%" height={11} />
+              </View>
+            ))}
+          </View>
+        </View>
+      </Screen>
     )
   }
 
   return (
-    <View style={styles.screen}>
-      
-      {!isOnline && <OfflineBanner lastUpdated={cacheTime} />}
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>DONOR</Text>
-        <Text style={styles.title}>My Matches</Text>
-        <Text style={styles.subtitle}>Blood requests you've been matched with.</Text>
+    /* The FlatList does the scrolling here, so the Screen is a plain frame. */
+    <Screen scroll={false} ember>
+      {!isOnline && (
+        <View style={[styles.gutter, { paddingTop: 12 }]}>
+          <OfflineBanner lastUpdated={cacheTime} />
+        </View>
+      )}
+
+      <PageHead
+        eyebrow="Donor · Matches"
+        title="Every request"
+        accent="that named you."
+        sub="A match is created when a hospital's search reaches your group and radius. Pending ones are waiting on your answer."
+      />
+
+      {/* Filter rail. Chips rather than underlined tabs — six statuses do not
+          fit across a phone as tabs, and a chip can carry its own count. Each
+          selected chip takes that status's own colour, so the rail doubles as
+          the legend for the list below it. */}
+      <View style={styles.railWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.railContent}
+        >
+          {TABS.map((tab) => {
+            const count =
+              tab === 'ALL' ? matches.length : matches.filter((m) => m.status === tab).length
+            const active = activeTab === tab
+            const tone = tab === 'ALL'
+              ? { fg: color.bone, bg: wash.bone, border: wash.boneEdge, label: 'All' }
+              : toneFor(statusTone, tab)
+            return (
+              <Pressable
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                style={[
+                  styles.railChip,
+                  active && { backgroundColor: tone.bg, borderColor: tone.border },
+                ]}
+              >
+                <Text style={[styles.railText, active && { color: tone.fg, fontFamily: font.mono.medium }]}>
+                  {TAB_LABEL[tab]}
+                </Text>
+                {count > 0 && (
+                  <Text style={[styles.railCount, active && { color: tone.fg }]}>{count}</Text>
+                )}
+              </Pressable>
+            )
+          })}
+        </ScrollView>
       </View>
 
-      {/* Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabsRow}
-        contentContainerStyle={styles.tabsContent}
-      >
-        {TABS.map((tab) => {
-          const count =
-            tab === 'ALL' ? matches.length : matches.filter((m) => m.status === tab).length
-          const active = activeTab === tab
-          return (
-            <TouchableOpacity
-              key={tab}
-              onPress={() => setActiveTab(tab)}
-              style={[styles.tabButton, active && styles.tabButtonActive]}
-            >
-              <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                {tab}
-                {count > 0 ? ` (${count})` : ''}
-              </Text>
-            </TouchableOpacity>
-          )
-        })}
-      </ScrollView>
-
-      {/* List */}
       <FlatList
         data={filteredMatches}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: bottomInset }]}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#DC2626" />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={color.blood}
+            colors={[color.blood]}
+            progressBackgroundColor={color.surface}
+          />
         }
         ListEmptyComponent={
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No matches in this category.</Text>
-          </View>
+          <EmptyState
+            icon={Inbox}
+            title={activeTab === 'ALL' ? 'No matches yet' : `Nothing ${TAB_LABEL[activeTab].toLowerCase()}`}
+            body={activeTab === 'ALL'
+              ? 'When a hospital search reaches your group and radius, the match appears here and you are notified.'
+              : 'Switch the filter above to see your other matches.'}
+            style={{ marginHorizontal: 20, marginTop: 24 }}
+          />
         }
         renderItem={({ item: match }) => {
-          const urgency = urgencyColors[match.request.urgency]
-          const status = matchStatusColors[match.status]
+          const urgency = toneFor(urgencyTone, match.request.urgency)
+          const status = toneFor(statusTone, match.status)
+          const pending = match.status === 'PENDING'
           return (
-            <View style={styles.card}>
-              <View style={styles.cardHeaderRow}>
-                <Text style={styles.hospitalName} numberOfLines={1}>
-                  {match.request.hospital.name}
-                </Text>
-              </View>
+            /* Rows on hairlines with a status-tinted edge, not floating cards.
+               A list of twenty matches as twenty bordered boxes is all border
+               and no rhythm; the coloured edge carries the status down the page. */
+            <View style={styles.row}>
+              <View style={[styles.edge, { backgroundColor: status.fg }]} />
 
-              <View style={styles.badgeRow}>
-                <View style={[styles.badge, { backgroundColor: urgency.bg, borderColor: urgency.border }]}>
-                  <Text style={[styles.badgeText, { color: urgency.text }]}>
-                    {match.request.urgency}
+              <View style={styles.rowBody}>
+                <View style={styles.rowTop}>
+                  <Text style={styles.hospitalName} numberOfLines={1}>
+                    {match.request.hospital.name}
+                  </Text>
+                  <Chip tone={status} />
+                </View>
+
+                <View style={styles.addrRow}>
+                  <MapPin size={10} color={color.faint} strokeWidth={2} />
+                  <Text style={styles.address} numberOfLines={1}>
+                    {match.request.hospital.address}
                   </Text>
                 </View>
-                <View style={[styles.badge, { backgroundColor: status.bg, borderColor: status.border }]}>
-                  <Text style={[styles.badgeText, { color: status.text }]}>{match.status}</Text>
+
+                <View style={styles.metaRow}>
+                  <Text style={styles.bloodGroup}>
+                    {bloodLabel(match.request.bloodGroup)}
+                  </Text>
+                  <View style={styles.metaDot} />
+                  <Text style={styles.meta}>
+                    {match.request.units} unit{match.request.units > 1 ? 's' : ''}
+                  </Text>
+                  <View style={styles.metaDot} />
+                  <Text style={styles.meta}>{new Date(match.createdAt).toLocaleDateString()}</Text>
+                  <View style={{ flex: 1 }} />
+                  <Chip tone={urgency} />
                 </View>
+
+                {pending && (
+                  <View style={styles.actionsRow}>
+                    <Button
+                      tone="ghost"
+                      size="sm"
+                      icon={X}
+                      style={{ flex: 1 }}
+                      disabled={respondingId === match.id}
+                      onPress={() => respondToMatch(match.id, 'DECLINED')}
+                    >
+                      Decline
+                    </Button>
+                    <Button
+                      tone="affirm"
+                      size="sm"
+                      icon={Check}
+                      style={{ flex: 1 }}
+                      busy={respondingId === match.id}
+                      onPress={() => respondToMatch(match.id, 'ACCEPTED')}
+                    >
+                      Accept
+                    </Button>
+                  </View>
+                )}
               </View>
-
-              <Text style={styles.address} numberOfLines={1}>
-                {match.request.hospital.address}
-              </Text>
-
-              <Text style={styles.meta}>
-                Needs {match.request.units} unit{match.request.units > 1 ? 's' : ''} of{' '}
-                <Text style={styles.bloodGroup}>
-                  {bloodGroupLabels[match.request.bloodGroup] || match.request.bloodGroup}
-                </Text>
-              </Text>
-
-              <Text style={styles.date}>{new Date(match.createdAt).toLocaleDateString()}</Text>
-
-              {match.status === 'PENDING' && (
-                <View style={styles.actionsRow}>
-                  <TouchableOpacity
-                    onPress={() => respondToMatch(match.id, 'ACCEPTED')}
-                    disabled={respondingId === match.id}
-                    style={[styles.actionButton, styles.acceptButton]}
-                  >
-                    {respondingId === match.id ? (
-                      <ActivityIndicator size="small" color="#4ADE80" />
-                    ) : (
-                      <Text style={styles.acceptText}>Accept</Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => respondToMatch(match.id, 'DECLINED')}
-                    disabled={respondingId === match.id}
-                    style={[styles.actionButton, styles.declineButton]}
-                  >
-                    <Text style={styles.declineText}>Decline</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
             </View>
           )
         }}
       />
-    </View>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0F0F0F' },
-  centerScreen: { flex: 1, backgroundColor: '#0F0F0F', alignItems: 'center', justifyContent: 'center' },
-
-  header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12 },
-  eyebrow: { color: '#6B7280', fontSize: 11, letterSpacing: 1.5, marginBottom: 6, fontWeight: '600' },
-  title: { color: '#FFFFFF', fontSize: 26, fontWeight: '700' },
-  subtitle: { color: '#9CA3AF', fontSize: 13, marginTop: 6 },
-
-  tabsRow: { borderBottomWidth: 1, borderBottomColor: '#222', flexGrow: 0 },
-  tabsContent: { paddingHorizontal: 16, gap: 4 },
-  tabButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+  gutter: { paddingHorizontal: 20 },
+  loadRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderTopWidth: 1, borderTopColor: color.lineSoft, paddingVertical: 18,
   },
-  tabButtonActive: { borderBottomColor: '#DC2626' },
-  tabText: { color: '#6B7280', fontSize: 13, fontWeight: '500' },
-  tabTextActive: { color: '#FFFFFF' },
 
-  listContent: { padding: 16, paddingBottom: 40, gap: 12 },
-
-  emptyCard: {
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 12,
-    padding: 32,
-    alignItems: 'center',
+  // Filter rail
+  railWrap: { borderBottomWidth: 1, borderBottomColor: color.line },
+  railContent: { paddingHorizontal: 20, paddingBottom: 14, gap: 7 },
+  railChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    borderWidth: 1, borderColor: color.line, backgroundColor: color.surface,
+    borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 7,
   },
-  emptyText: { color: '#6B7280', fontSize: 13 },
-
-  card: {
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+  railText: {
+    fontFamily: font.mono.regular, fontSize: 10, color: color.mute,
+    letterSpacing: 1.2, textTransform: 'uppercase',
   },
-  cardHeaderRow: { marginBottom: 6 },
-  hospitalName: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
-
-  badgeRow: { flexDirection: 'row', gap: 6, marginBottom: 8 },
-  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1 },
-  badgeText: { fontSize: 10, fontWeight: '600' },
-
-  address: { color: '#9CA3AF', fontSize: 12, marginBottom: 4 },
-  meta: { color: '#6B7280', fontSize: 12, marginBottom: 4 },
-  bloodGroup: { color: '#DC2626', fontWeight: '700' },
-  date: { color: '#6B7280', fontSize: 11, marginBottom: 10 },
-
-  actionsRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
+  railCount: {
+    fontFamily: font.mono.medium, fontSize: 10, color: color.faint,
+    fontVariant: ['tabular-nums'],
   },
-  acceptButton: { backgroundColor: 'rgba(74,222,128,0.1)', borderColor: 'rgba(74,222,128,0.2)' },
-  acceptText: { color: '#4ADE80', fontSize: 12, fontWeight: '600' },
-  declineButton: { backgroundColor: '#1A1A1A', borderColor: '#2A2A2A' },
-  declineText: { color: '#9CA3AF', fontSize: 12, fontWeight: '600' },
+
+  // List
+  listContent: { paddingTop: 4 },
+
+  row: {
+    flexDirection: 'row',
+    borderBottomWidth: 1, borderBottomColor: color.lineSoft,
+  },
+  edge: { width: 2 },
+  rowBody: { flex: 1, minWidth: 0, paddingHorizontal: 18, paddingVertical: 16 },
+
+  rowTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  hospitalName: {
+    flex: 1, fontFamily: font.sans.medium, fontSize: 14.5,
+    color: color.bone, letterSpacing: -0.3,
+  },
+
+  addrRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
+  address: { flex: 1, fontFamily: font.sans.regular, fontSize: 11.5, color: color.faint },
+
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 11 },
+  bloodGroup: {
+    fontFamily: font.mono.medium, fontSize: 13, color: color.bloodLite, letterSpacing: -0.3,
+  },
+  metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: color.faint },
+  meta: { fontFamily: font.mono.regular, fontSize: 10.5, color: color.mute },
+
+  actionsRow: { flexDirection: 'row', gap: 8, marginTop: 14 },
 })

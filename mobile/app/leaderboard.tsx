@@ -1,10 +1,18 @@
 // app/leaderboard.tsx
-import { useEffect, useRef, useState } from 'react'
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Easing
-} from 'react-native'
+import { useEffect, useState } from 'react'
+import { View, Text, StyleSheet, Pressable } from 'react-native'
 import { Link } from 'expo-router'
+import {
+  Check, ChevronDown, ChevronUp, Crown, Droplet, ListFilter,
+} from 'lucide-react-native'
 import api from '../src/lib/api'
+
+import {
+  Screen, PageHead, Label, SectionLabel, Rule, Skeleton, EmptyState, Button,
+} from '../src/components/fk'
+import {
+  color, wash, font, radius, bloodLabel, tintFor, initialsFor,
+} from '../src/theme'
 
 interface LeaderboardEntry {
   rank: number
@@ -13,48 +21,6 @@ interface LeaderboardEntry {
   bloodGroup: string | null
   commitmentScore: number
   totalDonations: number
-}
-
-const bloodGroupLabels: Record<string, string> = {
-  A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
-  AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−',
-}
-
-const avatarPalettes = [
-  { bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.3)', text: '#F87171' },
-  { bg: 'rgba(251,146,60,0.12)',  border: 'rgba(251,146,60,0.3)',  text: '#FB923C' },
-  { bg: 'rgba(74,222,128,0.12)',  border: 'rgba(74,222,128,0.3)',  text: '#4ADE80' },
-  { bg: 'rgba(96,165,250,0.12)',  border: 'rgba(96,165,250,0.3)',  text: '#60A5FA' },
-  { bg: 'rgba(192,132,252,0.12)', border: 'rgba(192,132,252,0.3)', text: '#C084FC' },
-  { bg: 'rgba(250,204,21,0.12)',  border: 'rgba(250,204,21,0.3)',  text: '#FACC15' },
-]
-
-function getInitials(name: string) {
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-}
-
-function getPalette(name: string) {
-  return avatarPalettes[name.charCodeAt(0) % avatarPalettes.length]
-}
-
-function getRankStyle(rank: number) {
-  if (rank === 1) return { bg: 'rgba(250,204,21,0.08)', border: 'rgba(250,204,21,0.3)', text: '#FACC15', label: '🥇' }
-  if (rank === 2) return { bg: 'rgba(156,163,175,0.08)', border: 'rgba(156,163,175,0.3)', text: '#D1D5DB', label: '🥈' }
-  if (rank === 3) return { bg: 'rgba(251,146,60,0.08)', border: 'rgba(251,146,60,0.3)', text: '#FB923C', label: '🥉' }
-  return { bg: '#141414', border: '#222', text: '#6B7280', label: `#${rank}` }
-}
-
-function SkeletonRow() {
-  const pulse = useRef(new Animated.Value(0.4)).current
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0.4, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    ).start()
-  }, [])
-  return <Animated.View style={[styles.skeletonRow, { opacity: pulse }]} />
 }
 
 export default function LeaderboardScreen() {
@@ -77,8 +43,8 @@ export default function LeaderboardScreen() {
     : leaderboard.filter(d => d.city === cityFilter)
 
   const ranked = filtered.map((d, i) => ({ ...d, rank: i + 1 }))
-  const top3 = ranked.slice(0, 3)
-  const rest = ranked.slice(3)
+  const leader = ranked[0]
+  const rest = ranked.slice(1)
 
   const renderFilterRow = (
     label: string,
@@ -88,29 +54,33 @@ export default function LeaderboardScreen() {
     setter: (v: string) => void
   ) => (
     <View style={styles.filterGroup}>
-      <TouchableOpacity
+      <Pressable
         style={[styles.filterBtn, activeFilter === key && styles.filterBtnActive]}
         onPress={() => setActiveFilter(activeFilter === key ? null : key)}
-        activeOpacity={0.8}
       >
+        <ListFilter size={13} color={color.faint} strokeWidth={2} />
         <Text style={styles.filterBtnText}>
           {current === 'ALL' ? label : current}
         </Text>
-        <Text style={styles.filterArrow}>{activeFilter === key ? '▲' : '▼'}</Text>
-      </TouchableOpacity>
+        <View style={{ flex: 1 }} />
+        {/* Were ▲ / ▼ text glyphs. */}
+        {activeFilter === key
+          ? <ChevronUp size={14} color={color.mute} strokeWidth={2} />
+          : <ChevronDown size={14} color={color.mute} strokeWidth={2} />}
+      </Pressable>
       {activeFilter === key && (
         <View style={styles.dropdown}>
           {options.map(opt => (
-            <TouchableOpacity
+            <Pressable
               key={opt}
               style={[styles.dropdownItem, current === opt && styles.dropdownItemActive]}
               onPress={() => { setter(opt); setActiveFilter(null) }}
-              activeOpacity={0.8}
             >
               <Text style={[styles.dropdownText, current === opt && styles.dropdownTextActive]}>
                 {opt === 'ALL' ? `All ${label}` : opt}
               </Text>
-            </TouchableOpacity>
+              {current === opt && <Check size={12} color={color.bloodLite} strokeWidth={2.5} />}
+            </Pressable>
           ))}
         </View>
       )}
@@ -118,229 +88,238 @@ export default function LeaderboardScreen() {
   )
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>COMMUNITY</Text>
-        <Text style={styles.title}>Donor Leaderboard</Text>
-        <Text style={styles.subtitle}>Top donors ranked by commitment score across Pakistan.</Text>
-      </View>
+    <Screen grid>
+      <PageHead
+        eyebrow="Community · Leaderboard"
+        title="Ranked by"
+        accent="commitment."
+        sub="Every donor whose commitment score has moved above zero, ordered highest first. The list holds the top twenty across Pakistan."
+      />
 
-      {/* City filter — dropdown, not a wrapping chip row */}
-      {renderFilterRow('Cities', 'city', cities, cityFilter, setCityFilter)}
+      <View style={styles.gutter}>
+        {/* City filter — dropdown, not a wrapping chip row */}
+        {renderFilterRow('Cities', 'city', cities, cityFilter, setCityFilter)}
 
-      {loading && (
-        <View style={{ gap: 10 }}>
-          {[1, 2, 3, 4, 5].map(i => <SkeletonRow key={i} />)}
-        </View>
-      )}
+        {loading && (
+          <View style={{ gap: 1 }}>
+            {[1, 2, 3, 4, 5].map(i => (
+              <View key={i} style={styles.loadRow}>
+                <Skeleton width={22} height={13} />
+                <Skeleton width={34} height={34} />
+                <View style={{ flex: 1, gap: 8 }}>
+                  <Skeleton width="56%" height={13} />
+                  <Skeleton width="30%" height={10} />
+                </View>
+                <Skeleton width={30} height={18} />
+              </View>
+            ))}
+          </View>
+        )}
 
-      {!loading && ranked.length === 0 && (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyEmoji}>🩸</Text>
-          <Text style={styles.emptyTitle}>No donors yet</Text>
-          <Text style={styles.emptyDesc}>Be the first donor in {cityFilter}.</Text>
-          <Link href="/register" asChild>
-            <TouchableOpacity style={styles.emptyBtn} activeOpacity={0.85}>
-              <Text style={styles.emptyBtnText}>Register as donor</Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
-      )}
+        {!loading && ranked.length === 0 && (
+          <EmptyState
+            icon={Droplet}
+            title="No donors yet"
+            body={cityFilter === 'ALL'
+              ? 'Nobody has earned a commitment score yet. The first accepted match puts a name here.'
+              : `No donor from ${cityFilter} has a commitment score yet.`}
+            action={
+              <Link href="/register" asChild>
+                <Button tone="primary">Register as donor</Button>
+              </Link>
+            }
+          />
+        )}
 
-      {!loading && ranked.length > 0 && (
-        <>
-          {/* Podium */}
-          {top3.length > 0 && (
-            <View style={styles.podiumWrap}>
-              {/* #1 hero card */}
-              {top3[0] && (() => {
-                const donor = top3[0]
-                const rankStyle = getRankStyle(1)
-                const palette = getPalette(donor.name)
-                return (
-                  <View style={[styles.heroCard, { backgroundColor: rankStyle.bg, borderColor: rankStyle.border }]}>
-                    <Text style={styles.heroMedal}>🥇</Text>
-                    <View style={[styles.heroAvatar, { backgroundColor: palette.bg, borderColor: palette.border }]}>
-                      <Text style={[styles.heroAvatarText, { color: palette.text }]}>{getInitials(donor.name)}</Text>
-                    </View>
-                    <Text style={styles.heroName} numberOfLines={1}>{donor.name}</Text>
-                    <Text style={styles.heroCity}>{donor.city}</Text>
-                    <View style={styles.heroRow}>
-                      {donor.bloodGroup && (
-                        <View style={styles.bloodPill}>
-                          <Text style={styles.bloodPillText}>{bloodGroupLabels[donor.bloodGroup]}</Text>
-                        </View>
+        {!loading && ranked.length > 0 && (
+          <>
+            {/* ── Leader ────────────────────────────────────────────────────
+                Ranged left on a ruled band, not a centred podium with medal
+                glyphs. The score is the largest thing in the block because the
+                whole page is an ordering by that one number. */}
+            {leader && (
+              <View style={styles.leaderBand}>
+                <View style={styles.leaderTopRow}>
+                  <Crown size={13} color={color.warnLite} strokeWidth={2} />
+                  <Label loud>First place</Label>
+                </View>
+
+                <View style={styles.leaderRow}>
+                  <View style={[styles.leaderTile, { backgroundColor: tintFor(leader.name).bg }]}>
+                    <Text style={[styles.leaderTileText, { color: tintFor(leader.name).fg }]}>
+                      {initialsFor(leader.name)}
+                    </Text>
+                  </View>
+
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.leaderName} numberOfLines={1}>{leader.name}</Text>
+                    <View style={styles.leaderMeta}>
+                      <Text style={styles.leaderCity} numberOfLines={1}>{leader.city}</Text>
+                      {leader.bloodGroup && (
+                        <>
+                          <View style={styles.metaDot} />
+                          <Text style={styles.groupText}>{bloodLabel(leader.bloodGroup)}</Text>
+                        </>
                       )}
-                      <View style={styles.heroScoreWrap}>
-                        <Text style={[styles.heroScore, { color: rankStyle.text }]}>{donor.commitmentScore}</Text>
-                        <Text style={styles.heroScoreLabel}>score</Text>
-                      </View>
                     </View>
-                    {donor.totalDonations > 0 && (
+                    {leader.totalDonations > 0 && (
                       <Text style={styles.donationsText}>
-                        {donor.totalDonations} donation{donor.totalDonations !== 1 ? 's' : ''}
+                        {leader.totalDonations} donation{leader.totalDonations !== 1 ? 's' : ''} recorded
                       </Text>
                     )}
                   </View>
-                )
-              })()}
 
-              {/* #2 and #3 side by side */}
-              {(top3[1] || top3[2]) && (
-                <View style={styles.runnerUpRow}>
-                  {[top3[1], top3[2]].filter(Boolean).map((donor) => {
-                    const rankStyle = getRankStyle(donor!.rank)
-                    const palette = getPalette(donor!.name)
-                    return (
-                      <View
-                        key={donor!.rank}
-                        style={[styles.runnerUpCard, { backgroundColor: rankStyle.bg, borderColor: rankStyle.border }]}
-                      >
-                        <Text style={styles.runnerUpMedal}>{rankStyle.label}</Text>
-                        <View style={[styles.runnerUpAvatar, { backgroundColor: palette.bg, borderColor: palette.border }]}>
-                          <Text style={[styles.runnerUpAvatarText, { color: palette.text }]}>{getInitials(donor!.name)}</Text>
-                        </View>
-                        <Text style={styles.runnerUpName} numberOfLines={1}>{donor!.name}</Text>
-                        <Text style={styles.runnerUpCity} numberOfLines={1}>{donor!.city}</Text>
-                        <Text style={[styles.runnerUpScore, { color: rankStyle.text }]}>{donor!.commitmentScore}</Text>
-                      </View>
-                    )
-                  })}
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Rest of list */}
-          {rest.length > 0 && (
-            <View style={{ gap: 8 }}>
-              {rest.map((donor) => {
-                const palette = getPalette(donor.name)
-                return (
-                  <View key={donor.rank} style={styles.row}>
-                    <Text style={styles.rowRank}>{donor.rank}</Text>
-                    <View style={[styles.rowAvatar, { backgroundColor: palette.bg, borderColor: palette.border }]}>
-                      <Text style={[styles.rowAvatarText, { color: palette.text }]}>{getInitials(donor.name)}</Text>
-                    </View>
-                    <View style={styles.rowInfo}>
-                      <Text style={styles.rowName} numberOfLines={1}>{donor.name}</Text>
-                      <Text style={styles.rowCity} numberOfLines={1}>{donor.city}</Text>
-                    </View>
-                    {donor.bloodGroup && (
-                      <View style={styles.bloodPillSmall}>
-                        <Text style={styles.bloodPillSmallText}>{bloodGroupLabels[donor.bloodGroup]}</Text>
-                      </View>
-                    )}
-                    <View style={styles.rowScoreWrap}>
-                      <Text style={styles.rowScore}>{donor.commitmentScore}</Text>
-                      {donor.totalDonations > 0 && (
-                        <Text style={styles.rowDonations}>{donor.totalDonations} donated</Text>
-                      )}
-                    </View>
+                  <View style={styles.leaderScoreCol}>
+                    <Text style={styles.leaderScore}>{leader.commitmentScore}</Text>
+                    <Label>Score</Label>
                   </View>
-                )
-              })}
-            </View>
-          )}
-        </>
-      )}
-    </ScrollView>
+                </View>
+              </View>
+            )}
+
+            {/* ── Everyone else ─────────────────────────────────────────── */}
+            {rest.length > 0 && (
+              <>
+                <SectionLabel index="02" style={{ marginTop: 30 }}>Following</SectionLabel>
+
+                {rest.map((donor) => {
+                  const tint = tintFor(donor.name)
+                  return (
+                    <View key={donor.rank} style={styles.row}>
+                      <Text style={styles.rowRank}>{String(donor.rank).padStart(2, '0')}</Text>
+
+                      <View style={[styles.rowTile, { backgroundColor: tint.bg }]}>
+                        <Text style={[styles.rowTileText, { color: tint.fg }]}>
+                          {initialsFor(donor.name)}
+                        </Text>
+                      </View>
+
+                      <View style={styles.rowInfo}>
+                        <Text style={styles.rowName} numberOfLines={1}>{donor.name}</Text>
+                        <View style={styles.rowMeta}>
+                          <Text style={styles.rowCity} numberOfLines={1}>{donor.city}</Text>
+                          {donor.bloodGroup && (
+                            <>
+                              <View style={styles.metaDot} />
+                              <Text style={styles.groupTextSmall}>{bloodLabel(donor.bloodGroup)}</Text>
+                            </>
+                          )}
+                        </View>
+                      </View>
+
+                      <View style={styles.rowScoreWrap}>
+                        <Text style={styles.rowScore}>{donor.commitmentScore}</Text>
+                        {donor.totalDonations > 0 && (
+                          <Text style={styles.rowDonations}>{donor.totalDonations} donated</Text>
+                        )}
+                      </View>
+                    </View>
+                  )
+                })}
+              </>
+            )}
+
+            <Rule style={{ marginTop: 26 }} />
+            <Text style={styles.footnote}>
+              Commitment score rises when a donor accepts a match and the hospital confirms the
+              collection. Declining or not showing up moves it the other way.
+            </Text>
+          </>
+        )}
+      </View>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0F0F0F' },
-  content: { padding: 20, paddingBottom: 48 },
+  gutter: { paddingHorizontal: 20 },
 
-  header: { marginBottom: 20 },
-  eyebrow: { color: '#DC2626', fontSize: 11, letterSpacing: 1.5, fontWeight: '600', marginBottom: 8 },
-  title: { color: '#FFFFFF', fontSize: 26, fontWeight: '700' },
-  subtitle: { color: '#9CA3AF', fontSize: 13, marginTop: 6 },
-
-  // Dropdown filter (replaces old horizontal chip row)
-  filterGroup: { marginBottom: 20, position: 'relative', zIndex: 10 },
+  // Dropdown filter
+  filterGroup: { marginBottom: 26, position: 'relative', zIndex: 10 },
   filterBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#141414', borderWidth: 1, borderColor: '#222',
-    borderRadius: 10, paddingHorizontal: 16, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 9,
+    backgroundColor: color.surface, borderWidth: 1, borderColor: color.line,
+    borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12,
   },
-  filterBtnActive: { borderColor: '#DC2626' },
-  filterBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '500' },
-  filterArrow: { color: '#6B7280', fontSize: 10 },
+  filterBtnActive: { borderColor: wash.bloodEdge, backgroundColor: color.raised },
+  filterBtnText: {
+    fontFamily: font.mono.medium, fontSize: 11, color: color.bone,
+    letterSpacing: 1.1, textTransform: 'uppercase',
+  },
   dropdown: {
-    marginTop: 6, backgroundColor: '#141414', borderWidth: 1, borderColor: '#222',
-    borderRadius: 10, overflow: 'hidden',
+    marginTop: 5, backgroundColor: color.raised,
+    borderWidth: 1, borderColor: color.line, borderRadius: radius.md, overflow: 'hidden',
   },
-  dropdownItem: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' },
-  dropdownItemActive: { backgroundColor: 'rgba(220,38,38,0.08)' },
-  dropdownText: { color: '#9CA3AF', fontSize: 13.5 },
-  dropdownTextActive: { color: '#DC2626', fontWeight: '600' },
-
-  skeletonRow: { height: 80, backgroundColor: '#141414', borderWidth: 1, borderColor: '#222', borderRadius: 14 },
-
-  emptyCard: {
-    backgroundColor: '#141414', borderWidth: 1, borderColor: '#222',
-    borderRadius: 16, padding: 40, alignItems: 'center',
+  dropdownItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 14, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: color.lineSoft,
   },
-  emptyEmoji: { fontSize: 36, marginBottom: 12 },
-  emptyTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '700', marginBottom: 4 },
-  emptyDesc: { color: '#6B7280', fontSize: 13, marginBottom: 20 },
-  emptyBtn: { backgroundColor: '#DC2626', borderRadius: 10, paddingHorizontal: 24, paddingVertical: 12 },
-  emptyBtnText: { color: '#FFFFFF', fontSize: 13.5, fontWeight: '700' },
+  dropdownItemActive: { backgroundColor: wash.blood },
+  dropdownText: { fontFamily: font.sans.regular, fontSize: 13.5, color: color.mute },
+  dropdownTextActive: { fontFamily: font.sans.medium, color: color.bloodLite },
 
-  // Podium
-  podiumWrap: { marginBottom: 24, gap: 10 },
-
-  heroCard: {
-    borderWidth: 1, borderRadius: 20, paddingVertical: 24, paddingHorizontal: 20, alignItems: 'center',
+  loadRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderTopWidth: 1, borderTopColor: color.lineSoft, paddingVertical: 15,
   },
-  heroMedal: { fontSize: 32, marginBottom: 10 },
-  heroAvatar: { width: 68, height: 68, borderRadius: 34, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  heroAvatarText: { fontSize: 22, fontWeight: '700' },
-  heroName: { color: '#FFFFFF', fontSize: 17, fontWeight: '700', maxWidth: '100%' },
-  heroCity: { color: '#9CA3AF', fontSize: 12.5, marginTop: 2 },
-  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 14 },
-  heroScoreWrap: { alignItems: 'center' },
-  heroScore: { fontSize: 24, fontWeight: '800' },
-  heroScoreLabel: { color: '#6B7280', fontSize: 10.5 },
-  donationsText: { color: '#4ADE80', fontSize: 11.5, marginTop: 8, fontWeight: '600' },
 
-  runnerUpRow: { flexDirection: 'row', gap: 10 },
-  runnerUpCard: {
-    flex: 1, borderWidth: 1, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 10, alignItems: 'center',
+  // Leader band
+  leaderBand: {
+    borderTopWidth: 1, borderBottomWidth: 1, borderColor: color.line,
+    paddingVertical: 18,
   },
-  runnerUpMedal: { fontSize: 20, marginBottom: 8 },
-  runnerUpAvatar: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  runnerUpAvatarText: { fontSize: 14, fontWeight: '700' },
-  runnerUpName: { color: '#FFFFFF', fontSize: 13, fontWeight: '600', maxWidth: '100%' },
-  runnerUpCity: { color: '#6B7280', fontSize: 11, marginTop: 1, marginBottom: 8 },
-  runnerUpScore: { fontSize: 17, fontWeight: '800' },
-
-  bloodPill: {
-    backgroundColor: 'rgba(220,38,38,0.1)', borderWidth: 1, borderColor: 'rgba(220,38,38,0.25)',
-    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4,
+  leaderTopRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  leaderRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  leaderTile: {
+    width: 52, height: 52, borderRadius: radius.md,
+    alignItems: 'center', justifyContent: 'center',
   },
-  bloodPillText: { color: '#F87171', fontSize: 11.5, fontWeight: '700' },
+  leaderTileText: { fontFamily: font.mono.medium, fontSize: 17, letterSpacing: 0.4 },
+  leaderName: {
+    fontFamily: font.sans.semibold, fontSize: 19, color: color.bone, letterSpacing: -0.6,
+  },
+  leaderMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5 },
+  leaderCity: { fontFamily: font.sans.regular, fontSize: 12.5, color: color.mute, flexShrink: 1 },
+  metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: color.faint },
+  groupText: { fontFamily: font.mono.medium, fontSize: 12.5, color: color.bloodLite, letterSpacing: -0.2 },
+  donationsText: {
+    fontFamily: font.sans.regular, fontSize: 11.5, color: color.lifeLite, marginTop: 7,
+  },
+  leaderScoreCol: { alignItems: 'flex-end' },
+  leaderScore: {
+    fontFamily: font.mono.medium, fontSize: 32, lineHeight: 34, color: color.bone,
+    letterSpacing: -1.5, fontVariant: ['tabular-nums'], marginBottom: 5,
+  },
 
-  // Rest list
+  // Rows
   row: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#141414', borderWidth: 1, borderColor: '#222',
-    borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderTopWidth: 1, borderTopColor: color.lineSoft, paddingVertical: 14,
   },
-  rowRank: { color: '#6B7280', fontSize: 13, fontWeight: '600', width: 20, textAlign: 'right' },
-  rowAvatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  rowAvatarText: { fontSize: 11.5, fontWeight: '700' },
+  rowRank: {
+    fontFamily: font.mono.regular, fontSize: 11, color: color.faint,
+    width: 20, fontVariant: ['tabular-nums'],
+  },
+  rowTile: {
+    width: 34, height: 34, borderRadius: radius.sm,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  rowTileText: { fontFamily: font.mono.medium, fontSize: 11.5, letterSpacing: 0.3 },
   rowInfo: { flex: 1, minWidth: 0 },
-  rowName: { color: '#FFFFFF', fontSize: 13.5, fontWeight: '600' },
-  rowCity: { color: '#6B7280', fontSize: 11.5, marginTop: 1 },
-  bloodPillSmall: {
-    backgroundColor: 'rgba(220,38,38,0.1)', borderWidth: 1, borderColor: 'rgba(220,38,38,0.25)',
-    borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2,
-  },
-  bloodPillSmallText: { color: '#F87171', fontSize: 10.5, fontWeight: '700' },
+  rowName: { fontFamily: font.sans.medium, fontSize: 14, color: color.bone, letterSpacing: -0.3 },
+  rowMeta: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 4 },
+  rowCity: { fontFamily: font.sans.regular, fontSize: 11.5, color: color.faint, flexShrink: 1 },
+  groupTextSmall: { fontFamily: font.mono.medium, fontSize: 11, color: color.bloodLite },
   rowScoreWrap: { alignItems: 'flex-end' },
-  rowScore: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-  rowDonations: { color: '#4ADE80', fontSize: 10.5, marginTop: 1 },
+  rowScore: {
+    fontFamily: font.mono.medium, fontSize: 16, color: color.bone,
+    letterSpacing: -0.5, fontVariant: ['tabular-nums'],
+  },
+  rowDonations: { fontFamily: font.mono.regular, fontSize: 9, color: color.lifeLite, marginTop: 3 },
+
+  footnote: {
+    fontFamily: font.sans.regular, fontSize: 11.5, lineHeight: 17,
+    color: color.faint, marginTop: 14,
+  },
 })

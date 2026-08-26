@@ -1,20 +1,29 @@
 // app/donor/dashboard.tsx
 import {
-  View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Switch, Image
+  View, Text, ScrollView, StyleSheet, Switch, Image, Pressable, Modal,
 } from 'react-native'
 import { useEffect, useState } from 'react'
 import { router, Link } from 'expo-router'
-import Svg, { Circle } from 'react-native-svg'
+import {
+  ArrowUpRight, BadgeCheck, Building2, Check, Droplet, MapPin, Pencil,
+  ShieldCheck, TriangleAlert, X,
+} from 'lucide-react-native'
 import { useAuthStore } from '../../src/store/authStore'
 import api from '../../src/lib/api'
-import BadgePopup from '../../src/components/Badges'
+import BadgePopup, { badgeMeta } from '../../src/components/Badges'
 import { registerForPushNotifications, savePushTokenToBackend } from '../../src/lib/notifications'
 import { useNetwork } from '../../src/hooks/useNetwork'
 import { saveCache, loadCache } from '../../src/lib/cache'
 import OfflineBanner from '../../src/components/OfflineBanner'
-import { Modal } from 'react-native'
 import HeroCertificate from '../../src/components/Herocertificate'
+
+import {
+  Screen, PageHead, Label, SectionLabel, Rule, Chip, Button, Skeleton,
+  EmptyState, LiveDot, SegmentMeter, TextAction, Notice,
+} from '../../src/components/fk'
+import {
+  color, wash, font, radius, urgencyTone, statusTone, toneFor, bloodLabel,
+} from '../../src/theme'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface DonorProfile {
@@ -41,29 +50,13 @@ interface Match {
   }
 }
 
-// ── Lookup maps ──────────────────────────────────────────────────────────────
-const bloodGroupLabels: Record<string, string> = {
-  A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
-  AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−',
-}
-
-const urgencyStyle: Record<string, { bg: string; border: string; text: string; bar: string }> = {
-  CRITICAL: { bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.25)', text: '#F87171', bar: '#F87171' },
-  URGENT:   { bg: 'rgba(251,146,60,0.08)',  border: 'rgba(251,146,60,0.25)',  text: '#FB923C', bar: '#FB923C' },
-  NORMAL:   { bg: 'rgba(74,222,128,0.08)',  border: 'rgba(74,222,128,0.25)',  text: '#4ADE80', bar: '#4ADE80' },
-}
-
-const statusDot: Record<string, string> = {
-  PENDING: '#FACC15',
-  ACCEPTED: '#4ADE80',
-  DECLINED: '#F87171',
-  COMPLETED: '#60A5FA',
-}
-
-const RING_SIZE = 128
-const RING_STROKE = 10
-const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2
-const RING_CIRC = 2 * Math.PI * RING_RADIUS
+/**
+ * The recovery interval the backend enforces between donations. The meter below
+ * counts this out in segments rather than drawing a progress ring — 90 days is a
+ * count of whole days, and a smooth arc implies a precision it doesn't have.
+ */
+const RECOVERY_DAYS = 90
+const RECOVERY_SEGMENTS = 18
 
 // ── Component ────────────────────────────────────────────────────────────────
 export default function DonorDashboard() {
@@ -176,234 +169,335 @@ const fetchData = async () => {
   const daysLeft       = daysUntilEligible()
   const isReady        = daysLeft === null || daysLeft === 0
   const ringProgress   = isReady ? 1 : Math.max(0, Math.min(1, (90 - (daysLeft ?? 0)) / 90))
-  const ringOffset     = RING_CIRC * (1 - ringProgress)
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color="#DC2626" />
-      </View>
+      <Screen grid>
+        <View style={styles.gutter}>
+          <Rule tick />
+          <View style={{ marginTop: 22, gap: 12 }}>
+            <Skeleton width="42%" height={11} />
+            <Skeleton width="72%" height={26} />
+          </View>
+          <View style={styles.loadBand}>
+            <Skeleton width={86} height={44} />
+            <View style={{ flex: 1, gap: 10 }}>
+              <Skeleton width="60%" height={13} />
+              <Skeleton height={4} />
+            </View>
+          </View>
+          <View style={{ gap: 10, marginTop: 26 }}>
+            <Skeleton width="34%" height={10} />
+            <Skeleton height={92} />
+            <Skeleton height={92} />
+          </View>
+        </View>
+      </Screen>
     )
   }
 
+  const firstName = donor?.user.name?.split(' ')[0] || 'Donor'
+  const group = donor?.bloodGroup ? bloodLabel(donor.bloodGroup) : '—'
+  const score = donor?.commitmentScore ?? 0
+
   // ── Main render ──────────────────────────────────────────────────────────
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <Screen grid>
 
-      {!isOnline && <OfflineBanner lastUpdated={cacheTime} />}
+      {/* OfflineBanner no longer carries its own margin — it sits in this
+          screen's gutter like everything else. */}
+      {!isOnline && (
+        <View style={styles.gutter}>
+          <OfflineBanner lastUpdated={cacheTime} />
+        </View>
+      )}
+
       {/* Badges Card, show one time */}
       {donor && <BadgePopup badges={badges} donorId={donor.id} />}
 
-      {/* Header */}
-      <View style={styles.headerRow}>
-      <View>
-        <Text style={styles.greeting}>
-          Hi, {donor?.user.name?.split(' ')[0] || 'Donor'}
-        </Text>
-        <Text style={styles.city}>
-          {donor?.user.city}
-          {donor?.area ? ` · ${donor.area}` : ''}
-        </Text>
-        {!donor?.area && (
-          <TouchableOpacity onPress={() => router.push('/donor/profile')}>
-            <Text style={styles.areaWarning}>⚠️ Add your area to get matched with nearby requests</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-        <Link href="/donor/profile" asChild>
-          <TouchableOpacity style={styles.editBtn} activeOpacity={0.7}>
-            <Text style={styles.editBtnText}>Edit</Text>
-          </TouchableOpacity>
-        </Link>
-      </View>
+      <PageHead
+        eyebrow={`Donor · ${donor?.user.city ?? 'Pakistan'}${donor?.area ? ` · ${donor.area}` : ''}`}
+        title={`${firstName},`}
+        accent={isReady ? "you're clear." : "you're recovering."}
+        aside={
+          <Link href="/donor/profile" asChild>
+            <Pressable style={styles.editBtn} hitSlop={6}>
+              <Pencil size={11} color={color.mute} strokeWidth={2} />
+              <Text style={styles.editBtnText}>Edit</Text>
+            </Pressable>
+          </Link>
+        }
+      />
 
-      {/* Hero: readiness ring */}
-      <View style={styles.hero}>
-        <View style={styles.ringWrap}>
-          <Svg width={RING_SIZE} height={RING_SIZE}>
-            <Circle
-              cx={RING_SIZE / 2}
-              cy={RING_SIZE / 2}
-              r={RING_RADIUS}
-              stroke="#222"
-              strokeWidth={RING_STROKE}
-              fill="none"
-            />
-            <Circle
-              cx={RING_SIZE / 2}
-              cy={RING_SIZE / 2}
-              r={RING_RADIUS}
-              stroke={isReady ? '#4ADE80' : '#DC2626'}
-              strokeWidth={RING_STROKE}
-              strokeDasharray={`${RING_CIRC}, ${RING_CIRC}`}
-              strokeDashoffset={ringOffset}
-              strokeLinecap="round"
-              fill="none"
-              rotation={-90}
-              originX={RING_SIZE / 2}
-              originY={RING_SIZE / 2}
-            />
-          </Svg>
-          <View style={styles.ringCenter}>
-            <Text style={styles.ringBloodGroup}>
-              {donor?.bloodGroup ? bloodGroupLabels[donor.bloodGroup] : '—'}
-            </Text>
+      <View style={styles.gutter}>
+        {!donor?.area && (
+          <Pressable onPress={() => router.push('/donor/profile')} style={{ marginBottom: 22 }}>
+            {/* Was a ⚠️ glyph. */}
+            <Notice tone={toneFor(statusTone, 'PENDING')} icon={TriangleAlert}>
+              Add your area so nearby hospitals can reach you first. Right now you are matched on
+              city alone.
+            </Notice>
+          </Pressable>
+        )}
+
+        {/* ── Eligibility band ──────────────────────────────────────────────
+            Ruled top and bottom and full-gutter width rather than a card with a
+            progress ring in it. The group is the largest thing on the screen
+            because it is the one fact every hospital request is filtered on. */}
+        <View style={styles.band}>
+          <View style={styles.bandRow}>
+            <View style={styles.groupCol}>
+              <Text style={styles.groupValue}>{group}</Text>
+              <Label style={{ marginTop: 4 }}>Your group</Label>
+            </View>
+
+            <View style={styles.bandDivider} />
+
+            <View style={styles.bandInfo}>
+              <Text style={[styles.bandStatus, isReady && { color: color.lifeLite }]}>
+                {isReady ? 'Ready to donate' : `${daysLeft} days until eligible`}
+              </Text>
+              <Text style={styles.bandSub}>
+                {isReady
+                  ? 'You can accept a request right now.'
+                  : 'Your body needs a bit more recovery time.'}
+              </Text>
+              <SegmentMeter
+                value={ringProgress * RECOVERY_SEGMENTS}
+                max={RECOVERY_SEGMENTS}
+                segments={RECOVERY_SEGMENTS}
+                tint={isReady ? color.life : color.blood}
+                style={{ marginTop: 12 }}
+              />
+              <Text style={styles.bandFoot}>
+                {donor?.lastDonated
+                  ? `${RECOVERY_DAYS}-day interval since your last donation`
+                  : 'No donation on record yet'}
+              </Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.heroInfo}>
-          <Text style={styles.heroStatus}>
-            {isReady ? 'Ready to donate' : `${daysLeft} days until eligible`}
-          </Text>
-          <Text style={styles.heroSub}>
-            {isReady
-              ? 'You can accept a request right now.'
-              : 'Your body needs a bit more recovery time.'}
-          </Text>
-
-          <View style={styles.availRow}>
-            <View style={[styles.availDot, { backgroundColor: donor?.isAvailable ? '#4ADE80' : '#4B5563' }]} />
+        {/* ── Availability ─────────────────────────────────────────────────── */}
+        <View style={styles.availRow}>
+          {donor?.isAvailable
+            ? <LiveDot size={7} tint={color.life} />
+            : <View style={styles.availDotOff} />}
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.availLabel}>
               {donor?.isAvailable ? 'Visible to hospitals' : 'Hidden from hospitals'}
             </Text>
-            <Switch
-              value={donor?.isAvailable ?? false}
-              onValueChange={toggleAvailability}
-              disabled={toggling}
-              trackColor={{ false: '#333', true: '#16A34A' }}
-              thumbColor="#FFFFFF"
-              style={styles.availSwitch}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* Badges */}
-      {badges.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.badgeScroll}
-          contentContainerStyle={styles.badgeRow}
-        >
-          {badges.map((badge) => (
-            <View key={badge} style={styles.badgePill}>
-              <Text style={styles.badgePillText}>{badge.replace(/_/g, ' ')}</Text>
-            </View>
-          ))}
-        </ScrollView>
-      )}
-
-      {/* Pending requests */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Pending requests</Text>
-          {pendingMatches.length > 0 && (
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>{pendingMatches.length}</Text>
-            </View>
-          )}
-        </View>
-
-        {pendingMatches.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>Nothing pending right now</Text>
-            <Text style={styles.emptyDesc}>
+            <Text style={styles.availSub}>
               {donor?.isAvailable
-                ? "You'll be notified the moment a hospital needs your blood type."
-                : 'Turn on availability above so hospitals can find you.'}
+                ? 'You appear in searches for compatible donors in your radius.'
+                : 'No hospital can match you while this is off.'}
             </Text>
           </View>
+          <Switch
+            value={donor?.isAvailable ?? false}
+            onValueChange={toggleAvailability}
+            disabled={toggling}
+            trackColor={{ false: color.line, true: color.life }}
+            thumbColor={color.bone}
+            ios_backgroundColor={color.line}
+            style={styles.availSwitch}
+          />
+        </View>
+
+        {/* ── Badges ───────────────────────────────────────────────────────── */}
+        {badges.length > 0 && (
+          <View style={styles.badgeBlock}>
+            <Label>Earned</Label>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.badgeScroll}
+              contentContainerStyle={styles.badgeRow}
+            >
+              {badges.map((badge) => {
+                /* Each badge carries its own mark and tint, defined once in
+                   Badges.tsx, so the shelf and the popup agree. */
+                const meta = badgeMeta(badge)
+                const Icon = meta.icon
+                return (
+                  <View key={badge} style={styles.badgePill}>
+                    <Icon size={11} color={meta.tint} strokeWidth={2} />
+                    <Text style={styles.badgePillText}>{badge.replace(/_/g, ' ')}</Text>
+                  </View>
+                )
+              })}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ── Pending requests ─────────────────────────────────────────────── */}
+        <SectionLabel
+          index="01"
+          style={{ marginTop: 30 }}
+          aside={
+            pendingMatches.length > 0
+              ? <Text style={styles.countText}>{String(pendingMatches.length).padStart(2, '0')}</Text>
+              : null
+          }
+        >
+          Waiting on you
+        </SectionLabel>
+
+        {pendingMatches.length === 0 ? (
+          <EmptyState
+            icon={Droplet}
+            title="Nothing pending right now"
+            body={donor?.isAvailable
+              ? "You'll be notified the moment a hospital needs your blood type."
+              : 'Turn on availability above so hospitals can find you.'}
+          />
         ) : (
-          pendingMatches.map((match) => {
-            const urg = urgencyStyle[match.request.urgency] ?? urgencyStyle.NORMAL
+          pendingMatches.map((match, i) => {
+            const urg = toneFor(urgencyTone, match.request.urgency)
             return (
-              <View key={match.id} style={[styles.matchCard, { borderLeftColor: urg.bar }]}>
-                <View style={styles.matchTitleRow}>
-                  <Text style={styles.matchHospital} numberOfLines={1}>
-                    {match.request.hospital.name}
-                  </Text>
-                  <View style={[styles.pill, { backgroundColor: urg.bg, borderColor: urg.border }]}>
-                    <Text style={[styles.pillText, { color: urg.text }]}>{match.request.urgency}</Text>
+              <View key={match.id} style={styles.matchCard}>
+                {/* The urgency reads twice — as a 2px rule across the top of the
+                    card and as the chip. The rule is what you see from a metre
+                    away; the chip is what you read. */}
+                <View style={[styles.matchTick, { backgroundColor: urg.fg }]} />
+
+                <View style={styles.matchHead}>
+                  <Text style={styles.matchIndex}>{String(i + 1).padStart(2, '0')}</Text>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.matchHospital} numberOfLines={1}>
+                      {match.request.hospital.name}
+                    </Text>
+                    <View style={styles.matchAddrRow}>
+                      <MapPin size={10} color={color.faint} strokeWidth={2} />
+                      <Text style={styles.matchAddress} numberOfLines={1}>
+                        {match.request.hospital.address}
+                      </Text>
+                    </View>
+                  </View>
+                  <Chip tone={urg} />
+                </View>
+
+                <View style={styles.matchFigures}>
+                  <View style={styles.figure}>
+                    <Text style={styles.figureValue}>
+                      {bloodLabel(match.request.bloodGroup)}
+                    </Text>
+                    <Label style={{ marginTop: 3 }}>Group</Label>
+                  </View>
+                  <View style={styles.figureDivider} />
+                  <View style={styles.figure}>
+                    <Text style={styles.figureValue}>{match.request.units}</Text>
+                    <Label style={{ marginTop: 3 }}>
+                      {match.request.units > 1 ? 'Units' : 'Unit'}
+                    </Label>
                   </View>
                 </View>
-                <Text style={styles.matchAddress} numberOfLines={1}>{match.request.hospital.address}</Text>
-                <Text style={styles.matchUnits}>
-                  Needs {match.request.units} unit{match.request.units > 1 ? 's' : ''} of{' '}
-                  <Text style={styles.matchBlood}>
-                    {bloodGroupLabels[match.request.bloodGroup] || match.request.bloodGroup}
-                  </Text>
-                </Text>
 
                 <View style={styles.matchActions}>
-                  <TouchableOpacity
-                    style={styles.declineBtn}
+                  <Button
+                    tone="ghost"
+                    style={{ flex: 1 }}
                     onPress={() => respondToMatch(match.id, 'DECLINED')}
-                    activeOpacity={0.7}
                   >
-                    <Text style={styles.declineText}>Decline</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.acceptBtn}
+                    Decline
+                  </Button>
+                  <Button
+                    tone="affirm"
+                    icon={Check}
+                    style={{ flex: 1 }}
                     onPress={() => respondToMatch(match.id, 'ACCEPTED')}
-                    activeOpacity={0.85}
                   >
-                    <Text style={styles.acceptText}>Accept</Text>
-                  </TouchableOpacity>
+                    Accept
+                  </Button>
                 </View>
               </View>
             )
           })
         )}
-      </View>
 
-      {/* Commitment score — quiet, secondary */}
-      <View style={styles.footerStatRow}>
-        <Text style={styles.footerStatLabel}>Commitment score</Text>
-        <View style={styles.footerStatBarTrack}>
-          <View style={[styles.footerStatBarFill, { width: `${Math.min(donor?.commitmentScore ?? 0, 100)}%` }]} />
-        </View>
-        <Text style={styles.footerStatValue}>{donor?.commitmentScore ?? 0}</Text>
-      </View>
+        {/* ── Commitment score ─────────────────────────────────────────────── */}
+        <SectionLabel index="02" style={{ marginTop: 34 }}>Standing</SectionLabel>
 
-      {/* Match history */}
-      {pastMatches.map((match) => (
-        <TouchableOpacity
-          key={match.id}
-          style={styles.historyRow}
-          activeOpacity={match.status === 'COMPLETED' ? 0.6 : 1}
-          onPress={() => match.status === 'COMPLETED' && viewCertificate(match.id)}
-        >
-          <View style={[styles.historyDot, { backgroundColor: statusDot[match.status] ?? '#6B7280' }]} />
-          {match.status === 'COMPLETED' && match.photoUrl && (
-            <TouchableOpacity
-              onPress={() => setLightboxUrl(match.photoUrl!)}
-              activeOpacity={0.7}
-            >
-              {/* Nested inside the row's TouchableOpacity on purpose. React Native's
-                  touch responder system grants the responder to the deepest view that
-                  claims it, so tapping the thumbnail opens the photo and does not also
-                  fire the row's "view certificate" press. */}
-              <Image source={{ uri: match.photoUrl }} style={styles.historyThumb} />
-            </TouchableOpacity>
-          )}
-          <View style={styles.historyTextWrap}>
-            <Text style={styles.matchHospital} numberOfLines={1}>{match.request.hospital.name}</Text>
-            <Text style={styles.historyMeta}>
-              {bloodGroupLabels[match.request.bloodGroup]} · {match.request.units} unit{match.request.units > 1 ? 's' : ''}
+        <View style={styles.scoreRow}>
+          <Text style={styles.scoreValue}>{score}</Text>
+          <View style={styles.scoreCol}>
+            <Text style={styles.scoreLabel}>Commitment score</Text>
+            <SegmentMeter
+              value={Math.min(score, 100)}
+              max={100}
+              segments={20}
+              tint={color.blood}
+              style={{ marginTop: 9 }}
+            />
+            <Text style={styles.scoreFoot}>
+              Rises when you accept and complete a match. The public leaderboard is ordered by it.
             </Text>
-            {match.status === 'COMPLETED' && match.photoUrl && (
-              <Text style={styles.historyVerified}>✓ Collection verified by photo</Text>
-            )}
           </View>
-          {match.status === 'COMPLETED' ? (
-            <Text style={styles.certificateLink}>View Certificate</Text>
-          ) : (
-            <Text style={styles.historyStatus}>{match.status}</Text>
-          )}
-        </TouchableOpacity>
-      ))}
+        </View>
+        <Link href="/leaderboard" asChild>
+          <Pressable style={styles.leaderRow} hitSlop={6}>
+            <Text style={styles.leaderText}>See the leaderboard</Text>
+            <ArrowUpRight size={13} color={color.bloodLite} strokeWidth={2} />
+          </Pressable>
+        </Link>
+
+        {/* ── History ──────────────────────────────────────────────────────── */}
+        {pastMatches.length > 0 && (
+          <>
+            <SectionLabel index="03" style={{ marginTop: 34 }}>History</SectionLabel>
+
+            {pastMatches.map((match) => {
+              const st = toneFor(statusTone, match.status)
+              const done = match.status === 'COMPLETED'
+              return (
+                <Pressable
+                  key={match.id}
+                  style={styles.historyRow}
+                  onPress={() => done && viewCertificate(match.id)}
+                >
+                  {done && match.photoUrl ? (
+                    <Pressable onPress={() => setLightboxUrl(match.photoUrl!)}>
+                      {/* Nested inside the row's Pressable on purpose. React Native's
+                          touch responder system grants the responder to the deepest view that
+                          claims it, so tapping the thumbnail opens the photo and does not also
+                          fire the row's "view certificate" press. */}
+                      <Image source={{ uri: match.photoUrl }} style={styles.historyThumb} />
+                    </Pressable>
+                  ) : (
+                    <View style={[styles.historyMark, { borderColor: st.border, backgroundColor: st.bg }]}>
+                      <Building2 size={13} color={st.fg} strokeWidth={2} />
+                    </View>
+                  )}
+
+                  <View style={styles.historyTextWrap}>
+                    <Text style={styles.matchHospital} numberOfLines={1}>{match.request.hospital.name}</Text>
+                    <Text style={styles.historyMeta}>
+                      {bloodLabel(match.request.bloodGroup)} · {match.request.units} unit{match.request.units > 1 ? 's' : ''}
+                    </Text>
+                    {done && match.photoUrl && (
+                      <View style={styles.verifiedRow}>
+                        {/* Was a ✓ glyph. */}
+                        <ShieldCheck size={10} color={color.lifeLite} strokeWidth={2} />
+                        <Text style={styles.historyVerified}>Collection verified by photo</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {done ? (
+                    <View style={styles.certRow}>
+                      <BadgeCheck size={12} color={color.bloodLite} strokeWidth={2} />
+                      <Text style={styles.certificateLink}>Certificate</Text>
+                    </View>
+                  ) : (
+                    <Chip tone={st} />
+                  )}
+                </Pressable>
+              )
+            })}
+          </>
+        )}
+      </View>
 
       <Modal
         visible={certificateOpen}
@@ -412,10 +506,19 @@ const fetchData = async () => {
         onRequestClose={() => setCertificateOpen(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <TouchableOpacity onPress={() => setCertificateOpen(false)} style={styles.modalClose}>
-              <Text style={styles.modalCloseText}>✕ Close</Text>
-            </TouchableOpacity>
+          {/* Scrolls because the card grows by ~60pt when the donor switches the
+              blood-bag photo on, which is enough to push the Share and Save
+              buttons off a short screen. */}
+          <ScrollView
+            style={styles.modalScroll}
+            contentContainerStyle={styles.modalCard}
+            showsVerticalScrollIndicator={false}
+          >
+            <Pressable onPress={() => setCertificateOpen(false)} style={styles.modalClose}>
+              {/* Was a ✕ glyph. */}
+              <X size={13} color={color.mute} strokeWidth={2} />
+              <Text style={styles.modalCloseText}>Close</Text>
+            </Pressable>
 
             {certificate && (
               <HeroCertificate
@@ -430,7 +533,7 @@ const fetchData = async () => {
                 photoUrl={certificate.photoUrl}
               />
             )}
-          </View>
+          </ScrollView>
         </View>
       </Modal>
 
@@ -448,177 +551,201 @@ const fetchData = async () => {
             Photo uploaded by the hospital when your donation was collected.
             Only you and that hospital can view it.
           </Text>
-          <TouchableOpacity onPress={() => setLightboxUrl(null)} style={styles.lightboxClose}>
-            <Text style={styles.lightboxCloseText}>Close</Text>
-          </TouchableOpacity>
+          <TextAction onPress={() => setLightboxUrl(null)} style={{ marginTop: 18 }}>
+            Close
+          </TextAction>
         </View>
       </Modal>
 
-    </ScrollView>
+    </Screen>
   )
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0A0A0A' },
-  content: { padding: 20, paddingBottom: 48 },
-  center: { flex: 1, backgroundColor: '#0A0A0A', alignItems: 'center', justifyContent: 'center' },
-
-  // Header
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  greeting: { color: '#FFFFFF', fontSize: 22, fontWeight: '700' },
-  city: { color: '#6B7280', fontSize: 13, marginTop: 2 },
-  editBtn: { borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
-  editBtnText: { color: '#D1D5DB', fontSize: 13, fontWeight: '500' },
-
-  areaWarning: { color: '#DC2626', fontSize: 12, marginTop: 4 },
-  // Hero
-  hero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 20,
-    padding: 18,
-    gap: 18,
-    marginBottom: 16,
+  gutter: { paddingHorizontal: 20 },
+  loadBand: {
+    flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 26,
+    borderTopWidth: 1, borderBottomWidth: 1, borderColor: color.line,
+    paddingVertical: 20,
   },
-  ringWrap: { width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' },
-  ringCenter: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
-  ringBloodGroup: { color: '#FFFFFF', fontSize: 30, fontWeight: '800' },
 
-  heroInfo: { flex: 1 },
-  heroStatus: { color: '#FFFFFF', fontSize: 17, fontWeight: '700', marginBottom: 4 },
-  heroSub: { color: '#9CA3AF', fontSize: 12.5, lineHeight: 18, marginBottom: 14 },
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1, borderColor: color.line, borderRadius: radius.sm,
+    paddingHorizontal: 11, paddingVertical: 7,
+  },
+  editBtnText: {
+    fontFamily: font.mono.medium, fontSize: 9.5, color: color.mute,
+    letterSpacing: 1.3, textTransform: 'uppercase',
+  },
 
-  availRow: { flexDirection: 'row', alignItems: 'center' },
-  availDot: { width: 7, height: 7, borderRadius: 4, marginRight: 7 },
-  availLabel: { color: '#D1D5DB', fontSize: 12.5, flex: 1 },
+  // Eligibility band
+  band: {
+    borderTopWidth: 1, borderBottomWidth: 1, borderColor: color.line,
+    paddingVertical: 20,
+  },
+  bandRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 18 },
+  groupCol: { width: 92 },
+  groupValue: {
+    fontFamily: font.mono.medium, fontSize: 40, lineHeight: 44,
+    letterSpacing: -2, color: color.bone, fontVariant: ['tabular-nums'],
+  },
+  bandDivider: { width: 1, alignSelf: 'stretch', backgroundColor: color.lineSoft },
+  bandInfo: { flex: 1, minWidth: 0 },
+  bandStatus: {
+    fontFamily: font.sans.semibold, fontSize: 16, color: color.bone, letterSpacing: -0.4,
+  },
+  bandSub: {
+    fontFamily: font.sans.regular, fontSize: 12.5, lineHeight: 18,
+    color: color.mute, marginTop: 5,
+  },
+  bandFoot: {
+    fontFamily: font.mono.regular, fontSize: 8.5, color: color.faint,
+    letterSpacing: 1.1, textTransform: 'uppercase', marginTop: 10,
+  },
+
+  // Availability
+  availRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderBottomWidth: 1, borderBottomColor: color.line,
+    paddingVertical: 16,
+  },
+  availDotOff: { width: 7, height: 7, borderRadius: 4, backgroundColor: color.faint },
+  availLabel: { fontFamily: font.sans.medium, fontSize: 13.5, color: color.bone, letterSpacing: -0.2 },
+  availSub: { fontFamily: font.sans.regular, fontSize: 11.5, lineHeight: 16.5, color: color.faint, marginTop: 3 },
   availSwitch: { transform: [{ scaleX: 0.82 }, { scaleY: 0.82 }] },
 
   // Badges
-  badgeScroll: { marginBottom: 24, flexGrow: 0 },
-  badgeRow: { flexDirection: 'row', gap: 8 },
+  badgeBlock: { marginTop: 22 },
+  badgeScroll: { marginTop: 11, flexGrow: 0, marginHorizontal: -20 },
+  badgeRow: { flexDirection: 'row', gap: 7, paddingHorizontal: 20 },
   badgePill: {
-    backgroundColor: 'rgba(220,38,38,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(220,38,38,0.25)',
-    borderRadius: 999,
-    paddingHorizontal: 13,
-    paddingVertical: 7,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: wash.blood,
+    borderWidth: 1, borderColor: wash.bloodEdge, borderRadius: radius.pill,
+    paddingHorizontal: 11, paddingVertical: 6,
   },
-  badgePillText: { color: '#F87171', fontSize: 12, fontWeight: '500' },
-
-  // Sections
-  section: { marginBottom: 24 },
-  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
-  sectionTitle: { color: '#E5E7EB', fontSize: 15, fontWeight: '700' },
-  countBadge: { backgroundColor: '#DC2626', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  countBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
-
-  // Empty state
-  emptyCard: {
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 16,
-    padding: 24,
+  badgePillText: {
+    fontFamily: font.mono.medium, fontSize: 9.5, color: color.bloodLite,
+    letterSpacing: 1.1, textTransform: 'uppercase',
   },
-  emptyTitle: { color: '#D1D5DB', fontSize: 14, fontWeight: '600', marginBottom: 4 },
-  emptyDesc: { color: '#6B7280', fontSize: 12.5, lineHeight: 18 },
 
-  // Match card
+  countText: {
+    fontFamily: font.mono.medium, fontSize: 10, color: color.blood,
+    letterSpacing: 0.5, fontVariant: ['tabular-nums'],
+  },
+
+  // Pending match card
   matchCard: {
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#222',
-    borderLeftWidth: 3,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 10,
+    backgroundColor: color.surface,
+    borderWidth: 1, borderColor: color.line, borderRadius: radius.lg,
+    padding: 16, paddingTop: 18, marginBottom: 10, overflow: 'hidden',
   },
-  matchTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 },
-  matchHospital: { color: '#FFFFFF', fontSize: 14.5, fontWeight: '600', flexShrink: 1 },
-  matchAddress: { color: '#9CA3AF', fontSize: 12, marginBottom: 6 },
-  matchUnits: { color: '#6B7280', fontSize: 12.5 },
-  matchBlood: { color: '#F87171', fontWeight: '700' },
+  matchTick: { position: 'absolute', top: 0, left: 0, right: 0, height: 2 },
+  matchHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
+  matchIndex: {
+    fontFamily: font.mono.regular, fontSize: 10, color: color.blood,
+    letterSpacing: 0.5, marginTop: 3,
+  },
+  matchHospital: { fontFamily: font.sans.medium, fontSize: 14.5, color: color.bone, letterSpacing: -0.3 },
+  matchAddrRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  matchAddress: { flex: 1, fontFamily: font.sans.regular, fontSize: 11.5, color: color.faint },
 
-  matchActions: { flexDirection: 'row', gap: 8, marginTop: 14 },
-  acceptBtn: {
-    flex: 1,
-    backgroundColor: '#DC2626',
-    borderRadius: 10,
-    paddingVertical: 11,
-    alignItems: 'center',
+  matchFigures: {
+    flexDirection: 'row', alignItems: 'center', gap: 18,
+    borderTopWidth: 1, borderTopColor: color.lineSoft,
+    marginTop: 15, paddingTop: 14,
   },
-  acceptText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
-  declineBtn: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    borderRadius: 10,
-    paddingVertical: 11,
-    alignItems: 'center',
+  figure: { minWidth: 62 },
+  figureDivider: { width: 1, height: 26, backgroundColor: color.lineSoft },
+  figureValue: {
+    fontFamily: font.mono.medium, fontSize: 21, color: color.bone,
+    letterSpacing: -0.9, fontVariant: ['tabular-nums'],
   },
-  declineText: { color: '#9CA3AF', fontSize: 13, fontWeight: '600' },
 
-  // certificate link in history
-  certificateLink: { color: '#DC2626', fontSize: 12, fontWeight: '700' },
+  matchActions: { flexDirection: 'row', gap: 8, marginTop: 16 },
 
-  // proof-of-donation photo in history
-  historyThumb: {
-    width: 38, height: 38, borderRadius: 9, marginRight: 10,
-    borderWidth: 1, borderColor: '#2A2A2A', backgroundColor: '#141414',
+  // Commitment score
+  scoreRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
+  scoreValue: {
+    fontFamily: font.mono.medium, fontSize: 34, lineHeight: 36, width: 66,
+    letterSpacing: -1.6, color: color.bone, fontVariant: ['tabular-nums'],
   },
-  historyVerified: { color: 'rgba(74,222,128,0.85)', fontSize: 11, marginTop: 2 },
-
-  lightbox: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.93)',
-    alignItems: 'center', justifyContent: 'center', padding: 20,
+  scoreCol: { flex: 1, minWidth: 0 },
+  scoreLabel: { fontFamily: font.sans.medium, fontSize: 13.5, color: color.bone, letterSpacing: -0.2 },
+  scoreFoot: {
+    fontFamily: font.sans.regular, fontSize: 11.5, lineHeight: 17,
+    color: color.faint, marginTop: 10,
   },
-  lightboxImage: { width: '100%', height: '70%' },
-  lightboxCaption: {
-    color: '#6B7280', fontSize: 12, lineHeight: 18,
-    textAlign: 'center', marginTop: 14, maxWidth: 320,
+  leaderRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderTopWidth: 1, borderTopColor: color.lineSoft,
+    marginTop: 16, paddingTop: 14,
   },
-  lightboxClose: {
-    marginTop: 16, backgroundColor: '#141414',
-    borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 10,
-    paddingHorizontal: 18, paddingVertical: 10,
+  leaderText: {
+    fontFamily: font.mono.medium, fontSize: 10, color: color.bloodLite,
+    letterSpacing: 1.4, textTransform: 'uppercase',
   },
-  lightboxCloseText: { color: '#9CA3AF', fontSize: 13, fontWeight: '600' },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalCard: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  modalClose: { alignSelf: 'flex-end', marginBottom: 12, paddingHorizontal: 8, paddingVertical: 6 },
-  modalCloseText: { color: '#9CA3AF', fontSize: 14 },
-
-  // Pill badge
-  pill: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
-  pillText: { fontSize: 10.5, fontWeight: '600' },
-
-  // Footer commitment stat
-  footerStatRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 24 },
-  footerStatLabel: { color: '#6B7280', fontSize: 12, width: 108 },
-  footerStatBarTrack: { flex: 1, height: 5, backgroundColor: '#1A1A1A', borderRadius: 99, overflow: 'hidden' },
-  footerStatBarFill: { height: '100%', backgroundColor: '#DC2626', borderRadius: 99 },
-  footerStatValue: { color: '#9CA3AF', fontSize: 12, fontWeight: '600', width: 28, textAlign: 'right' },
 
   // History
-  historyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1A1A1A', gap: 10 },
-  historyDot: { width: 7, height: 7, borderRadius: 4 },
-  historyTextWrap: { flex: 1 },
-  historyMeta: { color: '#6B7280', fontSize: 11.5, marginTop: 2 },
-  historyStatus: { color: '#6B7280', fontSize: 11, fontWeight: '600' },
+  historyRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderTopWidth: 1, borderTopColor: color.lineSoft,
+    paddingVertical: 14,
+  },
+  historyMark: {
+    width: 34, height: 34, borderRadius: radius.sm,
+    borderWidth: 1, alignItems: 'center', justifyContent: 'center',
+  },
+  historyThumb: {
+    width: 34, height: 34, borderRadius: radius.sm,
+    borderWidth: 1, borderColor: color.line, backgroundColor: color.surface,
+  },
+  historyTextWrap: { flex: 1, minWidth: 0 },
+  historyMeta: {
+    fontFamily: font.mono.regular, fontSize: 11, color: color.mute,
+    marginTop: 4, letterSpacing: -0.1,
+  },
+  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
+  historyVerified: { fontFamily: font.sans.regular, fontSize: 10.5, color: color.lifeLite },
+
+  certRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  certificateLink: {
+    fontFamily: font.mono.medium, fontSize: 9, color: color.bloodLite,
+    letterSpacing: 1.2, textTransform: 'uppercase',
+  },
+
+  // Modals
+  modalOverlay: {
+    flex: 1, backgroundColor: wash.scrim,
+    justifyContent: 'center', alignItems: 'center', padding: 20,
+  },
+  // flex: 1 bounds the scroll view to the padded overlay — without it a
+  // ScrollView in a centred container just grows past the screen edge.
+  modalScroll: { width: '100%', flex: 1 },
+  modalCard: {
+    width: '100%', alignItems: 'center',
+    // flexGrow + centre keeps the card vertically centred while it still fits,
+    // and lets it scroll once it doesn't.
+    flexGrow: 1, justifyContent: 'center', paddingVertical: 8,
+  },
+  modalClose: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    alignSelf: 'flex-end', marginBottom: 12, paddingHorizontal: 8, paddingVertical: 6,
+  },
+  modalCloseText: {
+    fontFamily: font.mono.medium, fontSize: 10, color: color.mute,
+    letterSpacing: 1.4, textTransform: 'uppercase',
+  },
+
+  lightbox: {
+    flex: 1, backgroundColor: 'rgba(4,3,3,0.95)',
+    alignItems: 'center', justifyContent: 'center', padding: 20,
+  },
+  lightboxImage: { width: '100%', height: '68%' },
+  lightboxCaption: {
+    fontFamily: font.sans.regular, fontSize: 12, lineHeight: 18, color: color.faint,
+    textAlign: 'center', marginTop: 16, maxWidth: 320,
+  },
 })
