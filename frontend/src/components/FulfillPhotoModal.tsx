@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import api from '@/lib/api'
+import { CircleAlert, ImagePlus } from 'lucide-react'
+import { affirmBtn, neutralBtn } from '@/components/fk'
 
 interface Props {
   requestId: string
@@ -112,24 +114,41 @@ export default function FulfillPhotoModal({
     // "Upload and Confirm Donation" button stays reachable instead of being centred
     // half-way off the top of the screen. Clicks on the wrapper still bubble to the
     // overlay, so click-outside-to-close keeps working.
+    //
+    // The overlay is a flat black wash rather than a blurred one: the same scrim as the
+    // proof-photo lightbox on the requests page, and a blur behind a panel that is
+    // itself asking for a photograph is working against the thing being looked at.
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/85"
       onClick={() => { if (!uploading) onClose() }}
     >
       <div className="flex min-h-full items-center justify-center p-4">
       <div
-        className="w-full max-w-md bg-[#141414] border border-[#222] rounded-2xl p-6"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="fulfill-title"
+        className="w-full max-w-md rounded-lg border border-line bg-surface"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-5">
-          <h2 className="text-white text-lg font-bold">Confirm Donation</h2>
-          <p className="text-[#9CA3AF] text-xs mt-1.5 leading-relaxed">
-            Upload a photo of the blood bag for the{' '}
-            <span className="text-[#DC2626] font-semibold">{bloodGroupLabel}</span> request
-            {donorName ? <> donated by <span className="text-white">{donorName}</span></> : null}.
-            This is stored as proof of donation and shown to the donor.
+        <div className="flex items-center gap-3 border-b border-line-soft px-6 py-3.5">
+          <p className="whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
+            Proof of donation
           </p>
+          <span aria-hidden className="h-px flex-1 bg-line-soft" />
         </div>
+
+        <div className="px-6 pb-6 pt-5">
+          <div className="mb-5">
+            <h2 id="fulfill-title" className="text-xl font-semibold tracking-[-0.02em] text-bone">
+              Confirm Donation
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed text-mute">
+              Upload a photo of the blood bag for the{' '}
+              <span className="font-mono font-medium text-blood">{bloodGroupLabel}</span> request
+              {donorName ? <> donated by <span className="text-bone">{donorName}</span></> : null}.
+              This is stored as proof of donation and shown to the donor.
+            </p>
+          </div>
 
         {!previewUrl ? (
           <button
@@ -138,25 +157,31 @@ export default function FulfillPhotoModal({
             onDragOver={(e) => { e.preventDefault(); setDragActive(true) }}
             onDragLeave={() => setDragActive(false)}
             onDrop={handleDrop}
-            className={`w-full rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors duration-150 ${
+            className={`w-full rounded-md border border-dashed px-6 py-11 text-center transition-colors duration-150 ${
               dragActive
-                ? 'border-[#DC2626] bg-[#DC2626]/5'
-                : 'border-[#2A2A2A] hover:border-[#3A3A3A] bg-[#0F0F0F]'
+                ? 'border-blood bg-blood/[0.06]'
+                : 'border-line bg-raised hover:border-mute/40'
             }`}
           >
-            <p className="text-3xl mb-2">🩸</p>
-            <p className="text-white text-sm font-medium">Drop the photo here</p>
-            <p className="text-[#6B7280] text-xs mt-1">or click to browse · JPG, PNG, WebP · max 5MB</p>
+            <ImagePlus
+              className={`mx-auto mb-3 h-6 w-6 ${dragActive ? 'text-blood' : 'text-faint'}`}
+              strokeWidth={1.75}
+              aria-hidden
+            />
+            <p className="text-sm font-medium text-bone">Drop the photo here</p>
+            <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-faint">
+              or click to browse · JPG, PNG, WebP · max 5MB
+            </p>
           </button>
         ) : (
-          <div className="relative rounded-xl overflow-hidden border border-[#2A2A2A] bg-[#0F0F0F]">
+          <div className="relative overflow-hidden rounded-md border border-line bg-raised">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={previewUrl} alt="Blood bag preview" className="w-full max-h-64 object-contain" />
+            <img src={previewUrl} alt="Blood bag preview" className="max-h-64 w-full object-contain" />
             {!uploading && (
               <button
                 type="button"
                 onClick={() => { setFile(null); setError(null) }}
-                className="absolute top-2 right-2 bg-black/70 hover:bg-black text-white text-xs px-2.5 py-1 rounded-md border border-white/15"
+                className="absolute right-2 top-2 rounded-md border border-white/15 bg-black/70 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-bone transition-colors hover:bg-black"
               >
                 Change
               </button>
@@ -173,31 +198,32 @@ export default function FulfillPhotoModal({
         />
 
         {error && (
-          <p className="text-red-400 text-xs mt-3 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
-            {error}
+          <p className="mt-3.5 flex items-start gap-2 rounded-md border border-blood/25 bg-blood/10 px-3.5 py-2.5 text-xs leading-relaxed text-blood-lite">
+            <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+            <span>{error}</span>
           </p>
         )}
 
         {uploading && (
           <div className="mt-4">
-            <div className="h-1 w-full bg-[#222] rounded-full overflow-hidden">
+            <div className="h-1 w-full overflow-hidden rounded-full bg-raised">
               <div
-                className="h-full bg-[#DC2626] transition-all duration-200"
+                className="h-full bg-blood transition-all duration-200"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-[#6B7280] text-xs mt-2">
+            <p className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.14em] tabular-nums text-faint">
               {progress < 100 ? `Uploading… ${progress}%` : 'Saving donation…'}
             </p>
           </div>
         )}
 
-        <div className="flex gap-2 mt-5">
+        <div className="mt-6 flex gap-2.5 border-t border-line-soft pt-5">
           <button
             type="button"
             onClick={handleUpload}
             disabled={!file || uploading}
-            className="flex-1 bg-green-400/10 hover:bg-green-400/20 text-green-400 border border-green-400/20 text-sm font-medium px-4 py-2.5 rounded-lg transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+            className={`flex-1 ${affirmBtn}`}
           >
             {uploading ? 'Please wait…' : 'Upload and Confirm Donation'}
           </button>
@@ -205,10 +231,11 @@ export default function FulfillPhotoModal({
             type="button"
             onClick={onClose}
             disabled={uploading}
-            className="bg-[#1A1A1A] hover:bg-[#222] border border-[#2A2A2A] text-[#9CA3AF] text-sm px-4 py-2.5 rounded-lg transition-colors duration-150 disabled:opacity-40"
+            className={neutralBtn}
           >
             Cancel
           </button>
+        </div>
         </div>
         </div>
       </div>

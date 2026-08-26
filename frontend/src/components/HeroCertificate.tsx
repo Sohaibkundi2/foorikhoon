@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import html2canvas from 'html2canvas'
+import { neutralBtn, primaryBtn } from '@/components/fk'
 
 interface CertificateProps {
   donorName: string
@@ -21,13 +22,14 @@ const bloodGroupLabels: Record<string, string> = {
   AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
 }
 
-const badgeIcons: Record<string, string> = {
-  'First Blood': '🩸',
-  'Lifesaver': '🦸',
-  'Hero': '👑',
-  'Reliable': '⭐',
-  'Dedicated': '💎',
-}
+/**
+ * Monospace stack written out in full rather than referencing the app's
+ * `--font-mono` variable. html2canvas reads computed styles off the cloned
+ * node, and a webfont that hasn't finished loading at capture time rasterises
+ * as a fallback with different metrics — which on a card this tight moves
+ * figures visibly off their baseline. System monos are always resident.
+ */
+const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
 
 const QUOTES = [
   'One donation. One life. No small acts.',
@@ -40,6 +42,13 @@ const QUOTES = [
 function pickQuote(seed: string) {
   const index = seed.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % QUOTES.length
   return QUOTES[index]
+}
+
+/** Hairline used to divide the card's blocks. Kept as one object so they match. */
+const RULE: React.CSSProperties = {
+  height: 1,
+  background: 'rgba(255,255,255,0.16)',
+  flexShrink: 0
 }
 
 export default function HeroCertificate({
@@ -182,16 +191,30 @@ export default function HeroCertificate({
     // exported PNG changes), so this wrapper's spacing is the only vertical budget
     // available to keep the opt-in row and the action buttons on screen without scrolling.
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+      {/*
+        Set as a certificate rather than a social-media sticker. What changed and why:
+        the five-stop gradient, the two blurred radial glows and the centred stack of
+        rounded pills are the exact vocabulary of a generated graphic — and on a card
+        that a donor is meant to be proud to show, that reads as a template. This is
+        one flat ground with a single diagonal hairline weave, everything ranged left
+        against a common margin, and the blood group set as a figure instead of being
+        parked inside a glowing circle.
+
+        Emoji are gone with them. The wordmark mark, the badge and the verification
+        line are geometry and type, which also means html2canvas has nothing to
+        rasterise but boxes and text.
+      */}
       <div
         ref={cardRef}
         style={{
           position: 'relative',
           width: 300,
           height: 500,
-          borderRadius: 26,
+          borderRadius: 14,
           overflow: 'hidden',
-          boxShadow: '0 24px 64px rgba(220,38,38,0.35), 0 8px 24px rgba(0,0,0,0.5)',
-          background: 'linear-gradient(160deg, #1a0303 0%, #3d0808 28%, #7f0d0d 55%, #dc2626 82%, #ff4d4d 100%)',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.55)',
+          background: 'linear-gradient(178deg, #240404 0%, #4a0808 52%, #7d0f0f 100%)',
+          border: '1px solid rgba(255,255,255,0.14)',
           color: '#ffffff',
           fontFamily: 'inherit',
           display: 'flex',
@@ -199,75 +222,78 @@ export default function HeroCertificate({
           flexShrink: 0
         }}
       >
-        <div style={{
-          position: 'absolute', top: -50, right: -50, width: 190, height: 190,
-          borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,80,80,0.55) 0%, transparent 70%)',
-          filter: 'blur(10px)'
-        }} />
-        <div style={{
-          position: 'absolute', bottom: -70, left: -70, width: 220, height: 220,
-          borderRadius: '50%', background: 'radial-gradient(circle, rgba(120,0,0,0.6) 0%, transparent 70%)',
-          filter: 'blur(20px)'
-        }} />
+        {/* Diagonal weave, kept from the original: it is the one background effect
+            here that behaves like paper rather than like lighting. */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'repeating-linear-gradient(115deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 2px, transparent 2px, transparent 40px)'
+          background: 'repeating-linear-gradient(115deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 9px)'
         }} />
 
-        <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', padding: '18px 20px 16px' }}>
+        <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', padding: '20px 22px 18px' }}>
 
           {/* top row */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 13, lineHeight: 1 }}>🩸</span>
-              <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', lineHeight: 1 }}>ForiKhoon</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span style={{
+                width: 7, height: 7, borderRadius: '50%', background: '#ffffff',
+                display: 'block', flexShrink: 0
+              }} />
+              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 2.4, textTransform: 'uppercase', lineHeight: 1 }}>ForiKhoon</span>
             </div>
             <div style={{
-              fontSize: 8.5, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase', lineHeight: 1,
-              background: 'rgba(255,255,255,0.15)', padding: '6px 9px 5px', borderRadius: 999,
-              border: '1px solid rgba(255,255,255,0.25)',
+              fontSize: 8, fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase', lineHeight: 1,
+              fontFamily: MONO,
+              padding: '5px 8px', borderRadius: 4,
+              border: '1px solid rgba(255,255,255,0.28)',
               display: 'flex', alignItems: 'center'
             }}>
               Verified Donor
             </div>
           </div>
 
-          {/* headline block */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+          <div style={{ ...RULE, marginTop: 16 }} />
+
+          {/* headline block, ranged left */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <p style={{
-              fontSize: 12, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase', lineHeight: 1,
-              margin: '0 0 4px', color: '#ffd9d9', opacity: 0.9
+              fontSize: 9, fontWeight: 700, letterSpacing: 1.8, textTransform: 'uppercase', lineHeight: 1,
+              fontFamily: MONO, margin: '0 0 10px', color: '#ffc9c9'
             }}>
               {firstName} just
             </p>
             <p style={{
-              fontSize: 38, fontWeight: 900, lineHeight: 1.05, margin: '0 0 12px',
-              letterSpacing: -1
+              fontSize: 42, fontWeight: 800, lineHeight: 0.96, margin: 0,
+              letterSpacing: -1.6
             }}>
-              SAVED A<br />LIFE
+              Saved<br />a life
             </p>
 
-            {/* blood group */}
-            <div style={{
-              width: 78, height: 78, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.12)',
-              border: '3px solid rgba(255,255,255,0.5)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 0 0 6px rgba(255,255,255,0.06)'
-            }}>
-              <span style={{ fontSize: 28, fontWeight: 900, lineHeight: 1 }}>
+            {/* blood group as a figure beside a hairline, not inside a badge */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginTop: 22 }}>
+              <span style={{
+                fontSize: 46, fontWeight: 700, lineHeight: 0.82, letterSpacing: -1.5,
+                fontFamily: MONO, display: 'block'
+              }}>
                 {bloodGroupLabels[bloodGroup] ?? bloodGroup}
+              </span>
+              <span style={{ width: 1, height: 30, background: 'rgba(255,255,255,0.22)', display: 'block', flexShrink: 0 }} />
+              <span style={{
+                fontSize: 8, fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase',
+                lineHeight: 1.5, fontFamily: MONO, opacity: 0.75, paddingBottom: 2
+              }}>
+                Blood<br />group
               </span>
             </div>
 
             {badge && (
               <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 12,
-                background: 'linear-gradient(90deg, #facc15, #f59e0b)',
-                borderRadius: 999, padding: '7px 13px 6px'
+                display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', marginTop: 18,
+                background: '#f0a92c', borderRadius: 4, padding: '6px 10px'
               }}>
-                <span style={{ fontSize: 12, lineHeight: 1 }}>{badgeIcons[badge] ?? '🏅'}</span>
-                <span style={{ fontSize: 10.5, fontWeight: 800, color: '#451a03', textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 1 }}>
+                <span style={{
+                  fontSize: 9, fontWeight: 800, color: '#3b1a02', textTransform: 'uppercase',
+                  letterSpacing: 1.2, lineHeight: 1, fontFamily: MONO
+                }}>
                   {badge}
                 </span>
               </div>
@@ -275,8 +301,8 @@ export default function HeroCertificate({
 
             {/* quote */}
             <p style={{
-              fontSize: 11, fontWeight: 600, fontStyle: 'italic', lineHeight: 1.4,
-              margin: '14px 6px 0', opacity: 0.85, color: '#ffe4e4'
+              fontSize: 11, fontWeight: 400, fontStyle: 'italic', lineHeight: 1.45,
+              margin: '20px 0 0', opacity: 0.8, color: '#ffe4e4'
             }}>
               “{quote}”
             </p>
@@ -286,60 +312,71 @@ export default function HeroCertificate({
               image has been inlined as a data URL so html2canvas can capture it */}
           {showPhoto && (
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10,
-              padding: '7px 9px', borderRadius: 13,
-              background: 'rgba(0,0,0,0.22)', border: '1px solid rgba(255,255,255,0.15)'
+              display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12,
+              padding: '8px 9px', borderRadius: 6,
+              background: 'rgba(0,0,0,0.24)', border: '1px solid rgba(255,255,255,0.15)'
             }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={photoDataUrl!}
                 alt=""
                 style={{
-                  width: 34, height: 34, borderRadius: 9, objectFit: 'cover',
+                  width: 34, height: 34, borderRadius: 4, objectFit: 'cover',
                   border: '1px solid rgba(255,255,255,0.3)', flexShrink: 0, display: 'block'
                 }}
               />
               <div style={{ minWidth: 0 }}>
                 <p style={{
-                  fontSize: 9, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase',
-                  margin: 0, lineHeight: 1, color: '#86efac'
+                  fontSize: 8.5, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase',
+                  margin: 0, lineHeight: 1, color: '#86efac', fontFamily: MONO,
+                  display: 'flex', alignItems: 'center', gap: 5
                 }}>
-                  ✓ Collection Verified
+                  {/* Was a ✓ glyph. A 5px square in the same green carries the same
+                      meaning, and unlike a glyph it cannot land on a fallback font
+                      inside the exported PNG. */}
+                  <span style={{
+                    width: 5, height: 5, borderRadius: 1, background: '#86efac',
+                    display: 'block', flexShrink: 0
+                  }} />
+                  Collection Verified
                 </p>
-                <p style={{ fontSize: 8.5, margin: '4px 0 0', lineHeight: 1, opacity: 0.75 }}>
+                <p style={{ fontSize: 8.5, margin: '5px 0 0', lineHeight: 1, opacity: 0.75 }}>
                   Photo confirmed by {hospitalName}
                 </p>
               </div>
             </div>
           )}
 
-          {/* stat row */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <div style={{
-              flex: 1, textAlign: 'center', padding: '10px 4px 9px', borderRadius: 13,
-              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)'
-            }}>
-              <p style={{ fontSize: 18, fontWeight: 900, margin: 0, lineHeight: 1 }}>{typeof totalDonations === 'number' ? totalDonations : '—'}</p>
-              <p style={{ fontSize: 8, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.8, margin: '4px 0 0', fontWeight: 700, lineHeight: 1 }}>Donations</p>
+          {/* stat row — two figures divided by a hairline instead of two boxes */}
+          <div style={{ ...RULE }} />
+          <div style={{ display: 'flex', alignItems: 'stretch', padding: '12px 0' }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 22, fontWeight: 700, margin: 0, lineHeight: 1, fontFamily: MONO }}>
+                {typeof totalDonations === 'number' ? totalDonations : '—'}
+              </p>
+              <p style={{ fontSize: 8, letterSpacing: 1.3, textTransform: 'uppercase', opacity: 0.7, margin: '6px 0 0', fontWeight: 700, lineHeight: 1, fontFamily: MONO }}>Donations</p>
             </div>
-            <div style={{
-              flex: 1, textAlign: 'center', padding: '10px 4px 9px', borderRadius: 13,
-              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)'
-            }}>
-              <p style={{ fontSize: 18, fontWeight: 900, margin: 0, lineHeight: 1 }}>{typeof commitmentScore === 'number' ? commitmentScore : '—'}</p>
-              <p style={{ fontSize: 8, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.8, margin: '4px 0 0', fontWeight: 700, lineHeight: 1 }}>Commitment</p>
+            <div style={{ width: 1, background: 'rgba(255,255,255,0.16)', flexShrink: 0 }} />
+            <div style={{ flex: 1, paddingLeft: 16 }}>
+              <p style={{ fontSize: 22, fontWeight: 700, margin: 0, lineHeight: 1, fontFamily: MONO }}>
+                {typeof commitmentScore === 'number' ? commitmentScore : '—'}
+              </p>
+              <p style={{ fontSize: 8, letterSpacing: 1.3, textTransform: 'uppercase', opacity: 0.7, margin: '6px 0 0', fontWeight: 700, lineHeight: 1, fontFamily: MONO }}>Commitment</p>
             </div>
           </div>
+          <div style={{ ...RULE }} />
 
           {/* footer */}
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 10, fontWeight: 600, margin: 0, opacity: 0.9, lineHeight: 1.3 }}>
-              {hospitalName}{city ? ` · ${city}` : ''}
-            </p>
-            <p style={{ fontSize: 8.5, opacity: 0.6, margin: '4px 0 0', lineHeight: 1 }}>{formattedDate}</p>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10, paddingTop: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 10, fontWeight: 600, margin: 0, opacity: 0.92, lineHeight: 1.3 }}>
+                {hospitalName}{city ? ` · ${city}` : ''}
+              </p>
+              <p style={{ fontSize: 8.5, opacity: 0.6, margin: '5px 0 0', lineHeight: 1, fontFamily: MONO }}>{formattedDate}</p>
+            </div>
             <p style={{
-              fontSize: 9, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', lineHeight: 1,
-              margin: '10px 0 0', opacity: 0.85
+              fontSize: 8.5, fontWeight: 700, letterSpacing: 1.6, textTransform: 'uppercase', lineHeight: 1,
+              margin: 0, opacity: 0.8, fontFamily: MONO, whiteSpace: 'nowrap'
             }}>
               forikhoon.com
             </p>
@@ -349,16 +386,16 @@ export default function HeroCertificate({
 
       {/* ACTIONS — Tailwind classes fine here, this part is never captured */}
       {photoDataUrl && (
-        <label className="flex items-start gap-2.5 max-w-[300px] cursor-pointer select-none">
+        <label className="flex max-w-[300px] cursor-pointer select-none items-start gap-2.5">
           <input
             type="checkbox"
             checked={includePhoto}
             onChange={(e) => setIncludePhoto(e.target.checked)}
-            className="mt-0.5 accent-[#DC2626]"
+            className="mt-0.5 accent-blood"
           />
-          <span className="text-[#9CA3AF] text-xs leading-relaxed">
+          <span className="text-xs leading-relaxed text-mute">
             Include the blood-bag photo on this card
-            <span className="block text-[#6B7280] mt-0.5">
+            <span className="mt-1 block text-faint">
               The bag shows your name and blood group. Leave this off if you plan to share
               the card publicly.
             </span>
@@ -366,27 +403,16 @@ export default function HeroCertificate({
         </label>
       )}
 
-      <div className="flex flex-wrap items-center justify-center gap-3">
-        <button
-          onClick={handleWhatsAppShare}
-          className="px-5 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20BD5A] text-white font-semibold shadow-lg transition-all duration-150"
-        >
+      <div className="flex flex-wrap items-center justify-center gap-2.5">
+        <button onClick={handleWhatsAppShare} className={primaryBtn}>
           Share on WhatsApp
         </button>
 
-        <button
-          onClick={handleCopyImage}
-          disabled={copying}
-          className="px-4 py-2.5 rounded-xl bg-[#1A1A1A] hover:bg-[#222] border border-[#2A2A2A] text-[#9CA3AF] hover:text-white font-medium transition-all duration-150 disabled:opacity-50"
-        >
+        <button onClick={handleCopyImage} disabled={copying} className={neutralBtn}>
           {copying ? 'Copying…' : copied ? 'Copied!' : 'Copy Image'}
         </button>
 
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="px-4 py-2.5 rounded-xl bg-[#1A1A1A] hover:bg-[#222] border border-[#2A2A2A] text-[#9CA3AF] hover:text-white font-medium transition-all duration-150 disabled:opacity-50"
-        >
+        <button onClick={handleDownload} disabled={downloading} className={neutralBtn}>
           {downloading ? 'Saving…' : 'Download'}
         </button>
       </div>

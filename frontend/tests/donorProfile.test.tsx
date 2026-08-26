@@ -32,25 +32,24 @@ async function renderProfile(overrides: Record<string, unknown> = {}) {
 }
 
 /**
- * Finds a toggle by the heading it sits beside.
+ * Finds a toggle by its accessible name.
  *
- * The two toggles are bare `<button>`s with no text, no `aria-label`, no `role="switch"` and
- * no `aria-pressed`, so there is no accessible name to query by and both would match
- * `getByRole('button', { name: '' })`. Walking out from the heading is the only unambiguous
- * handle the markup offers. (That is a real accessibility gap — see the note at the bottom.)
+ * These used to be bare `<button>`s with no text and no role, so the only handle the markup
+ * offered was to find the adjacent heading and walk back out to a shared ancestor — which
+ * broke on any change to the nesting and tested nothing a user or a screen reader can
+ * perceive. Both switches now carry `role="switch"` and an `aria-label`, so the query is the
+ * same one assistive technology makes.
  */
-function toggleFor(heading: string): HTMLElement {
-  const row = screen.getByRole('heading', { name: heading }).closest('div')?.parentElement
-  const button = row?.querySelector('button')
-  if (!button) throw new Error(`Found no toggle button beside the "${heading}" heading`)
-  return button
-}
+const toggleFor = (label: string) => screen.getByRole('switch', { name: label })
 
 /**
- * Reads a toggle's state off its background colour, because that is the only place it exists.
- * With no `aria-pressed` or `aria-checked`, the class is what a sighted user is reading too.
+ * Reads a toggle's state from `aria-checked`, the property that actually conveys it.
+ *
+ * The previous version asserted on `className.includes('bg-green-500')`, which would keep
+ * passing if the switch stopped announcing its state entirely, and would fail on a pure
+ * restyle that changed nothing a user can do.
  */
-const isOn = (toggle: HTMLElement) => toggle.className.includes('bg-green-500')
+const isOn = (toggle: HTMLElement) => toggle.getAttribute('aria-checked') === 'true'
 
 const SHARE_CONTACT = 'Share Contact Info'
 
@@ -173,13 +172,21 @@ describe('donor profile — contact sharing', () => {
       expect(mockApi.put).not.toHaveBeenCalled()
     })
   })
-})
 
-/*
- * Accessibility gap noticed while writing these tests, and not a bug in the logic under test:
- * both toggles on this page are unlabelled `<button>`s with no `role="switch"` and no
- * `aria-pressed`/`aria-checked`, so a screen reader announces two nameless buttons and
- * conveys neither what they control nor whether they are on. Adding `role="switch"`,
- * `aria-checked` and an `aria-label` would fix that and would also let these tests read the
- * state through the accessibility tree instead of through a Tailwind class.
- */
+  describe('what the switches announce', () => {
+    it('exposes both toggles as named switches carrying their own state', async () => {
+      await renderProfile({ isAvailable: true, shareContactInfo: false })
+
+      // The helpers above depend on this, but so does anyone using a screen reader: a
+      // privacy setting whose state lives only in a background colour is unreadable to
+      // them. Asserting it directly means a regression fails here with a clear reason
+      // rather than surfacing as every other test in the file breaking at once.
+      const switches = screen.getAllByRole('switch')
+      expect(switches.map(s => s.getAttribute('aria-label'))).toEqual([
+        'Availability',
+        SHARE_CONTACT
+      ])
+      expect(switches.map(s => s.getAttribute('aria-checked'))).toEqual(['true', 'false'])
+    })
+  })
+})

@@ -7,26 +7,31 @@ import { stubGeolocation, grantLocation, denyLocation } from './helpers/geolocat
 
 jest.mock('@/lib/api')
 
+// Hospital-branch tests fill more fields (name + license on top of the 4 shared fields) and
+// getByLabelText is slower than getByPlaceholderText — it traverses the accessibility tree
+// rather than doing a plain attribute lookup. 15 s is generous but not unbounded.
+jest.setTimeout(15000)
+
 const routerPush = jest.fn()
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: routerPush, replace: jest.fn(), refresh: jest.fn(), back: jest.fn() })
 }))
 
 /**
- * The inputs on this page have no `id`/`htmlFor` pairing and are not nested inside their
- * `<label>`, so `getByLabelText` finds nothing. Placeholders are the only handle the markup
- * offers, and each one is unique. (That missing association is a real accessibility gap —
- * see the note at the bottom of this file.)
+ * Every input on this page pairs a `<label htmlFor>` with an `id`, so the visible label is
+ * the handle these tests use. That is the more durable one: a placeholder is example content
+ * and can be reworded freely, whereas the label is the field's name and changing it changes
+ * what the form asks for.
  */
-const PLACEHOLDER = {
-  name: 'Ali Khan',
-  email: 'you@example.com',
-  password: '•'.repeat(8),
-  city: 'DI Khan',
-  area: 'Hayatabad, Peshawar',
-  hospitalName: 'DHQ Hospital DI Khan',
-  address: 'Hospital Road, DI Khan',
-  licenseNo: 'DHQ-DIK-2024'
+const LABEL = {
+  name: 'Full name',
+  email: 'Email address',
+  password: 'Password',
+  city: 'City',
+  area: 'Area / neighborhood',
+  hospitalName: 'Hospital name',
+  address: 'Address',
+  licenseNo: 'License number'
 } as const
 
 const GPS_CONFIRMATION = /We'll use this to match you with nearby requests/
@@ -60,10 +65,10 @@ async function chooseRole(role: 'DONOR' | 'HOSPITAL') {
 
 /** Fills the four fields the shared validation branch requires. */
 async function fillSharedFields(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByPlaceholderText(PLACEHOLDER.name), 'Ali Khan')
-  await user.type(screen.getByPlaceholderText(PLACEHOLDER.email), 'ali@example.com')
-  await user.type(screen.getByPlaceholderText(PLACEHOLDER.password), 'hunter2!')
-  await user.type(screen.getByPlaceholderText(PLACEHOLDER.city), 'DI Khan')
+  await user.type(screen.getByLabelText(LABEL.name), 'Ali Khan')
+  await user.type(screen.getByLabelText(LABEL.email), 'ali@example.com')
+  await user.type(screen.getByLabelText(LABEL.password), 'hunter2!')
+  await user.type(screen.getByLabelText(LABEL.city), 'DI Khan')
 }
 
 const profilePayload = (url: string) =>
@@ -80,7 +85,7 @@ describe('register page — location picker', () => {
 
       await user.click(screen.getByRole('button', { name: 'Enter address instead' }))
 
-      expect(screen.getByPlaceholderText(PLACEHOLDER.area)).toBeInTheDocument()
+      expect(screen.getByLabelText(LABEL.area)).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Use My Location' })).not.toBeInTheDocument()
       expect(screen.queryByText('Share your location')).not.toBeInTheDocument()
       // The escape hatch back to GPS has to stay reachable.
@@ -103,7 +108,7 @@ describe('register page — location picker', () => {
       await user.click(screen.getByRole('button', { name: 'Use My Location' }))
 
       expect(screen.getByText(GPS_CONFIRMATION)).toBeInTheDocument()
-      expect(screen.queryByPlaceholderText(PLACEHOLDER.area)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(LABEL.area)).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Enter address instead' })).not.toBeInTheDocument()
     })
 
@@ -132,7 +137,7 @@ describe('register page — location picker', () => {
 
       // Manual entry is not merely still on screen — it still works.
       await user.click(screen.getByRole('button', { name: 'Enter address instead' }))
-      expect(screen.getByPlaceholderText(PLACEHOLDER.area)).toBeInTheDocument()
+      expect(screen.getByLabelText(LABEL.area)).toBeInTheDocument()
 
       expect(consoleError).toHaveBeenCalled()
     })
@@ -173,7 +178,7 @@ describe('register page — location picker', () => {
       const user = await chooseRole('DONOR')
       await fillSharedFields(user)
       await user.click(screen.getByRole('button', { name: 'Enter address instead' }))
-      await user.type(screen.getByPlaceholderText(PLACEHOLDER.area), 'Hayatabad')
+      await user.type(screen.getByLabelText(LABEL.area), 'Hayatabad')
 
       await user.click(screen.getByRole('button', { name: 'Create account' }))
 
@@ -187,10 +192,10 @@ describe('register page — location picker', () => {
     it('sends the address, and no coordinates, for a hospital using manual entry', async () => {
       const user = await chooseRole('HOSPITAL')
       await fillSharedFields(user)
-      await user.type(screen.getByPlaceholderText(PLACEHOLDER.hospitalName), 'DHQ Hospital')
-      await user.type(screen.getByPlaceholderText(PLACEHOLDER.licenseNo), 'DHQ-DIK-2024')
+      await user.type(screen.getByLabelText(LABEL.hospitalName), 'DHQ Hospital')
+      await user.type(screen.getByLabelText(LABEL.licenseNo), 'DHQ-DIK-2024')
       await user.click(screen.getByRole('button', { name: 'Enter address instead' }))
-      await user.type(screen.getByPlaceholderText(PLACEHOLDER.address), 'Hospital Road')
+      await user.type(screen.getByLabelText(LABEL.address), 'Hospital Road')
 
       await user.click(screen.getByRole('button', { name: 'Create account' }))
 
@@ -206,8 +211,8 @@ describe('register page — location picker', () => {
       const coords = grantLocation(getCurrentPosition)
       const user = await chooseRole('HOSPITAL')
       await fillSharedFields(user)
-      await user.type(screen.getByPlaceholderText(PLACEHOLDER.hospitalName), 'DHQ Hospital')
-      await user.type(screen.getByPlaceholderText(PLACEHOLDER.licenseNo), 'DHQ-DIK-2024')
+      await user.type(screen.getByLabelText(LABEL.hospitalName), 'DHQ Hospital')
+      await user.type(screen.getByLabelText(LABEL.licenseNo), 'DHQ-DIK-2024')
       await user.click(screen.getByRole('button', { name: 'Use Current Location' }))
 
       await user.click(screen.getByRole('button', { name: 'Create account' }))
@@ -226,8 +231,8 @@ describe('register page — location picker', () => {
     it('blocks a hospital with neither coordinates nor an address', async () => {
       const user = await chooseRole('HOSPITAL')
       await fillSharedFields(user)
-      await user.type(screen.getByPlaceholderText(PLACEHOLDER.hospitalName), 'DHQ Hospital')
-      await user.type(screen.getByPlaceholderText(PLACEHOLDER.licenseNo), 'DHQ-DIK-2024')
+      await user.type(screen.getByLabelText(LABEL.hospitalName), 'DHQ Hospital')
+      await user.type(screen.getByLabelText(LABEL.licenseNo), 'DHQ-DIK-2024')
 
       await user.click(screen.getByRole('button', { name: 'Create account' }))
 
@@ -241,8 +246,8 @@ describe('register page — location picker', () => {
       grantLocation(getCurrentPosition)
       const user = await chooseRole('HOSPITAL')
       await fillSharedFields(user)
-      await user.type(screen.getByPlaceholderText(PLACEHOLDER.hospitalName), 'DHQ Hospital')
-      await user.type(screen.getByPlaceholderText(PLACEHOLDER.licenseNo), 'DHQ-DIK-2024')
+      await user.type(screen.getByLabelText(LABEL.hospitalName), 'DHQ Hospital')
+      await user.type(screen.getByLabelText(LABEL.licenseNo), 'DHQ-DIK-2024')
 
       await user.click(screen.getByRole('button', { name: 'Use Current Location' }))
       await user.click(screen.getByRole('button', { name: 'Create account' }))
@@ -266,9 +271,13 @@ describe('register page — location picker', () => {
 })
 
 /*
- * Accessibility gap noticed while writing these tests, and not a bug in the logic under
- * test: none of the text inputs on this page associate their `<label>` with the input, so a
- * screen reader announces them as unlabelled. Adding `id` + `htmlFor` (or nesting the input
- * inside the label) would fix it and would also let these tests select fields by their
- * visible label instead of by placeholder, which is the more durable handle.
+ * The accessibility gap these tests were originally written around — text inputs whose
+ * `<label>` was neither associated by `htmlFor`/`id` nor wrapped around the input, so a
+ * screen reader announced every field as unlabelled — is fixed. The queries above select by
+ * visible label as a result, which also means a test fails if a field loses its label rather
+ * than passing quietly against a placeholder that happens to still be there.
+ *
+ * The blood-group picker is a grid of buttons rather than a single control, so it is labelled
+ * by `role="group"` + `aria-labelledby` and each button carries `aria-pressed`. That state is
+ * not asserted here; these tests are about the location picker.
  */

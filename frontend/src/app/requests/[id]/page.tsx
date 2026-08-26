@@ -6,25 +6,23 @@ import Link from 'next/link'
 import api from '@/lib/api'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import { ArrowLeft, ArrowRight, Check, Link2, SearchX, ShieldCheck } from 'lucide-react'
+import {
+  Chip,
+  PageHead,
+  Stat,
+  Texture,
+  primaryBtnLg,
+  quietBtn,
+  statusTone,
+  urgencyTone
+} from '@/components/fk'
 
 dayjs.extend(relativeTime)
 
 const bloodGroupLabels: Record<string, string> = {
   A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
   AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
-}
-
-const urgencyColors: Record<string, string> = {
-  CRITICAL: 'text-red-400 bg-red-400/10 border-red-400/20',
-  URGENT: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
-  NORMAL: 'text-green-400 bg-green-400/10 border-green-400/20',
-}
-
-const statusColors: Record<string, string> = {
-  PENDING: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
-  MATCHED: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-  FULFILLED: 'text-green-400 bg-green-400/10 border-green-400/20',
-  EXPIRED: 'text-[#6B7280] bg-[#6B7280]/10 border-[#6B7280]/20',
 }
 
 export default function RequestDetailPage() {
@@ -48,23 +46,30 @@ export default function RequestDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-6 py-10 space-y-4">
-        <div className="h-8 w-48 bg-[#141414] rounded animate-pulse" />
-        <div className="h-48 bg-[#141414] rounded-xl animate-pulse" />
-        <div className="h-24 bg-[#141414] rounded-xl animate-pulse" />
+      <div className="mx-auto max-w-2xl space-y-4 px-6 py-12">
+        <div className="h-3 w-32 animate-pulse rounded bg-surface" />
+        <div className="h-7 w-56 animate-pulse rounded bg-surface" />
+        <div className="h-52 animate-pulse rounded-xl bg-surface" />
+        <div className="h-20 animate-pulse rounded-xl bg-surface" />
       </div>
     )
   }
 
   if (!request) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center px-6">
-        <div className="text-center">
-          <p className="text-4xl mb-4">🩸</p>
-          <h2 className="text-white font-bold text-xl mb-2">Request not found</h2>
-          <p className="text-[#6B7280] text-sm mb-6">This request may have expired or been fulfilled.</p>
-          <Link href="/requests" className="text-sm bg-[#DC2626] hover:bg-[#B91C1C] text-white px-6 py-2.5 rounded-md transition-colors">
+      <div className="relative flex min-h-[70vh] items-center justify-center overflow-hidden px-6">
+        <Texture />
+        <div className="relative max-w-sm text-center">
+          <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-raised">
+            <SearchX className="h-5 w-5 text-faint" strokeWidth={1.75} aria-hidden />
+          </div>
+          <h2 className="text-xl font-semibold tracking-[-0.02em] text-bone">Request not found</h2>
+          <p className="mt-2 text-sm leading-relaxed text-mute">
+            This request may have expired or been fulfilled.
+          </p>
+          <Link href="/requests" className={`mt-7 ${primaryBtnLg}`}>
             View all requests
+            <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
           </Link>
         </div>
       </div>
@@ -72,105 +77,116 @@ export default function RequestDetailPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-10">
+    <div className="relative overflow-hidden">
+      <Texture ember />
 
-      {/* Back */}
-      <Link href="/requests" className="text-xs text-[#6B7280] hover:text-white transition-colors mb-6 inline-block">
-        ← Back to requests
-      </Link>
+      <div className="relative mx-auto max-w-2xl px-6 py-12">
 
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div>
-          <p className="text-[#DC2626] text-xs font-medium tracking-widest uppercase mb-2">Blood Request</p>
-          <h1 className="text-2xl font-bold text-white">{request.hospital?.name}</h1>
-          <p className="text-[#9CA3AF] text-sm mt-1">{request.hospital?.user?.city} · {request.hospital?.address}</p>
-        </div>
-        <button
-          onClick={handleShare}
-          className="text-xs border border-[#2A2A2A] hover:border-[#3A3A3A] text-[#9CA3AF] hover:text-white px-4 py-2 rounded-md transition-all shrink-0"
+        {/* Back */}
+        <Link
+          href="/requests"
+          className="mb-7 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-faint transition-colors hover:text-bone"
         >
-          {copied ? 'Copied!' : 'Share'}
-        </button>
-      </div>
+          <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+          Back to requests
+        </Link>
 
-      {/* Main card */}
-      <div className="bg-[#141414] border border-[#222] rounded-xl p-6 mb-4">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/20 flex items-center justify-center shrink-0">
-            <span className="text-[#DC2626] font-bold text-2xl">
-              {bloodGroupLabels[request.bloodGroup] || request.bloodGroup}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <span className={`text-xs px-3 py-1 rounded-full border font-semibold ${urgencyColors[request.urgency]}`}>
-              {request.urgency}
-            </span>
-            <span className={`text-xs px-3 py-1 rounded-full border ${statusColors[request.status]}`}>
-              {request.status}
-            </span>
-            {request.hospital?.verified && (
-              <span className="text-xs text-green-400 bg-green-400/10 border border-green-400/20 px-3 py-1 rounded-full">
-                Verified Hospital
+        <PageHead
+          eyebrow="Blood request"
+          title={request.hospital?.name}
+          lede={<>{request.hospital?.user?.city} · {request.hospital?.address}</>}
+          actions={
+            <button onClick={handleShare} className={quietBtn}>
+              {copied ? (
+                <Check className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+              ) : (
+                <Link2 className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+              )}
+              {copied ? 'Copied' : 'Share'}
+            </button>
+          }
+        />
+
+        {/* What is needed */}
+        <div className="mb-4 overflow-hidden rounded-xl border border-line bg-surface">
+          <div className="flex flex-wrap items-center gap-5 px-6 py-6">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-blood/25 bg-blood/10">
+              <span className="font-mono text-2xl font-medium tracking-[0.02em] text-blood">
+                {bloodGroupLabels[request.bloodGroup] || request.bloodGroup}
               </span>
-            )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Chip tone={urgencyTone[request.urgency]}>{request.urgency}</Chip>
+              <Chip tone={statusTone[request.status]}>{request.status}</Chip>
+              {request.hospital?.verified && (
+                <Chip tone="text-life bg-life/10 border-life/25" icon={ShieldCheck}>
+                  Verified hospital
+                </Chip>
+              )}
+            </div>
+          </div>
+
+          {/* Two figures, divided by the same hairline that closes the panel
+              header — inline rather than via <Lattice> because this grid has to
+              lose its own border and radius to sit inside the card. */}
+          <div className="grid grid-cols-2 gap-px border-t border-line-soft bg-line-soft">
+            <Stat label="Units needed" value={request.units} />
+            <Stat label="Donors notified" value={request.matches?.length || 0} />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-[#0F0F0F] border border-[#1A1A1A] rounded-lg p-4">
-            <p className="text-[#6B7280] text-xs uppercase tracking-widest mb-1">Units Needed</p>
-            <p className="text-white font-bold text-2xl">{request.units}</p>
-          </div>
-          <div className="bg-[#0F0F0F] border border-[#1A1A1A] rounded-lg p-4">
-            <p className="text-[#6B7280] text-xs uppercase tracking-widest mb-1">Donors Notified</p>
-            <p className="text-white font-bold text-2xl">{request.matches?.length || 0}</p>
-          </div>
-        </div>
-
+        {/* Notes — the hospital's own words, and the one line on this page that
+            gets the serif. Everything else here is a figure or an enum. */}
         {request.notes && (
-          <div className="mt-4 bg-[#0F0F0F] border border-[#1A1A1A] rounded-lg p-4">
-            <p className="text-[#6B7280] text-xs uppercase tracking-widest mb-1">Notes</p>
-            <p className="text-[#9CA3AF] text-sm">{request.notes}</p>
+          <div className="relative mb-4 border-t border-line pt-6">
+            <span aria-hidden className="absolute -top-px left-0 h-px w-10 bg-blood" />
+            <p className="mb-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
+              Notes from the hospital
+            </p>
+            <p className="font-serif text-xl italic leading-snug text-bone">
+              {request.notes}
+            </p>
           </div>
         )}
-      </div>
 
-      {/* Time info */}
-      <div className="bg-[#141414] border border-[#222] rounded-xl p-5 mb-6">
-        <div className="flex justify-between text-sm">
+        {/* Timing */}
+        <div className="mb-8 flex flex-wrap justify-between gap-6 border-t border-line-soft pt-5">
           <div>
-            <p className="text-[#6B7280] text-xs mb-1">Posted</p>
-            <p className="text-white">{dayjs(request.createdAt).fromNow()}</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">Posted</p>
+            <p className="mt-1.5 text-sm text-bone">{dayjs(request.createdAt).fromNow()}</p>
           </div>
           <div className="text-right">
-            <p className="text-[#6B7280] text-xs mb-1">Expires</p>
-            <p className="text-white">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">Expires</p>
+            <p className="mt-1.5 text-sm text-bone">
               {request.expiresAt ? dayjs(request.expiresAt).fromNow() : 'No expiry set'}
             </p>
           </div>
         </div>
-      </div>
 
-      {/* CTA */}
-      {request.status === 'PENDING' && (
-        <Link
-          href="/register"
-          className="block w-full text-center bg-[#DC2626] hover:bg-[#B91C1C] text-white font-medium py-3 rounded-md transition-colors duration-150 shadow-lg shadow-red-900/20"
-        >
-          I can help — Register as donor
-        </Link>
-      )}
-
-      {request.status !== 'PENDING' && (
-        <div className="text-center py-4">
-          <p className="text-[#6B7280] text-sm">This request has been {request.status.toLowerCase()}.</p>
-          <Link href="/requests" className="text-[#DC2626] text-sm hover:underline mt-1 inline-block">
-            View other requests →
+        {/* CTA */}
+        {request.status === 'PENDING' && (
+          <Link href="/register" className={`w-full ${primaryBtnLg}`}>
+            I can help — Register as donor
+            <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
           </Link>
-        </div>
-      )}
+        )}
 
+        {request.status !== 'PENDING' && (
+          <div className="text-center">
+            <p className="text-sm text-mute">
+              This request has been {request.status.toLowerCase()}.
+            </p>
+            <Link
+              href="/requests"
+              className="mt-2 inline-flex items-center gap-1.5 text-sm text-bone underline decoration-line underline-offset-4 transition-colors hover:decoration-blood"
+            >
+              View other requests
+              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+            </Link>
+          </div>
+        )}
+
+      </div>
     </div>
   )
 }

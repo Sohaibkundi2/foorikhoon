@@ -4,6 +4,18 @@ import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { useRouter } from 'next/navigation'
 import api from '@/lib/api'
+import { BadgeCheck, Building2, Clock, Inbox, ShieldAlert, Users } from 'lucide-react'
+import {
+  Chip,
+  EmptyState,
+  Texture,
+  affirmBtn,
+  dangerBtn,
+  neutralBtn,
+  riskTone,
+  statusTone,
+  urgencyTone
+} from '@/components/fk'
 
 interface Stats {
   totalUsers: number
@@ -58,23 +70,16 @@ const bloodGroupLabels: Record<string, string> = {
   AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
 }
 
-const urgencyColors: Record<string, string> = {
-  CRITICAL: 'text-red-400 bg-red-400/10 border-red-400/20',
-  URGENT: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
-  NORMAL: 'text-green-400 bg-green-400/10 border-green-400/20',
-}
-
-const statusColors: Record<string, string> = {
-  PENDING: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
-  MATCHED: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-  FULFILLED: 'text-green-400 bg-green-400/10 border-green-400/20',
-  EXPIRED: 'text-[#6B7280] bg-[#6B7280]/10 border-[#6B7280]/20',
-}
-
-const roleColors: Record<string, string> = {
-  ADMIN: 'text-purple-400 bg-purple-400/10 border-purple-400/20',
-  HOSPITAL: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-  DONOR: 'text-green-400 bg-green-400/10 border-green-400/20',
+/**
+ * Role → tone, drawn from the same four families as the rest of the app. The
+ * original set was purple / blue / green, which made the three roles look like
+ * three unrelated products; here ADMIN is the one role with power over the
+ * others, so it gets the brand red and the rest stay quiet.
+ */
+const roleTone: Record<string, string> = {
+  ADMIN: 'text-blood bg-blood/10 border-blood/25',
+  HOSPITAL: 'text-bone bg-raised border-line',
+  DONOR: 'text-life bg-life/10 border-life/25',
 }
 
 type Tab = 'OVERVIEW' | 'HOSPITALS' | 'USERS' | 'REQUESTS' | 'SHORTAGE'
@@ -146,185 +151,300 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center">
-        <div className="text-[#6B7280] text-sm">Loading...</div>
+      <div className="flex min-h-[80vh] items-center justify-center">
+        <div className="h-2 w-40 animate-pulse rounded-full bg-raised" />
       </div>
     )
   }
 
+  const tabCount: Record<Tab, number | null> = {
+    OVERVIEW: null,
+    HOSPITALS: hospitals.length,
+    USERS: users.length,
+    REQUESTS: requests.length,
+    SHORTAGE: predictions.length,
+  }
+
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10">
+    <div className="relative overflow-hidden">
+      <Texture />
 
-      {/* Header */}
-      <div className="mb-8">
-        <p className="text-[#6B7280] text-xs uppercase tracking-widest mb-2">Admin</p>
-        <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-        {stats && stats.pendingVerification > 0 && (
-          <p className="text-yellow-400 text-sm mt-2">
-             {stats.pendingVerification} hospital{stats.pendingVerification > 1 ? 's' : ''} pending verification
-          </p>
-        )}
-      </div>
+      <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-12">
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-8 border-b border-[#222]">
-        {TABS.map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`text-sm px-4 py-2 border-b-2 transition-colors duration-150 ${
-              activeTab === tab
-                ? 'border-[#DC2626] text-white'
-                : 'border-transparent text-[#6B7280] hover:text-[#9CA3AF]'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+        {/* Masthead */}
+        <div className="relative flex flex-wrap items-end justify-between gap-5 border-b border-line pb-7">
+          <span aria-hidden className="absolute -bottom-px left-0 h-px w-10 bg-blood" />
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">Admin</p>
+            <h1 className="mt-4 text-4xl font-semibold leading-none tracking-[-0.04em] text-bone">
+              Dashboard
+            </h1>
+          </div>
 
-      {/* OVERVIEW */}
-      {activeTab === 'OVERVIEW' && stats && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {[
-            { label: 'Total Users', value: stats.totalUsers, color: 'text-white' },
-            { label: 'Donors', value: stats.totalDonors, color: 'text-green-400' },
-            { label: 'Hospitals', value: stats.totalHospitals, color: 'text-blue-400' },
-            { label: 'Blood Requests', value: stats.totalRequests, color: 'text-[#DC2626]' },
-            { label: 'Total Matches', value: stats.totalMatches, color: 'text-purple-400' },
-            { label: 'Pending Verification', value: stats.pendingVerification, color: 'text-yellow-400' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="bg-[#141414] border border-[#222] rounded-xl p-5">
-              <p className="text-[#6B7280] text-xs uppercase tracking-widest mb-2">{label}</p>
-              <p className={`text-3xl font-bold ${color}`}>{value}</p>
-            </div>
-          ))}
+          {stats && stats.pendingVerification > 0 && (
+            <Chip tone={urgencyTone.URGENT} icon={Clock}>
+              {stats.pendingVerification} hospital{stats.pendingVerification > 1 ? 's' : ''} pending
+              verification
+            </Chip>
+          )}
         </div>
-      )}
 
-      {/* HOSPITALS */}
-      {activeTab === 'HOSPITALS' && (
-        <div className="space-y-3">
-          {hospitals.map(hospital => (
-            <div key={hospital.id} className="bg-[#141414] border border-[#222] rounded-xl p-5 flex items-center justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-white font-semibold">{hospital.name}</span>
-                  {hospital.verified ? (
-                    <span className="text-xs text-green-400 bg-green-400/10 border border-green-400/20 px-2 py-0.5 rounded-full">
-                      Verified
-                    </span>
-                  ) : (
-                    <span className="text-xs text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 px-2 py-0.5 rounded-full">
-                      Pending
-                    </span>
-                  )}
-                </div>
-                <p className="text-[#9CA3AF] text-xs">{hospital.address}</p>
-                <p className="text-[#6B7280] text-xs mt-1">
-                  License: {hospital.licenseNo} · {hospital.user.city} · {hospital.requests.length} requests
-                </p>
-              </div>
-              <button onClick={() => deleteHospital(hospital.id)}
-                className="text-xs px-4 py-2 rounded-md border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-colors duration-150">
-                Delete
-              </button>
-              <button
-                onClick={() => toggleVerify(hospital.id)}
-                disabled={verifyingId === hospital.id}
-                className={`text-xs px-4 py-2 rounded-md border transition-colors duration-150 disabled:opacity-50 ${
-                  hospital.verified
-                    ? 'text-[#9CA3AF] border-[#2A2A2A] hover:border-red-400/30 hover:text-red-400'
-                    : 'text-green-400 border-green-400/20 bg-green-400/10 hover:bg-green-400/20'
-                }`}
-              >
-                {verifyingId === hospital.id ? '...' : hospital.verified ? 'Revoke' : 'Verify'}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+        {/* A vertical section rail rather than a row of tabs. Five sections of an
+            operations console are a table of contents, not five alternative
+            views of one list — and on a 6xl page there is room for it beside the
+            content instead of stacked above it. */}
+        <div className="mt-9 lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-12">
 
-      {/* USERS */}
-      {activeTab === 'USERS' && (
-        <div className="space-y-2">
-          {users.map(u => (
-            <div key={u.id} className="bg-[#141414] border border-[#222] rounded-xl p-4 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-white text-sm font-medium">{u.name || '—'}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${roleColors[u.role]}`}>
-                    {u.role}
-                  </span>
-                </div>
-                <p className="text-[#6B7280] text-xs">{u.email} · {u.city}</p>
-              </div>
-              <p className="text-[#6B7280] text-xs">
-                {new Date(u.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
+          <nav aria-label="Admin sections" className="lg:border-r lg:border-line">
+            <ul className="-mx-6 flex overflow-x-auto border-y border-line-soft px-6 lg:mx-0 lg:block lg:border-0 lg:px-0">
+              {TABS.map(tab => {
+                const active = activeTab === tab
+                const count = tabCount[tab]
 
-      {/* REQUESTS */}
-      {activeTab === 'REQUESTS' && (
-        <div className="space-y-3">
-          {requests.map(req => (
-            <div key={req.id} className="bg-[#141414] border border-[#222] rounded-xl p-5 flex items-center justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[#DC2626] font-bold text-lg">
-                    {bloodGroupLabels[req.bloodGroup] || req.bloodGroup}
-                  </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${urgencyColors[req.urgency]}`}>
-                    {req.urgency}
-                  </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${statusColors[req.status]}`}>
-                    {req.status}
-                  </span>
-                </div>
-                <p className="text-[#9CA3AF] text-xs">{req.hospital.name} · {req.hospital.user.city}</p>
-                <p className="text-[#6B7280] text-xs mt-1">
-                  {req.units} unit{req.units > 1 ? 's' : ''} · {req.matches.length} match{req.matches.length !== 1 ? 'es' : ''} · {new Date(req.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+                return (
+                  <li key={tab}>
+                    <button
+                      onClick={() => setActiveTab(tab)}
+                      aria-current={active ? 'true' : undefined}
+                      className={`relative flex w-full items-center justify-between gap-3 whitespace-nowrap py-3 pr-4 text-left font-mono text-[10px] uppercase tracking-[0.16em] transition-colors duration-150 lg:pr-5 ${
+                        active ? 'text-bone' : 'text-faint hover:text-mute'
+                      }`}
+                    >
+                      {active && (
+                        <span
+                          aria-hidden
+                          className="absolute bottom-0 left-0 h-px w-full bg-blood lg:inset-y-0 lg:h-auto lg:w-[2px]"
+                        />
+                      )}
+                      <span className="lg:pl-4">{tab}</span>
+                      {count !== null && (
+                        <span
+                          className={`tabular-nums ${active ? 'text-blood' : 'text-line'}`}
+                        >
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </nav>
 
-      {/* Shortage tab */}
-      {activeTab === 'SHORTAGE' && (
-        <div className="space-y-3">
-          {predictions.map((pred) => (
-            <div key={pred.bloodGroup} className="bg-[#141414] border border-[#222] rounded-xl p-5 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-[#DC2626]/10 border border-[#DC2626]/20 flex items-center justify-center">
-                  <span className="text-[#DC2626] font-bold text-lg">
-                    {bloodGroupLabels[pred.bloodGroup]}
-                  </span>
-                </div>
+          <div className="mt-9 min-w-0 lg:mt-0">
+
+            {/* ── OVERVIEW ─────────────────────────────────────────────────── */}
+            {activeTab === 'OVERVIEW' && stats && (
+              <dl className="grid gap-px overflow-hidden border border-line bg-line-soft sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  { label: 'Total Users', value: stats.totalUsers, tone: 'text-bone' },
+                  { label: 'Donors', value: stats.totalDonors, tone: 'text-life' },
+                  { label: 'Hospitals', value: stats.totalHospitals, tone: 'text-bone' },
+                  { label: 'Blood Requests', value: stats.totalRequests, tone: 'text-blood' },
+                  { label: 'Total Matches', value: stats.totalMatches, tone: 'text-bone' },
+                  {
+                    label: 'Pending Verification',
+                    value: stats.pendingVerification,
+                    tone: stats.pendingVerification > 0 ? 'text-warn' : 'text-life',
+                  },
+                ].map(({ label, value, tone }) => (
+                  <div key={label} className="bg-ink px-5 py-6">
+                    <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-faint">
+                      {label}
+                    </dt>
+                    <dd
+                      className={`mt-3 font-mono text-[2.75rem] font-medium leading-[0.85] tabular-nums ${tone}`}
+                    >
+                      {value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+
+            {/* ── HOSPITALS ────────────────────────────────────────────────── */}
+            {activeTab === 'HOSPITALS' && (
+              hospitals.length === 0 ? (
+                <EmptyState
+                  icon={Building2}
+                  title="No hospitals registered."
+                  hint="Hospitals appear here as soon as they sign up, whether or not they are verified."
+                />
+              ) : (
+                <ul className="border-t border-line">
+                  {hospitals.map(hospital => (
+                    <li
+                      key={hospital.id}
+                      className="relative border-b border-line py-5 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-6"
+                    >
+                      {!hospital.verified && (
+                        <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-warn" />
+                      )}
+
+                      <div className="min-w-0 pl-4 md:pl-5">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <span className="font-medium text-bone">{hospital.name}</span>
+                          {hospital.verified ? (
+                            <Chip tone={statusTone.FULFILLED} icon={BadgeCheck}>Verified</Chip>
+                          ) : (
+                            <Chip tone={statusTone.PENDING} icon={Clock}>Pending</Chip>
+                          )}
+                        </div>
+                        <p className="mt-1.5 text-xs leading-relaxed text-mute">{hospital.address}</p>
+                        <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] tabular-nums text-line">
+                          License: {hospital.licenseNo} · {hospital.user.city} ·{' '}
+                          {hospital.requests.length} requests
+                        </p>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-2.5 pl-4 md:mt-0 md:pl-0">
+                        <button onClick={() => deleteHospital(hospital.id)} className={dangerBtn}>
+                          Delete
+                        </button>
+                        <button
+                          onClick={() => toggleVerify(hospital.id)}
+                          disabled={verifyingId === hospital.id}
+                          className={hospital.verified ? neutralBtn : affirmBtn}
+                        >
+                          {verifyingId === hospital.id ? '...' : hospital.verified ? 'Revoke' : 'Verify'}
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )
+            )}
+
+            {/* ── USERS ────────────────────────────────────────────────────── */}
+            {activeTab === 'USERS' && (
+              users.length === 0 ? (
+                <EmptyState icon={Users} title="No users registered." />
+              ) : (
                 <div>
-                  <p className="text-white font-semibold">{bloodGroupLabels[pred.bloodGroup]}</p>
-                  <p className="text-[#6B7280] text-xs mt-0.5">
-                    {pred.requestCount} requests · {pred.donorCount} donors · ratio {pred.ratio}
+                  <div
+                    aria-hidden
+                    className="grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-4 border-y border-line px-1 py-2.5 font-mono text-[9px] uppercase tracking-[0.18em] text-line sm:grid-cols-[minmax(0,1fr)_6rem_6rem]"
+                  >
+                    <span>Name</span>
+                    <span className="hidden sm:block">Role</span>
+                    <span className="text-right">Joined</span>
+                  </div>
+
+                  <ul>
+                    {users.map(u => (
+                      <li
+                        key={u.id}
+                        className="grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-4 border-b border-line-soft px-1 py-3.5 sm:grid-cols-[minmax(0,1fr)_6rem_6rem]"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2.5">
+                            <p className="truncate text-sm font-medium text-bone">{u.name || '—'}</p>
+                            <span className="sm:hidden">
+                              <Chip tone={roleTone[u.role]}>{u.role}</Chip>
+                            </span>
+                          </div>
+                          <p className="mt-0.5 truncate text-xs text-faint">
+                            {u.email} · {u.city}
+                          </p>
+                        </div>
+
+                        <span className="hidden sm:block">
+                          <Chip tone={roleTone[u.role]}>{u.role}</Chip>
+                        </span>
+
+                        <p className="text-right font-mono text-[10px] tabular-nums text-line">
+                          {new Date(u.createdAt).toLocaleDateString()}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            )}
+
+            {/* ── REQUESTS ─────────────────────────────────────────────────── */}
+            {activeTab === 'REQUESTS' && (
+              requests.length === 0 ? (
+                <EmptyState icon={Inbox} title="No requests filed yet." />
+              ) : (
+                <ul className="border-t border-line">
+                  {requests.map(req => (
+                    <li
+                      key={req.id}
+                      className="relative flex items-start gap-5 border-b border-line py-4 pl-4"
+                    >
+                      {req.urgency === 'CRITICAL' && (
+                        <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-blood" />
+                      )}
+
+                      <span className="w-12 shrink-0 font-mono text-2xl font-medium leading-none tracking-[-0.02em] text-blood">
+                        {bloodGroupLabels[req.bloodGroup] || req.bloodGroup}
+                      </span>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Chip tone={urgencyTone[req.urgency]}>{req.urgency}</Chip>
+                          <Chip tone={statusTone[req.status]}>{req.status}</Chip>
+                        </div>
+                        <p className="mt-2 truncate text-sm text-mute">
+                          {req.hospital.name} · {req.hospital.user.city}
+                        </p>
+                        <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] tabular-nums text-line">
+                          {req.units} unit{req.units > 1 ? 's' : ''} · {req.matches.length} match
+                          {req.matches.length !== 1 ? 'es' : ''} ·{' '}
+                          {new Date(req.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )
+            )}
+
+            {/* ── SHORTAGE ─────────────────────────────────────────────────── */}
+            {activeTab === 'SHORTAGE' && (
+              predictions.length === 0 ? (
+                <EmptyState
+                  icon={ShieldAlert}
+                  title="No shortage prediction available."
+                  hint="This section is served by the prediction engine on port 5001. If it is not running, nothing is returned here."
+                />
+              ) : (
+                <div>
+                  <ul className="border-t border-line">
+                    {predictions.map((pred) => (
+                      <li
+                        key={pred.bloodGroup}
+                        className="flex flex-wrap items-center justify-between gap-4 border-b border-line py-4"
+                      >
+                        <div className="flex items-center gap-5">
+                          <span className="w-12 shrink-0 font-mono text-2xl font-medium leading-none tracking-[-0.02em] text-blood">
+                            {bloodGroupLabels[pred.bloodGroup] ?? pred.bloodGroup}
+                          </span>
+                          <p className="font-mono text-[10px] uppercase tracking-[0.12em] tabular-nums text-mute">
+                            {pred.requestCount} requests · {pred.donorCount} available · ratio{' '}
+                            <span className="text-bone">{pred.ratio}</span>
+                          </p>
+                        </div>
+                        <Chip tone={riskTone[pred.risk] ?? statusTone.MATCHED}>{pred.risk}</Chip>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* Exactly what the two figures are, since neither is obvious
+                      from the row: requests are windowed, donors are not. */}
+                  <p className="mt-5 text-xs leading-relaxed text-faint">
+                    Requests are counted over the last 30 days. Donors are those currently marked
+                    available, all time. The risk tier is assigned by the prediction engine on port
+                    5001, not by this page.
                   </p>
                 </div>
-              </div>
-              <span className={`text-xs px-3 py-1.5 rounded-full border font-semibold ${
-                pred.risk === 'CRITICAL' ? 'text-red-400 bg-red-400/10 border-red-400/20' :
-                pred.risk === 'HIGH' ? 'text-orange-400 bg-orange-400/10 border-orange-400/20' :
-                pred.risk === 'MODERATE' ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20' :
-                'text-green-400 bg-green-400/10 border-green-400/20'
-              }`}>
-                {pred.risk}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+              )
+            )}
 
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

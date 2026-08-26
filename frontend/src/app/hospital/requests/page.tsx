@@ -5,6 +5,19 @@ import { useAuthStore } from '@/store/authStore'
 import { useRouter } from 'next/navigation'
 import api from '@/lib/api'
 import FulfillPhotoModal from '@/components/FulfillPhotoModal'
+import { Check, ClipboardList, Clock, Plus, TriangleAlert } from 'lucide-react'
+import Link from 'next/link'
+import {
+  Chip,
+  EmptyState,
+  Texture,
+  affirmBtn,
+  dangerBtn,
+  neutralBtn,
+  primaryBtn,
+  statusTone,
+  urgencyTone
+} from '@/components/fk'
 
 interface BloodRequest {
   id: string
@@ -29,20 +42,6 @@ interface Match {
 const bloodGroupLabels: Record<string, string> = {
   A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
   AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
-}
-
-const urgencyColors: Record<string, string> = {
-  CRITICAL: 'text-red-400 bg-red-400/10 border-red-400/20',
-  URGENT: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
-  NORMAL: 'text-green-400 bg-green-400/10 border-green-400/20',
-}
-
-const statusColors: Record<string, string> = {
-  PENDING: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
-  MATCHED: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-  FULFILLED: 'text-green-400 bg-green-400/10 border-green-400/20',
-  EXPIRED: 'text-[#6B7280] bg-[#6B7280]/10 border-[#6B7280]/20',
-  NO_SHOW: 'text-[#F87171] bg-[#F87171]/10 border-[#F87171]/20',
 }
 
 type Tab = 'ALL' | 'PENDING' | 'MATCHED' | 'FULFILLED' | 'EXPIRED'
@@ -119,152 +118,245 @@ export default function HospitalRequestsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center">
-        <div className="text-[#6B7280] text-sm">Loading...</div>
+      <div className="flex min-h-[80vh] items-center justify-center">
+        <div className="h-2 w-40 animate-pulse rounded-full bg-raised" />
       </div>
     )
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-10">
+    <div className="relative overflow-hidden">
+      <Texture />
 
-      {/* Header */}
-      <div className="mb-8">
-        <p className="text-[#6B7280] text-xs uppercase tracking-widest mb-2">Hospital</p>
-        <h1 className="text-3xl font-bold text-white">Blood Requests</h1>
-        <p className="text-[#9CA3AF] text-sm mt-2">
-          View and manage all blood requests you've posted.
-        </p>
-      </div>
+      <div className="relative mx-auto max-w-5xl px-6 pb-20 pt-12">
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-[#222]">
-        {TABS.map(tab => {
-          const count = tab === 'ALL'
-            ? requests.length
-            : requests.filter(r => r.status === tab).length
-
-          return (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`text-sm px-4 py-2 border-b-2 transition-colors duration-150 ${activeTab === tab
-                  ? 'border-[#DC2626] text-white'
-                  : 'border-transparent text-[#6B7280] hover:text-[#9CA3AF]'
-                }`}
-            >
-              {tab} {count > 0 && <span className="ml-1 text-xs">({count})</span>}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* List */}
-      {filteredRequests.length === 0 ? (
-        <div className="bg-[#141414] border border-[#222] rounded-xl p-8 text-center">
-          <p className="text-[#6B7280] text-sm">No requests in this category.</p>
+        {/* Masthead */}
+        <div className="relative flex flex-wrap items-end justify-between gap-6 border-b border-line pb-7">
+          <span aria-hidden className="absolute -bottom-px left-0 h-px w-10 bg-blood" />
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">Hospital</p>
+            <h1 className="mt-4 text-4xl font-semibold leading-none tracking-[-0.04em] text-bone">
+              Blood Requests
+            </h1>
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-mute">
+              Every request you have filed, and what is outstanding on each one.
+            </p>
+          </div>
+          <Link href="/hospital/request/new" className={primaryBtn}>
+            <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+            New Request
+          </Link>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredRequests.map((req) => {
-            const acceptedContact = getAcceptedContact(req)
-            const acceptedMatch = getAcceptedMatch(req)
-            const completedMatch = getCompletedMatch(req)
 
-            return (
-              <div key={req.id} className="bg-[#141414] border border-[#222] rounded-xl p-5 flex items-center justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[#DC2626] font-bold text-lg">
+        {/* Index row. A rule-bounded band rather than underlined tabs: tabs imply
+            separate pages, and these are five views of one list. The count sits
+            above the label as a figure, so the row reads as an index. */}
+        <nav aria-label="Filter requests" className="mt-7 border-y border-line-soft">
+          <ul className="flex flex-wrap">
+            {TABS.map(tab => {
+              const count = tab === 'ALL'
+                ? requests.length
+                : requests.filter(r => r.status === tab).length
+              const active = activeTab === tab
+
+              return (
+                <li key={tab}>
+                  <button
+                    onClick={() => setActiveTab(tab)}
+                    aria-current={active ? 'true' : undefined}
+                    className={`relative px-4 py-3 text-left transition-colors duration-150 ${
+                      active ? 'text-bone' : 'text-faint hover:text-mute'
+                    }`}
+                  >
+                    {active && (
+                      <span aria-hidden className="absolute inset-x-3 top-0 h-px bg-blood" />
+                    )}
+                    <span
+                      className={`block font-mono text-lg font-medium leading-none tabular-nums ${
+                        active ? 'text-blood' : 'text-line'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                    <span className="mt-1.5 block font-mono text-[10px] uppercase tracking-[0.14em]">
+                      {tab}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
+
+        {/* Case files. Each request keeps its identifying figures in a left rail
+            and everything actionable in the body, so the list can be scanned
+            down the rail without reading any of the detail. */}
+        {filteredRequests.length === 0 ? (
+          <div className="mt-10">
+            <EmptyState
+              icon={ClipboardList}
+              title="No requests in this category."
+              hint={
+                activeTab === 'ALL'
+                  ? 'Requests you file will be listed here.'
+                  : `You have no ${activeTab.toLowerCase()} requests.`
+              }
+            />
+          </div>
+        ) : (
+          <ul className="mt-10 border-t border-line">
+            {filteredRequests.map((req) => {
+              const acceptedContact = getAcceptedContact(req)
+              const acceptedMatch = getAcceptedMatch(req)
+              const completedMatch = getCompletedMatch(req)
+              const matchCount = req.matches?.length ?? 0
+
+              // Why a MATCHED request can sit with nothing to act on. Both actions
+              // are gated on an ACCEPTED match, so without one the hospital sees
+              // only Cancel — and previously no reason why. Both figures come
+              // straight off the matches already in the payload.
+              const awaitingCount = req.matches?.filter(m => m.status === 'PENDING').length ?? 0
+              const declinedCount = req.matches?.filter(m => m.status === 'DECLINED').length ?? 0
+              const stalled =
+                req.status === 'MATCHED' && !acceptedMatch && !completedMatch
+
+              return (
+                <li
+                  key={req.id}
+                  className="relative border-b border-line md:grid md:grid-cols-[7rem_minmax(0,1fr)]"
+                >
+                  {req.urgency === 'CRITICAL' && (
+                    <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-blood" />
+                  )}
+
+                  {/* Rail: group, quantity, date — a specimen label, mono and plain. */}
+                  <div className="flex items-center gap-4 pl-5 pt-6 md:block md:border-r md:border-line-soft md:pb-6 md:pr-5">
+                    <p className="font-mono text-3xl font-medium leading-none tracking-[-0.02em] text-blood">
                       {bloodGroupLabels[req.bloodGroup] || req.bloodGroup}
-                    </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${urgencyColors[req.urgency]}`}>
-                      {req.urgency}
-                    </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${statusColors[req.status]}`}>
-                      {req.status}
-                    </span>
+                    </p>
+                    <p className="font-mono text-[11px] uppercase tracking-[0.14em] tabular-nums text-mute md:mt-3">
+                      {req.units} unit{req.units > 1 ? 's' : ''}
+                    </p>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.12em] tabular-nums text-line md:mt-1.5">
+                      {new Date(req.createdAt).toLocaleDateString()}
+                    </p>
                   </div>
-                  <p className="text-[#9CA3AF] text-xs">
-                    {req.units} unit{req.units > 1 ? 's' : ''} needed
-                    {req.notes && ` · ${req.notes}`}
-                  </p>
-                  <p className="text-[#6B7280] text-xs mt-1">
-                    {req.matches?.length} donor{req.matches?.length !== 1 ? 's' : ''} matched ·{' '}
-                    {new Date(req.createdAt).toLocaleDateString()}
-                  </p>
 
-                  {req.status === 'MATCHED' && acceptedMatch && (
-                    acceptedContact ? (
-                      <p className="text-green-400 text-xs mt-1">
-                        ✓ Accepted by {acceptedContact.name}
-                        {acceptedContact.phone ? ` · ${acceptedContact.phone}` : ''}
-                      </p>
-                    ) : (
-                      <p className="text-[#6B7280] text-xs mt-1">
-                        ✓ Accepted — contact info not shared
-                      </p>
-                    )
-                  )}
-
-                  {completedMatch?.photoUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setLightboxUrl(completedMatch.photoUrl!)}
-                      className="mt-2.5 flex items-center gap-2 group"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={completedMatch.photoUrl}
-                        alt="Blood bag proof of donation"
-                        className="w-10 h-10 rounded-md object-cover border border-[#2A2A2A] group-hover:border-[#3A3A3A] transition-colors duration-150"
-                      />
-                      <span className="text-[#6B7280] group-hover:text-[#9CA3AF] text-xs transition-colors duration-150">
-                        Proof photo
-                        {completedMatch.photoUploadedAt
-                          ? ` · ${new Date(completedMatch.photoUploadedAt).toLocaleDateString()}`
-                          : ''}
+                  <div className="pb-6 pl-5 pt-4 md:pl-6 md:pt-6">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Chip tone={urgencyTone[req.urgency]}>{req.urgency}</Chip>
+                      <Chip tone={statusTone[req.status]}>{req.status}</Chip>
+                      <span className="font-mono text-[10px] uppercase tracking-[0.12em] tabular-nums text-faint">
+                        {matchCount} donor{matchCount !== 1 ? 's' : ''} matched
                       </span>
-                    </button>
-                  )}
-                </div>
+                    </div>
 
-                {/* Actions */}
-                <div className="flex gap-2 shrink-0">
-                  {req.status === 'MATCHED' && acceptedMatch && (
-                    <button
-                      onClick={() => setFulfillingRequest(req)}
-                      className="text-xs bg-green-400/10 hover:bg-green-400/20 text-green-400 border border-green-400/20 px-3 py-1.5 rounded-md transition-colors duration-150"
-                    >
-                      Mark Fulfilled
-                    </button>
-                  )}
+                    {req.notes && (
+                      <p className="mt-3 border-l border-line pl-3 text-sm leading-relaxed text-mute">
+                        {req.notes}
+                      </p>
+                    )}
 
-                  {req.status === 'MATCHED' && acceptedMatch && (
-                    <button
-                      onClick={() => handleNoShow(acceptedMatch.id)}
-                      disabled={updatingKey === `${acceptedMatch.id}-noshow`}
-                      className="text-xs bg-red-400/10 hover:bg-red-400/20 text-red-400 border border-red-400/20 px-3 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-50"
-                    >
-                      {updatingKey === `${acceptedMatch.id}-noshow` ? 'Processing...' : 'Report No-Show'}
-                    </button>
-                  )}
+                    {req.status === 'MATCHED' && acceptedMatch && (
+                      acceptedContact ? (
+                        <p className="mt-3.5 flex items-center gap-2 text-sm text-life-lite">
+                          <Check className="h-3.5 w-3.5 shrink-0 text-life" strokeWidth={2.5} aria-hidden />
+                          Accepted by {acceptedContact.name}
+                          {acceptedContact.phone ? ` · ${acceptedContact.phone}` : ''}
+                        </p>
+                      ) : (
+                        <p className="mt-3.5 flex items-center gap-2 text-sm text-mute">
+                          <Check className="h-3.5 w-3.5 shrink-0 text-faint" strokeWidth={2.5} aria-hidden />
+                          Accepted — contact info not shared
+                        </p>
+                      )
+                    )}
 
-                  {(req.status === 'PENDING' || req.status === 'MATCHED') && (
-                    <button
-                      onClick={() => handleCancel(req.id)}
-                      disabled={updatingKey === `${req.id}-cancel`}
-                      className="text-xs bg-[#6B7280]/10 hover:bg-[#6B7280]/20 text-[#6B7280] border border-[#6B7280]/20 px-3 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-50"
-                    >
-                      {updatingKey === `${req.id}-cancel` ? 'Processing...' : 'Cancel'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+                    {stalled && (
+                      <p className="mt-3.5 flex items-start gap-2 text-xs leading-relaxed text-warn">
+                        {awaitingCount > 0 ? (
+                          <>
+                            <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                            <span>
+                              Waiting on {awaitingCount} donor
+                              {awaitingCount > 1 ? 's' : ''} to respond. Nothing to confirm until
+                              one accepts.
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                            <span>
+                              {declinedCount > 0
+                                ? `All ${declinedCount} matched donor${declinedCount > 1 ? 's' : ''} declined.`
+                                : 'No donor has accepted.'}{' '}
+                              There is no donor to confirm against, so this request can only be
+                              cancelled and filed again.
+                            </span>
+                          </>
+                        )}
+                      </p>
+                    )}
+
+                    {completedMatch?.photoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setLightboxUrl(completedMatch.photoUrl!)}
+                        className="group mt-4 flex items-center gap-2.5"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={completedMatch.photoUrl}
+                          alt="Blood bag proof of donation"
+                          className="h-10 w-10 rounded-md border border-line object-cover transition-colors duration-150 group-hover:border-blood/40"
+                        />
+                        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-faint transition-colors duration-150 group-hover:text-bone">
+                          Proof photo
+                          {completedMatch.photoUploadedAt
+                            ? ` · ${new Date(completedMatch.photoUploadedAt).toLocaleDateString()}`
+                            : ''}
+                        </span>
+                      </button>
+                    )}
+
+                    {/* Actions sit below a hairline, not beside the detail: they
+                        belong to the whole record, and a right-hand button stack
+                        squeezes the notes into a column at tablet width. */}
+                    {(req.status === 'PENDING' || req.status === 'MATCHED') && (
+                      <div className="mt-5 flex flex-wrap gap-2.5 border-t border-line-soft pt-4">
+                        {req.status === 'MATCHED' && acceptedMatch && (
+                          <button onClick={() => setFulfillingRequest(req)} className={affirmBtn}>
+                            <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                            Mark Fulfilled
+                          </button>
+                        )}
+
+                        {req.status === 'MATCHED' && acceptedMatch && (
+                          <button
+                            onClick={() => handleNoShow(acceptedMatch.id)}
+                            disabled={updatingKey === `${acceptedMatch.id}-noshow`}
+                            className={dangerBtn}
+                          >
+                            {updatingKey === `${acceptedMatch.id}-noshow` ? 'Processing...' : 'Report No-Show'}
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => handleCancel(req.id)}
+                          disabled={updatingKey === `${req.id}-cancel`}
+                          className={neutralBtn}
+                        >
+                          {updatingKey === `${req.id}-cancel` ? 'Processing...' : 'Cancel'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
 
       {fulfillingRequest && (
         <FulfillPhotoModal
@@ -281,20 +373,20 @@ export default function HospitalRequestsPage() {
 
       {lightboxUrl && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6"
           onClick={() => setLightboxUrl(null)}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={lightboxUrl}
             alt="Blood bag proof of donation"
-            className="max-w-full max-h-full rounded-xl border border-[#2A2A2A]"
+            className="max-h-full max-w-full rounded-xl border border-line"
             onClick={(e) => e.stopPropagation()}
           />
           <button
             type="button"
             onClick={() => setLightboxUrl(null)}
-            className="absolute top-5 right-5 text-[#9CA3AF] hover:text-white text-sm bg-[#141414] border border-[#2A2A2A] rounded-lg px-3 py-1.5"
+            className="absolute right-5 top-5 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-mute transition-colors hover:text-bone"
           >
             Close
           </button>

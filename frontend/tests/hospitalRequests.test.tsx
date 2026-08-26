@@ -159,7 +159,9 @@ describe('hospital requests page', () => {
       const line = screen.getByText(/Accepted by Ali Khan/)
       expect(line).toBeInTheDocument()
       // A dangling ' · ' would read as a rendering glitch to the hospital staff.
-      expect(line.textContent?.trim()).toBe('✓ Accepted by Ali Khan')
+      // The tick beside this line is an aria-hidden icon rather than a literal
+      // character, so it contributes nothing to textContent.
+      expect(line.textContent?.trim()).toBe('Accepted by Ali Khan')
     })
 
     it('says contact info was not shared when the donor withheld it', async () => {
@@ -219,5 +221,7 @@ describe('hospital requests page', () => {
  * one gate, `req.status === 'MATCHED' && acceptedMatch`, so neither is governed by status
  * alone or by the accepted match alone. That is defensible — both actions need a specific
  * donor to act on — but it means a request stuck in MATCHED with every donor declined offers
- * the hospital no action except Cancel, and the page gives no hint as to why.
+ * the hospital no action except Cancel. The gate itself is unchanged; the page now states the
+ * reason on the record, distinguishing "waiting on N donors to respond" from "all N declined",
+ * both counted off the matches already in the payload.
  */
