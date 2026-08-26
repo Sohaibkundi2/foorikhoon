@@ -1,16 +1,23 @@
 import { View, Text, StyleSheet } from 'react-native'
+import { WifiOff } from 'lucide-react-native'
+import { color, wash, font, radius } from '../theme'
 
 interface Props {
   lastUpdated: number | null
 }
 
+/**
+ * No outer margin: callers place this inside their own gutter, because the
+ * screens it appears on don't all use the same one. It used to carry
+ * `marginHorizontal: 16` and sat visibly inset from every 20px-gutter screen.
+ */
 export default function OfflineBanner({ lastUpdated }: Props) {
   return (
     <View style={styles.banner}>
-      <View style={styles.dot} />
+      <WifiOff size={13} color={color.warnLite} strokeWidth={2} />
       <Text style={styles.text}>
-        You're offline
-        {lastUpdated ? ` · Last updated ${timeAgo(lastUpdated)}` : ''}
+        Offline
+        {lastUpdated ? <Text style={styles.dim}>{` · cached ${timeAgo(lastUpdated)}`}</Text> : ''}
       </Text>
     </View>
   )
@@ -31,26 +38,21 @@ const styles = StyleSheet.create({
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(251,146,60,0.1)',
+    backgroundColor: wash.warn,
     borderWidth: 1,
-    borderColor: 'rgba(251,146,60,0.2)',
-    borderRadius: 8,
+    borderColor: wash.warnEdge,
+    borderRadius: radius.md,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    marginTop: 8,
+    paddingVertical: 9,
+    marginBottom: 16,
     gap: 8,
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FB923C',
-  },
   text: {
-    color: '#FB923C',
-    fontSize: 12,
-    fontWeight: '500',
+    fontFamily: font.mono.medium,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: color.warnLite,
   },
+  dim: { fontFamily: font.mono.regular, color: color.mute },
 })

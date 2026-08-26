@@ -1,61 +1,85 @@
 // src/components/Badges.tsx
 import { useEffect, useRef, useState } from 'react'
 import {
-  View, Text, StyleSheet, Modal, Pressable, TouchableOpacity, Animated, Easing, Platform
+  View, Text, StyleSheet, Modal, Pressable, Animated, Easing,
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import {
+  Crown, Droplet, Footprints, HeartPulse, Medal, Star, type LucideIcon,
+} from 'lucide-react-native'
+
+import { Button, Label } from './fk'
+import { color, font, radius } from '../theme'
 
 interface Badge {
   name: string
-  icon: string
+  /** Was an emoji string. Six emojis were the only pictures in the app. */
+  icon: LucideIcon
   description: string
-  color: string
-  glow: string
+  /** One value from the shared palette instead of a per-badge hex and glow. */
+  tint: string
 }
 
+/**
+ * The six badges the backend can award, in the order a donor earns them. The
+ * descriptions are unchanged — they state real thresholds, so rewording them
+ * would risk describing rules the backend does not apply.
+ *
+ * Tints run neutral → red → amber → green → bone rather than six unrelated
+ * hues; the previous set included a blue and a purple, which belong to no
+ * colour family in the rest of the app.
+ */
 const BADGE_DATA: Record<string, Badge> = {
   'First Step': {
     name: 'First Step',
-    icon: '✅',
+    icon: Footprints,
     description: 'You joined ForiKhoon as a donor. Welcome to the family.',
-    color: '#60A5FA',
-    glow: 'rgba(96,165,250,0.25)',
+    tint: color.mute,
   },
   'First Blood': {
     name: 'First Blood',
-    icon: '🩸',
+    icon: Droplet,
     description: 'You accepted your first donation request. Someone needed you — and you showed up.',
-    color: '#F87171',
-    glow: 'rgba(248,113,113,0.25)',
+    tint: color.bloodLite,
   },
   'Reliable': {
     name: 'Reliable',
-    icon: '⭐',
+    icon: Star,
     description: 'Your commitment score crossed 50. Hospitals trust you.',
-    color: '#FACC15',
-    glow: 'rgba(250,204,21,0.25)',
+    tint: color.warnLite,
   },
   'Dedicated': {
     name: 'Dedicated',
-    icon: '🏆',
+    icon: Medal,
     description: 'Commitment score above 80. You are one of our most dependable donors.',
-    color: '#FB923C',
-    glow: 'rgba(251,146,60,0.25)',
+    tint: color.warn,
   },
   'Lifesaver': {
     name: 'Lifesaver',
-    icon: '💉',
+    icon: HeartPulse,
     description: 'You have accepted 5 or more donation requests. You have saved lives.',
-    color: '#4ADE80',
-    glow: 'rgba(74,222,128,0.25)',
+    tint: color.lifeLite,
   },
   'Hero': {
     name: 'Hero',
-    icon: '🦸',
+    icon: Crown,
     description: 'Over 10 accepted requests. You are a hero of ForiKhoon.',
-    color: '#C084FC',
-    glow: 'rgba(192,132,252,0.25)',
+    tint: color.bone,
   },
+}
+
+/** Rank of each badge, used only for the numeral on the popup. */
+const BADGE_ORDER = Object.keys(BADGE_DATA)
+
+/**
+ * Icon and tint for a badge name, for screens that list badges inline rather
+ * than opening the popup (the donor dashboard shelf). Falls back to a neutral
+ * medal so an unrecognised name from the API still renders.
+ */
+export function badgeMeta(name: string): { icon: LucideIcon; tint: string } {
+  const badge = BADGE_DATA[name]
+  if (badge) return { icon: badge.icon, tint: badge.tint }
+  return { icon: Medal, tint: color.mute }
 }
 
 interface BadgePopupProps {
@@ -114,28 +138,38 @@ export default function BadgePopup({ badges, donorId }: BadgePopupProps) {
 
   if (!newBadge) return null
 
+  const Icon = newBadge.icon
+  const rank = BADGE_ORDER.indexOf(newBadge.name) + 1
+
   return (
     <Modal visible={!!newBadge} transparent animationType="none" onRequestClose={handleClose}>
       <Pressable style={styles.backdrop} onPress={handleClose} />
       <View style={styles.centerWrap} pointerEvents="box-none">
-        <Animated.View
-          style={[
-            styles.popup,
-            { opacity, transform: [{ scale }], shadowColor: newBadge.color },
-          ]}
-        >
-          <Text style={styles.eyebrow}>BADGE EARNED</Text>
+        {/* Ranged left on a ruled card, no coloured drop shadow. The old sheet
+            centred everything under an 84px glowing ring — the single most
+            template-looking element in the app. */}
+        <Animated.View style={[styles.popup, { opacity, transform: [{ scale }] }]}>
+          <View style={[styles.tick, { backgroundColor: newBadge.tint }]} />
 
-          <View style={[styles.iconRing, { borderColor: newBadge.glow }]}>
-            <Text style={styles.iconText}>{newBadge.icon}</Text>
+          <View style={styles.head}>
+            <Label loud>Badge earned</Label>
+            <Text style={styles.rank}>
+              {String(rank).padStart(2, '0')} / {String(BADGE_ORDER.length).padStart(2, '0')}
+            </Text>
           </View>
 
-          <Text style={[styles.badgeName, { color: newBadge.color }]}>{newBadge.name}</Text>
+          <View style={styles.nameRow}>
+            <Icon size={22} color={newBadge.tint} strokeWidth={1.75} />
+            <Text style={[styles.badgeName, { color: newBadge.tint }]}>
+              {newBadge.name}
+            </Text>
+          </View>
+
           <Text style={styles.badgeDesc}>{newBadge.description}</Text>
 
-          <TouchableOpacity style={styles.closeBtn} onPress={handleClose} activeOpacity={0.85}>
-            <Text style={styles.closeBtnText}>Awesome!</Text>
-          </TouchableOpacity>
+          <Button tone="primary" full onPress={handleClose} style={{ marginTop: 22 }}>
+            Got it
+          </Button>
         </Animated.View>
       </View>
     </Modal>
@@ -143,20 +177,26 @@ export default function BadgePopup({ badges, donorId }: BadgePopupProps) {
 }
 
 // ── Badge shelf for profile screens ─────────────────────────────────────────
+/**
+ * One hairline row per badge instead of a grid of rounded tiles: the names run
+ * to different lengths and the descriptions are the part worth reading.
+ */
 export function BadgeShelf({ badges }: { badges: string[] }) {
   if (!badges.length) return null
 
   return (
-    <View style={styles.shelfGrid}>
+    <View>
       {badges.map((name) => {
         const badge = BADGE_DATA[name]
         if (!badge) return null
+        const Icon = badge.icon
         return (
-          <View key={name} style={styles.shelfTile}>
-            <Text style={styles.shelfIcon}>{badge.icon}</Text>
-            <Text style={[styles.shelfName, { color: badge.color }]} numberOfLines={1}>
-              {badge.name}
-            </Text>
+          <View key={name} style={styles.shelfRow}>
+            <Icon size={16} color={badge.tint} strokeWidth={1.75} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[styles.shelfName, { color: badge.tint }]}>{badge.name}</Text>
+              <Text style={styles.shelfDesc}>{badge.description}</Text>
+            </View>
           </View>
         )
       })}
@@ -165,48 +205,43 @@ export function BadgeShelf({ badges }: { badges: string[] }) {
 }
 
 const styles = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.7)' },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.78)' },
   centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
 
   popup: {
-    width: '100%',
-    maxWidth: 320,
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    borderRadius: 20,
-    padding: 28,
-    alignItems: 'center',
-    ...Platform.select({
-      ios: { shadowOpacity: 0.4, shadowRadius: 24, shadowOffset: { width: 0, height: 10 } },
-      android: { elevation: 16 },
-    }),
+    width: '100%', maxWidth: 340,
+    backgroundColor: color.raised,
+    borderWidth: 1, borderColor: color.line,
+    borderRadius: radius.lg,
+    paddingHorizontal: 22, paddingBottom: 22,
+    overflow: 'hidden',
   },
-  eyebrow: { color: '#6B7280', fontSize: 11, letterSpacing: 1.5, fontWeight: '600', marginBottom: 20 },
+  tick: { height: 2, marginHorizontal: -22, marginBottom: 20 },
 
-  iconRing: {
-    width: 84, height: 84, borderRadius: 42, borderWidth: 2,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 18,
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rank: {
+    fontFamily: font.mono.regular, fontSize: 10, color: color.faint, letterSpacing: 1,
   },
-  iconText: { fontSize: 38 },
 
-  badgeName: { fontSize: 22, fontWeight: '800', marginBottom: 10 },
-  badgeDesc: { color: '#9CA3AF', fontSize: 13.5, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
-
-  closeBtn: { backgroundColor: '#DC2626', borderRadius: 10, paddingVertical: 13, width: '100%', alignItems: 'center' },
-  closeBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18 },
+  badgeName: {
+    fontFamily: font.sans.semibold, fontSize: 24, letterSpacing: -1,
+  },
+  badgeDesc: {
+    fontFamily: font.sans.regular, fontSize: 13.5, lineHeight: 20.5,
+    color: color.mute, marginTop: 12,
+  },
 
   // Shelf
-  shelfGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  shelfTile: {
-    width: '31%',
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
+  shelfRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    borderTopWidth: 1, borderTopColor: color.lineSoft, paddingVertical: 14,
   },
-  shelfIcon: { fontSize: 26, marginBottom: 8 },
-  shelfName: { fontSize: 11.5, fontWeight: '700', textAlign: 'center' },
+  shelfName: {
+    fontFamily: font.sans.medium, fontSize: 13.5, letterSpacing: -0.2,
+  },
+  shelfDesc: {
+    fontFamily: font.sans.regular, fontSize: 11.5, lineHeight: 17,
+    color: color.faint, marginTop: 4,
+  },
 })

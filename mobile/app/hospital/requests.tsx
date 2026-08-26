@@ -1,13 +1,24 @@
 // app/hospital/requests.tsx
 import { useEffect, useState, useCallback } from 'react'
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator,
-  RefreshControl, ScrollView, Modal, Image
+  View, Text, StyleSheet, FlatList, Pressable,
+  RefreshControl, ScrollView, Modal, Image,
 } from 'react-native'
 import { router } from 'expo-router'
+import {
+  Ban, Check, CircleCheck, Inbox, X,
+} from 'lucide-react-native'
 import { useAuthStore } from '../../src/store/authStore'
 import api from '../../src/lib/api'
 import ConfirmDonationModal from '../../src/components/ConfirmDonationModal'
+
+import {
+  Screen, PageHead, Label, Chip, Button, Skeleton, EmptyState, Rule,
+  useTabBarInset,
+} from '../../src/components/fk'
+import {
+  color, wash, font, radius, urgencyTone, statusTone, toneFor, bloodLabel,
+} from '../../src/theme'
 
 interface Match {
   id: string
@@ -29,27 +40,17 @@ interface BloodRequest {
   matches: Match[]
 }
 
-const bloodGroupLabels: Record<string, string> = {
-  A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
-  AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−',
-}
-
-const urgencyStyle: Record<string, { text: string; bg: string; border: string }> = {
-  CRITICAL: { text: '#F87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
-  URGENT: { text: '#FB923C', bg: 'rgba(251,146,60,0.1)', border: 'rgba(251,146,60,0.2)' },
-  NORMAL: { text: '#4ADE80', bg: 'rgba(74,222,128,0.1)', border: 'rgba(74,222,128,0.2)' },
-}
-
-const statusStyle: Record<string, { text: string; bg: string; border: string }> = {
-  PENDING: { text: '#FACC15', bg: 'rgba(250,204,21,0.1)', border: 'rgba(250,204,21,0.2)' },
-  MATCHED: { text: '#60A5FA', bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.2)' },
-  FULFILLED: { text: '#4ADE80', bg: 'rgba(74,222,128,0.1)', border: 'rgba(74,222,128,0.2)' },
-  EXPIRED: { text: '#6B7280', bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.2)' },
-  NO_SHOW: { text: '#F87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)' },
-}
-
 type Tab = 'ALL' | 'PENDING' | 'MATCHED' | 'FULFILLED' | 'EXPIRED'
 const TABS: Tab[] = ['ALL', 'PENDING', 'MATCHED', 'FULFILLED', 'EXPIRED']
+
+/** Display strings for the rail. The enum values stay the filter keys. */
+const TAB_LABEL: Record<Tab, string> = {
+  ALL: 'All',
+  PENDING: 'Pending',
+  MATCHED: 'Matched',
+  FULFILLED: 'Fulfilled',
+  EXPIRED: 'Expired',
+}
 
 export default function HospitalRequestsScreen() {
   const { user } = useAuthStore()
@@ -63,6 +64,8 @@ export default function HospitalRequestsScreen() {
   const [fulfilling, setFulfilling] = useState<BloodRequest | null>(null)
   // Blood-bag photo opened full size.
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+
+  const bottomInset = useTabBarInset()
 
   useEffect(() => {
     if (!user) { router.replace('/login'); return }
@@ -127,157 +130,223 @@ const getCompletedMatch = (req: BloodRequest) =>
 
   if (loading) {
     return (
-      <View style={styles.centerScreen}>
-        <ActivityIndicator color="#DC2626" />
-      </View>
+      <Screen>
+        <View style={styles.gutter}>
+          <Rule tick />
+          <View style={{ marginTop: 22, gap: 12 }}>
+            <Skeleton width="28%" height={11} />
+            <Skeleton width="70%" height={26} />
+          </View>
+          <View style={{ marginTop: 34, gap: 1 }}>
+            {[0, 1, 2, 3].map(i => (
+              <View key={i} style={styles.loadRow}>
+                <Skeleton width={40} height={20} />
+                <Skeleton width="38%" height={11} />
+              </View>
+            ))}
+          </View>
+        </View>
+      </Screen>
     )
   }
 
   return (
-    <View style={styles.screen}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>HOSPITAL</Text>
-        <Text style={styles.title}>Blood Requests</Text>
-        <Text style={styles.subtitle}>View and manage all blood requests you've posted.</Text>
+    /* The FlatList owns the scrolling, so the Screen is a plain frame. */
+    <Screen scroll={false} ember>
+      <PageHead
+        eyebrow="Hospital · Requests"
+        title="Everything"
+        accent="you've posted."
+        sub="Each request keeps its matches attached, so you can confirm a collection, report a no-show, or close it from here."
+      />
+
+      {/* Filter rail — chips, not underlined tabs. Five statuses with counts do
+          not fit across a phone as tabs, and a chip can hold its own count. */}
+      <View style={styles.railWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.railContent}
+        >
+          {TABS.map((tab) => {
+            const count = tab === 'ALL' ? requests.length : requests.filter(r => r.status === tab).length
+            const active = activeTab === tab
+            const tone = tab === 'ALL'
+              ? { fg: color.bone, bg: wash.bone, border: wash.boneEdge, label: 'All' }
+              : toneFor(statusTone, tab)
+            return (
+              <Pressable
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                style={[
+                  styles.railChip,
+                  active && { backgroundColor: tone.bg, borderColor: tone.border },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.railText,
+                    active && { color: tone.fg, fontFamily: font.mono.medium },
+                  ]}
+                >
+                  {TAB_LABEL[tab]}
+                </Text>
+                {count > 0 && (
+                  <Text style={[styles.railCount, active && { color: tone.fg }]}>{count}</Text>
+                )}
+              </Pressable>
+            )
+          })}
+        </ScrollView>
       </View>
 
-      {/* Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabsRow}
-        contentContainerStyle={styles.tabsContent}
-      >
-        {TABS.map((tab) => {
-          const count = tab === 'ALL' ? requests.length : requests.filter(r => r.status === tab).length
-          const active = activeTab === tab
-          return (
-            <TouchableOpacity
-              key={tab}
-              onPress={() => setActiveTab(tab)}
-              style={[styles.tabButton, active && styles.tabButtonActive]}
-            >
-              <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                {tab}{count > 0 ? ` (${count})` : ''}
-              </Text>
-            </TouchableOpacity>
-          )
-        })}
-      </ScrollView>
-
-      {/* List */}
       <FlatList
         data={filteredRequests}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: bottomInset }]}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#DC2626" />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={color.blood}
+            colors={[color.blood]}
+            progressBackgroundColor={color.surface}
+          />
         }
         ListEmptyComponent={
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No requests in this category.</Text>
-          </View>
+          <EmptyState
+            icon={Inbox}
+            title={activeTab === 'ALL' ? 'No requests yet' : `Nothing ${TAB_LABEL[activeTab].toLowerCase()}`}
+            body={activeTab === 'ALL'
+              ? 'Post a request and the match runs against donors in your radius straight away.'
+              : 'Switch the filter above to see your other requests.'}
+            style={{ marginHorizontal: 20, marginTop: 24 }}
+          />
         }
         renderItem={({ item: req }) => {
-          const urg = urgencyStyle[req.urgency] ?? urgencyStyle.NORMAL
-          const st = statusStyle[req.status] ?? statusStyle.PENDING
+          const urg = toneFor(urgencyTone, req.urgency)
+          const st = toneFor(statusTone, req.status)
           const canAct = req.status === 'PENDING' || req.status === 'MATCHED'
           const acceptedMatch = getAcceptedMatch(req)
           const acceptedContact = getAcceptedContact(req)
           const completedMatch = getCompletedMatch(req)
+          const matchCount = req.matches?.length ?? 0
           return (
-            <View style={styles.card}>
-              <View style={styles.topRow}>
-                <Text style={styles.blood}>
-                  {bloodGroupLabels[req.bloodGroup] || req.bloodGroup}
-                </Text>
-                <View style={styles.pillRow}>
-                  <View style={[styles.pill, { backgroundColor: urg.bg, borderColor: urg.border }]}>
-                    <Text style={[styles.pillText, { color: urg.text }]}>{req.urgency}</Text>
-                  </View>
-                  <View style={[styles.pill, { backgroundColor: st.bg, borderColor: st.border }]}>
-                    <Text style={[styles.pillText, { color: st.text }]}>{req.status}</Text>
-                  </View>
-                </View>
-              </View>
+            /* Rows on hairlines with a status-tinted edge rather than stacked
+               cards — a screen of twenty bordered boxes is all border and no
+               rhythm, and the edge carries the status down the page. */
+            <View style={styles.row}>
+              <View style={[styles.edge, { backgroundColor: st.fg }]} />
 
-              <Text style={styles.detail}>
-                {req.units} unit{req.units > 1 ? 's' : ''} needed
-                {req.notes ? ` · ${req.notes}` : ''}
-              </Text>
-              <Text style={styles.meta}>
-                {req.matches?.length ?? 0} donor{req.matches?.length !== 1 ? 's' : ''} matched ·{' '}
-                {new Date(req.createdAt).toLocaleDateString()}
-              </Text>
-
-                    {req.status === 'MATCHED' && acceptedMatch && (
-                      acceptedContact ? (
-                        <Text style={styles.acceptedContact}>
-                          ✓ Accepted by {acceptedContact.name}
-                          {acceptedContact.phone ? ` · ${acceptedContact.phone}` : ''}
-                        </Text>
-                      ) : (
-                        <Text style={styles.acceptedNoContact}>
-                          ✓ Accepted — contact info not shared
-                        </Text>
-                      )
-                    )}
-
-              {completedMatch?.photoUrl && (
-                <TouchableOpacity
-                  onPress={() => setLightboxUrl(completedMatch.photoUrl!)}
-                  style={styles.proofRow}
-                  activeOpacity={0.7}
-                >
-                  <Image source={{ uri: completedMatch.photoUrl }} style={styles.proofThumb} />
-                  <Text style={styles.proofLabel}>
-                    Proof photo
-                    {completedMatch.photoUploadedAt
-                      ? ` · ${new Date(completedMatch.photoUploadedAt).toLocaleDateString()}`
-                      : ''}
+              <View style={styles.rowBody}>
+                <View style={styles.rowTop}>
+                  <Text style={styles.group}>{bloodLabel(req.bloodGroup)}</Text>
+                  <Text style={styles.units}>
+                    {req.units} unit{req.units > 1 ? 's' : ''}
                   </Text>
-                </TouchableOpacity>
-              )}
-
-              {canAct && (
-                <View style={styles.actionsRow}>
-                  {req.status === 'MATCHED' && acceptedMatch && (
-                    <TouchableOpacity
-                      onPress={() => setFulfilling(req)}
-                      style={[styles.actionBtn, styles.fulfillBtn]}
-                    >
-                      <Text style={styles.fulfillText}>Confirm Donation</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {req.status === 'MATCHED' && acceptedMatch && (
-                    <TouchableOpacity
-                      onPress={() => handleNoShow(acceptedMatch.id)}
-                      disabled={updatingKey === `${acceptedMatch.id}-noshow`}
-                      style={[styles.actionBtn, styles.noShowBtn]}
-                    >
-                      {updatingKey === `${acceptedMatch.id}-noshow` ? (
-                        <ActivityIndicator size="small" color="#F87171" />
-                      ) : (
-                        <Text style={styles.noShowText}>Report No-Show</Text>
-                      )}
-                    </TouchableOpacity>
-                  )}
-
-                  <TouchableOpacity
-                    onPress={() => handleCancel(req.id)}
-                    disabled={updatingKey === `${req.id}-cancel`}
-                    style={[styles.actionBtn, styles.cancelBtn]}
-                  >
-                    {updatingKey === `${req.id}-cancel` ? (
-                      <ActivityIndicator size="small" color="#9CA3AF" />
-                    ) : (
-                      <Text style={styles.cancelText}>Cancel</Text>
-                    )}
-                  </TouchableOpacity>
+                  <View style={{ flex: 1 }} />
+                  <View style={styles.chipRow}>
+                    <Chip tone={urg} />
+                    <Chip tone={st} />
+                  </View>
                 </View>
-              )}
+
+                {req.notes ? (
+                  <Text style={styles.notes} numberOfLines={2}>{req.notes}</Text>
+                ) : null}
+
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaMono}>
+                    {matchCount} donor{matchCount !== 1 ? 's' : ''} matched
+                  </Text>
+                  <View style={{ flex: 1 }} />
+                  <Text style={styles.metaMono}>
+                    {new Date(req.createdAt).toLocaleDateString()}
+                  </Text>
+                </View>
+
+                {req.status === 'MATCHED' && acceptedMatch && (
+                  /* Was a ✓ text glyph on both branches. */
+                  <View style={styles.acceptRow}>
+                    <Check
+                      size={13}
+                      color={acceptedContact ? color.lifeLite : color.faint}
+                      strokeWidth={2.5}
+                    />
+                    {acceptedContact ? (
+                      <Text style={styles.acceptText}>
+                        Accepted by {acceptedContact.name}
+                        {acceptedContact.phone ? ` · ${acceptedContact.phone}` : ''}
+                      </Text>
+                    ) : (
+                      <Text style={styles.acceptTextQuiet}>
+                        Accepted — donor kept their contact details private
+                      </Text>
+                    )}
+                  </View>
+                )}
+
+                {completedMatch?.photoUrl && (
+                  <Pressable
+                    onPress={() => setLightboxUrl(completedMatch.photoUrl!)}
+                    style={styles.proofRow}
+                  >
+                    <Image source={{ uri: completedMatch.photoUrl }} style={styles.proofThumb} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Label loud>Proof photo</Label>
+                      {completedMatch.photoUploadedAt ? (
+                        <Text style={styles.proofDate}>
+                          {new Date(completedMatch.photoUploadedAt).toLocaleDateString()}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                )}
+
+                {canAct && (
+                  <View style={{ marginTop: 14, gap: 8 }}>
+                    {req.status === 'MATCHED' && acceptedMatch && (
+                      <Button
+                        tone="affirm"
+                        size="sm"
+                        icon={CircleCheck}
+                        full
+                        onPress={() => setFulfilling(req)}
+                      >
+                        Confirm donation
+                      </Button>
+                    )}
+
+                    <View style={styles.actionsRow}>
+                      {req.status === 'MATCHED' && acceptedMatch && (
+                        <Button
+                          tone="danger"
+                          size="sm"
+                          icon={Ban}
+                          style={{ flex: 1 }}
+                          busy={updatingKey === `${acceptedMatch.id}-noshow`}
+                          disabled={updatingKey === `${acceptedMatch.id}-noshow`}
+                          onPress={() => handleNoShow(acceptedMatch.id)}
+                        >
+                          Report no-show
+                        </Button>
+                      )}
+
+                      <Button
+                        tone="quiet"
+                        size="sm"
+                        icon={X}
+                        style={{ flex: 1 }}
+                        busy={updatingKey === `${req.id}-cancel`}
+                        disabled={updatingKey === `${req.id}-cancel`}
+                        onPress={() => handleCancel(req.id)}
+                      >
+                        Cancel request
+                      </Button>
+                    </View>
+                  </View>
+                )}
+              </View>
             </View>
           )
         }}
@@ -286,9 +355,7 @@ const getCompletedMatch = (req: BloodRequest) =>
       <ConfirmDonationModal
         visible={!!fulfilling}
         requestId={fulfilling?.id ?? null}
-        bloodGroupLabel={
-          fulfilling ? (bloodGroupLabels[fulfilling.bloodGroup] || fulfilling.bloodGroup) : ''
-        }
+        bloodGroupLabel={fulfilling ? bloodLabel(fulfilling.bloodGroup) : ''}
         donorName={fulfilling ? getAcceptedContact(fulfilling)?.name : null}
         onClose={() => setFulfilling(null)}
         onSuccess={async () => {
@@ -307,80 +374,89 @@ const getCompletedMatch = (req: BloodRequest) =>
           {lightboxUrl && (
             <Image source={{ uri: lightboxUrl }} style={styles.lightboxImage} resizeMode="contain" />
           )}
-          <TouchableOpacity onPress={() => setLightboxUrl(null)} style={styles.lightboxClose}>
-            <Text style={styles.lightboxCloseText}>Close</Text>
-          </TouchableOpacity>
+          <Button
+            tone="ghost"
+            size="sm"
+            icon={X}
+            onPress={() => setLightboxUrl(null)}
+            style={{ marginTop: 20 }}
+          >
+            Close
+          </Button>
         </View>
       </Modal>
-    </View>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0F0F0F' },
-  centerScreen: { flex: 1, backgroundColor: '#0F0F0F', alignItems: 'center', justifyContent: 'center' },
-
-  header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12 },
-  eyebrow: { color: '#6B7280', fontSize: 11, letterSpacing: 1.5, marginBottom: 6, fontWeight: '600' },
-  title: { color: '#FFFFFF', fontSize: 26, fontWeight: '700' },
-  subtitle: { color: '#9CA3AF', fontSize: 13, marginTop: 6 },
-
-  tabsRow: { borderBottomWidth: 1, borderBottomColor: '#222', flexGrow: 0 },
-  tabsContent: { paddingHorizontal: 16, gap: 4 },
-  tabButton: { paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  noShowBtn: { backgroundColor: 'rgba(248,113,113,0.1)', borderColor: 'rgba(248,113,113,0.2)' },
-  noShowText: { color: '#F87171', fontSize: 12, fontWeight: '600' },
-  tabButtonActive: { borderBottomColor: '#DC2626' },
-  tabText: { color: '#6B7280', fontSize: 13, fontWeight: '500' },
-  tabTextActive: { color: '#FFFFFF' },
-
-  listContent: { padding: 16, paddingBottom: 40 },
-
-  emptyCard: {
-    backgroundColor: '#141414', borderWidth: 1, borderColor: '#222',
-    borderRadius: 12, padding: 32, alignItems: 'center',
+  gutter: { paddingHorizontal: 20 },
+  loadRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderTopWidth: 1, borderTopColor: color.lineSoft, paddingVertical: 18,
   },
-  emptyText: { color: '#6B7280', fontSize: 13 },
 
-  card: {
-    backgroundColor: '#141414', borderWidth: 1, borderColor: '#222',
-    borderRadius: 12, padding: 16, marginBottom: 12,
+  // Filter rail
+  railWrap: { borderBottomWidth: 1, borderBottomColor: color.line },
+  railContent: { paddingHorizontal: 20, paddingBottom: 14, gap: 7 },
+  railChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    borderWidth: 1, borderColor: color.line, backgroundColor: color.surface,
+    borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 7,
   },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6, gap: 8 },
-  blood: { color: '#DC2626', fontSize: 20, fontWeight: '700' },
-  pillRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 1 },
-  pill: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
-  pillText: { fontSize: 10.5, fontWeight: '600' },
+  railText: {
+    fontFamily: font.mono.regular, fontSize: 10, color: color.mute,
+    letterSpacing: 1.2, textTransform: 'uppercase',
+  },
+  railCount: {
+    fontFamily: font.mono.medium, fontSize: 10, color: color.faint,
+    fontVariant: ['tabular-nums'],
+  },
 
-  detail: { color: '#9CA3AF', fontSize: 13, marginBottom: 4 },
-  meta: { color: '#6B7280', fontSize: 12, marginBottom: 10 },
+  // List
+  listContent: { paddingTop: 4 },
+  row: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: color.lineSoft },
+  edge: { width: 2 },
+  rowBody: { flex: 1, minWidth: 0, paddingHorizontal: 18, paddingVertical: 16 },
 
-  acceptedContact: { color: '#4ADE80', fontSize: 12, marginBottom: 10 },
-  acceptedNoContact: { color: '#6B7280', fontSize: 12, marginBottom: 10 },
+  rowTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  group: {
+    fontFamily: font.mono.medium, fontSize: 20, color: color.bone, letterSpacing: -1,
+  },
+  units: { fontFamily: font.sans.regular, fontSize: 12.5, color: color.mute },
+  chipRow: { flexDirection: 'row', gap: 6 },
 
-  proofRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 10 },
+  notes: {
+    fontFamily: font.sans.regular, fontSize: 12.5, lineHeight: 18,
+    color: color.mute, marginTop: 9,
+  },
+  metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 11 },
+  metaMono: { fontFamily: font.mono.regular, fontSize: 10.5, color: color.faint },
+
+  acceptRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
+  acceptText: {
+    flex: 1, fontFamily: font.sans.medium, fontSize: 12.5, color: color.lifeLite,
+    letterSpacing: -0.2,
+  },
+  acceptTextQuiet: {
+    flex: 1, fontFamily: font.sans.regular, fontSize: 12.5, color: color.faint,
+  },
+
+  proofRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 11, marginTop: 13,
+    borderTopWidth: 1, borderTopColor: color.lineSoft, paddingTop: 13,
+  },
   proofThumb: {
-    width: 40, height: 40, borderRadius: 8,
-    borderWidth: 1, borderColor: '#2A2A2A', backgroundColor: '#0F0F0F',
+    width: 42, height: 42, borderRadius: radius.sm,
+    borderWidth: 1, borderColor: color.line, backgroundColor: color.surface,
   },
-  proofLabel: { color: '#6B7280', fontSize: 12 },
+  proofDate: { fontFamily: font.mono.regular, fontSize: 10, color: color.faint, marginTop: 4 },
+
+  actionsRow: { flexDirection: 'row', gap: 8 },
 
   lightbox: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.92)',
-    alignItems: 'center', justifyContent: 'center', padding: 16,
+    flex: 1, backgroundColor: wash.scrim,
+    alignItems: 'center', justifyContent: 'center', padding: 20,
   },
-  lightboxImage: { width: '100%', height: '80%' },
-  lightboxClose: {
-    marginTop: 16, backgroundColor: '#141414',
-    borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 10,
-    paddingHorizontal: 18, paddingVertical: 10,
-  },
-  lightboxCloseText: { color: '#9CA3AF', fontSize: 13, fontWeight: '600' },
-
-  actionsRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  actionBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  fulfillBtn: { backgroundColor: 'rgba(74,222,128,0.1)', borderColor: 'rgba(74,222,128,0.2)' },
-  fulfillText: { color: '#4ADE80', fontSize: 12, fontWeight: '600' },
-  cancelBtn: { backgroundColor: 'rgba(107,114,128,0.1)', borderColor: 'rgba(107,114,128,0.2)' },
-  cancelText: { color: '#9CA3AF', fontSize: 12, fontWeight: '600' },
+  lightboxImage: { width: '100%', height: '78%' },
 })

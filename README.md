@@ -385,12 +385,6 @@ The fulfil endpoint accepts `multipart/form-data` with a single `photo` field. U
 
 Fulfilment now also requires an ACCEPTED match to exist. Previously a request could be marked FULFILLED with no donor attached, which awarded nothing to anybody and left a misleading record.
 
-**Why `photoPublicId` and not `photoUrl`.** Cloudinary's `secure_url` only means the URL is HTTPS — it is still world-readable by anyone who obtains it, forever, independent of the app's JWT auth. Storing one would mean a donor's name and blood group sit behind nothing more than an unguessable string. Photos are therefore uploaded as `authenticated` assets and the database stores only Cloudinary's `public_id`. The API mints a signed delivery URL at read time, so access is gated by the same authorisation that protects every other endpoint, and the donor's health data is never reachable from a plain link.
-
-Uploads are re-encoded server-side (capped at 1600px, `quality: auto:good`), which also strips EXIF metadata — worth noting because a raw phone photo taken inside a hospital would otherwise embed GPS coordinates.
-
-**Who can see a photo.** Only the donor it belongs to and the hospital that uploaded it. On the hero certificate the photo is opt-in and off by default, since that card is designed to be shared publicly on WhatsApp and the bag label would leak the donor's blood group to every recipient.
-
 ---
 
 ## Hero Certificates

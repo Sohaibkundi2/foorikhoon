@@ -2,15 +2,35 @@
 import { useEffect, useState } from 'react'
 import * as Location from 'expo-location'
 import {
-  View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
-  ActivityIndicator, KeyboardAvoidingView, Platform
+  View, Text, StyleSheet, Pressable, KeyboardAvoidingView, Platform,
 } from 'react-native'
-import { router, Link } from 'expo-router'
+import { router } from 'expo-router'
+import {
+  ArrowLeft, Check, CircleCheck, Hourglass, LogOut, MapPin, ShieldCheck,
+  TriangleAlert,
+} from 'lucide-react-native'
 import { useAuthStore } from '../../src/store/authStore'
 import api from '../../src/lib/api'
 
+import {
+  Screen, PageHead, Panel, Field, Input, Button, Notice, Rule, Label,
+  SectionLabel, Chip, Skeleton, TextAction,
+} from '../../src/components/fk'
+import {
+  color, wash, font, statusTone, toneFor, Tone,
+} from '../../src/theme'
+
+/* Verification is a state, so it takes the same chip vocabulary every other
+   state in the app takes rather than a coloured paragraph of its own. */
+const verifiedTone: Tone = {
+  fg: color.lifeLite, bg: wash.life, border: wash.lifeEdge, label: 'Verified',
+}
+const pendingTone: Tone = {
+  fg: color.warnLite, bg: wash.warn, border: wash.warnEdge, label: 'Pending review',
+}
+
 export default function HospitalProfileScreen() {
-  const { user } = useAuthStore()
+  const { user, logout } = useAuthStore()
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -101,246 +121,284 @@ export default function HospitalProfileScreen() {
     }
   }
 
+  /* The bottom bar replaced the drawer that used to hold sign-out, and a
+     hospital has no other screen to leave the session from. Same two steps the
+     drawer used: clear the store, go home. */
+  const handleLogout = () => {
+    logout()
+    router.replace('/')
+  }
+
   if (loading) {
     return (
-      <View style={styles.centerScreen}>
-        <ActivityIndicator color="#DC2626" />
-      </View>
+      <Screen>
+        <View style={styles.gutter}>
+          <Rule tick />
+          <View style={{ marginTop: 22, gap: 12 }}>
+            <Skeleton width="34%" height={11} />
+            <Skeleton width="70%" height={26} />
+          </View>
+          <View style={{ gap: 18, marginTop: 34 }}>
+            <Skeleton width="26%" height={10} />
+            <Skeleton height={46} />
+            <Skeleton height={46} />
+            <Skeleton height={46} />
+          </View>
+        </View>
+      </Screen>
     )
   }
 
+  const errorTone = toneFor(statusTone, 'NO_SHOW')
+  const okTone = toneFor(statusTone, 'FULFILLED')
+  const credTone = verified ? verifiedTone : pendingTone
+
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#0F0F0F' }}
+      style={{ flex: 1, backgroundColor: color.ink }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <Link href="/hospital/dashboard" asChild>
-          <TouchableOpacity style={styles.backLink}>
-            <Text style={styles.backLinkText}>← Back to dashboard</Text>
-          </TouchableOpacity>
-        </Link>
-
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>HOSPITAL</Text>
-          <Text style={styles.title}>Edit Profile</Text>
-          <Text style={styles.subtitle}>Update your hospital information.</Text>
+      <Screen keyboardShouldPersistTaps="handled" tail={40}>
+        <View style={[styles.gutter, { paddingTop: 6 }]}>
+          <Pressable
+            onPress={() => router.push('/hospital/dashboard')}
+            style={styles.backLink}
+            hitSlop={8}
+          >
+            {/* Was a ← text arrow. */}
+            <ArrowLeft size={13} color={color.mute} strokeWidth={2} />
+            <Text style={styles.backLinkText}>Dashboard</Text>
+          </Pressable>
         </View>
 
-        {/* Verification status */}
-        <View style={[styles.verifyBanner, verified ? styles.verifyBannerOk : styles.verifyBannerPending]}>
-          <Text style={[styles.verifyBannerText, { color: verified ? '#4ADE80' : '#FACC15' }]}>
-            {verified
-              ? 'Your hospital is verified by ForiKhoon admin.'
-              : 'Your hospital is pending verification. An admin will review your details soon.'}
-          </Text>
+        <PageHead
+          eyebrow="Hospital · Profile"
+          title="Your listing,"
+          accent="as donors see it."
+          sub="Name and city are what appears beside every request you post. The location decides which donors are searched first."
+        />
+
+        {/* ── Credentials ────────────────────────────────────────────────────
+            The two facts you cannot edit, collected in one ruled band instead
+            of a coloured banner plus a greyed-out input pretending to be a
+            field. Both are records, so both are set in mono. */}
+        <View style={styles.credBand}>
+          <View style={[styles.credTick, { backgroundColor: credTone.fg }]} />
+          <View style={styles.gutter}>
+            <View style={styles.credRow}>
+              <Label>Licence number</Label>
+              <View style={styles.credFill} />
+              <Text style={styles.credValue}>{licenseNo || '—'}</Text>
+            </View>
+            <View style={styles.credRow}>
+              <Label>Verification</Label>
+              <View style={styles.credFill} />
+              <Chip tone={credTone} icon={verified ? ShieldCheck : Hourglass} />
+            </View>
+            <Text style={styles.credNote}>
+              {verified
+                ? 'A ForiKhoon admin has checked this licence. Neither field can be changed from the app.'
+                : 'An admin reviews new licences before a hospital is marked verified. You can post requests in the meantime.'}
+            </Text>
+          </View>
         </View>
 
-        {error ? (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorBannerText}>{error}</Text>
-          </View>
-        ) : null}
+        <View style={styles.gutter}>
+          {error ? (
+            <Notice tone={errorTone} icon={TriangleAlert} style={{ marginBottom: 22 }}>
+              {error}
+            </Notice>
+          ) : null}
 
-        {success ? (
-          <View style={styles.successBanner}>
-            <Text style={styles.successBannerText}>Profile updated successfully.</Text>
-          </View>
-        ) : null}
+          {success ? (
+            <Notice tone={okTone} icon={CircleCheck} style={{ marginBottom: 22 }}>
+              Profile updated successfully.
+            </Notice>
+          ) : null}
 
-        {/* Hospital info */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Hospital Information</Text>
+          {/* ── Identity ──────────────────────────────────────────────────── */}
+          <SectionLabel index="01" aside={<Label>Required</Label>}>Identity</SectionLabel>
 
-          <Text style={styles.label}>Hospital name</Text>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            style={styles.input}
-            placeholderTextColor="#6B7280"
-          />
+          <Field
+            label="Hospital name"
+            hint="Shown to every donor who receives one of your requests."
+          >
+            <Input value={name} onChangeText={setName} autoCapitalize="words" />
+          </Field>
 
-          <View style={{ marginBottom: 14 }}>
-            {locationMethod === 'gps' && coords ? (
-              <View style={styles.locationConfirmedBox}>
-                <Text style={styles.locationConfirmedText}>✓ Location captured for your hospital</Text>
-                <TouchableOpacity onPress={() => { setLocationMethod(null); setCoords(null) }}>
-                  <Text style={styles.locationSwitchText}>Use a different method</Text>
-                </TouchableOpacity>
+          {/* ── Location ──────────────────────────────────────────────────── */}
+          <SectionLabel index="02" style={{ marginTop: 14 }}>Location</SectionLabel>
+
+          {locationMethod === 'gps' && coords ? (
+            <Panel tone={okTone}>
+              <View style={styles.confirmRow}>
+                {/* Was a ✓ text glyph. */}
+                <Check size={14} color={color.lifeLite} strokeWidth={2.5} />
+                <Text style={styles.confirmText}>Location captured for this hospital</Text>
               </View>
-            ) : locationMethod === 'manual' ? (
-              <View>
-                <Text style={styles.label}>Address</Text>
-                <TextInput
+              <Text style={styles.confirmSub}>
+                Saving replaces your written address with these coordinates. Donor searches start
+                at ten kilometres from this point and widen from there.
+              </Text>
+              <TextAction onPress={() => { setLocationMethod(null); setCoords(null) }}>
+                Use a different method
+              </TextAction>
+            </Panel>
+          ) : locationMethod === 'manual' ? (
+            <View>
+              <Field label="Address" hint="Street and area, as a patient would be told it.">
+                <Input
                   value={address}
                   onChangeText={setAddress}
-                  style={styles.input}
-                  placeholderTextColor="#6B7280"
+                  placeholder="Circular Road, DI Khan"
                 />
-                <TouchableOpacity onPress={() => setLocationMethod(null)}>
-                  <Text style={styles.locationSwitchText}>Use current location instead</Text>
-                </TouchableOpacity>
+              </Field>
+              <TextAction onPress={() => setLocationMethod(null)}>
+                Use current location instead
+              </TextAction>
+            </View>
+          ) : (
+            <Panel>
+              <View style={styles.promptHead}>
+                <MapPin size={15} color={color.bloodLite} strokeWidth={2} />
+                <Text style={styles.promptTitle}>Update hospital location</Text>
               </View>
-            ) : (
-              <View style={styles.locationPromptBox}>
-                <Text style={styles.locationPromptTitle}>Update hospital location</Text>
-                <Text style={styles.locationPromptDesc}>
-                  Sharing your exact location helps donors and patients find you accurately.
+              <Text style={styles.promptDesc}>
+                Exact coordinates make the donor search accurate. If you would rather not share
+                them, type the address instead — both are saved to the same profile.
+              </Text>
+              {address ? (
+                <Text style={styles.promptCurrent} numberOfLines={2}>
+                  Currently saved: {address}
                 </Text>
-                <TouchableOpacity style={styles.locationButton} onPress={requestLocation} activeOpacity={0.85}>
-                  <Text style={styles.locationButtonText}>Use Current Location</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setLocationMethod('manual')}>
-                  <Text style={styles.locationManualText}>Enter address instead</Text>
-                </TouchableOpacity>
+              ) : null}
+              <Button tone="primary" full onPress={requestLocation} style={{ marginTop: 16 }}>
+                Use current location
+              </Button>
+              <TextAction onPress={() => setLocationMethod('manual')} style={{ marginTop: 14 }}>
+                Enter address instead
+              </TextAction>
 
-                {locationError ? (
-                  <Text style={styles.locationErrorText}>
-                    {locationError === 'permission_denied'
-                      ? "We couldn't access your location. You can try again or enter your address manually."
-                      : 'Something went wrong. Please enter your address instead.'}
-                  </Text>
-                ) : null}
-              </View>
-            )}
+              {locationError ? (
+                <Notice tone={errorTone} icon={TriangleAlert} style={{ marginTop: 16 }}>
+                  {locationError === 'permission_denied'
+                    ? "We couldn't access your location. You can try again or enter your address manually."
+                    : 'Something went wrong. Please enter your address instead.'}
+                </Notice>
+              ) : null}
+            </Panel>
+          )}
+
+          {/* ── Contact ───────────────────────────────────────────────────── */}
+          <SectionLabel index="03" style={{ marginTop: 32 }}>Contact</SectionLabel>
+
+          <View style={styles.row}>
+            <View style={{ flex: 1 }}>
+              <Field label="City">
+                <Input value={city} onChangeText={setCity} />
+              </Field>
+            </View>
+            <View style={{ width: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Field label="Phone" hint="Optional.">
+                <Input
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="03001234567"
+                  keyboardType="phone-pad"
+                />
+              </Field>
+            </View>
           </View>
 
-          <Text style={styles.label}>
-            License number <Text style={styles.optional}>(cannot be changed)</Text>
-          </Text>
-          <View style={[styles.input, styles.inputDisabled]}>
-            <Text style={styles.inputDisabledText}>{licenseNo}</Text>
-          </View>
-        </View>
-
-        {/* Contact info */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Contact Information</Text>
-
-          <Text style={styles.label}>City</Text>
-          <TextInput
-            value={city}
-            onChangeText={setCity}
-            style={styles.input}
-            placeholderTextColor="#6B7280"
-          />
-
-          <Text style={styles.label}>
-            Phone <Text style={styles.optional}>(optional)</Text>
-          </Text>
-          <TextInput
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="03001234567"
-            keyboardType="phone-pad"
-            style={[styles.input, { marginBottom: 0 }]}
-            placeholderTextColor="#6B7280"
-          />
-        </View>
-
-        {/* Save */}
-        <View style={styles.footerRow}>
-          <TouchableOpacity onPress={() => router.push('/hospital/dashboard')}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleSave}
+          {/* ── Save ──────────────────────────────────────────────────────── */}
+          <Button
+            tone="primary"
+            size="lg"
+            full
+            icon={Check}
+            busy={saving}
             disabled={saving}
-            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            style={{ marginTop: 20 }}
           >
-            {saving ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.saveButtonText}>Save Changes</Text>
-            )}
-          </TouchableOpacity>
+            {saving ? 'Saving…' : 'Save changes'}
+          </Button>
+          <TextAction
+            onPress={() => router.push('/hospital/dashboard')}
+            style={{ marginTop: 18, alignSelf: 'center' }}
+          >
+            Cancel
+          </TextAction>
+
+          {/* ── Session ───────────────────────────────────────────────────── */}
+          <Rule style={{ marginTop: 34 }} />
+          <Pressable onPress={handleLogout} style={styles.logoutRow} hitSlop={6}>
+            <LogOut size={13} color={color.bloodLite} strokeWidth={2} />
+            <Text style={styles.logoutText}>Sign out</Text>
+          </Pressable>
         </View>
-      </ScrollView>
+      </Screen>
     </KeyboardAvoidingView>
   )
 }
 
 const styles = StyleSheet.create({
-  centerScreen: { flex: 1, backgroundColor: '#0F0F0F', alignItems: 'center', justifyContent: 'center' },
-  scrollContent: { padding: 20, paddingBottom: 48 },
+  gutter: { paddingHorizontal: 20 },
+  row: { flexDirection: 'row' },
 
-  backLink: { marginBottom: 16 },
-  backLinkText: { color: '#6B7280', fontSize: 12 },
-
-  header: { marginBottom: 20 },
-  eyebrow: { color: '#DC2626', fontSize: 11, letterSpacing: 1.5, marginBottom: 8, fontWeight: '600' },
-  title: { color: '#FFFFFF', fontSize: 26, fontWeight: '700' },
-  subtitle: { color: '#9CA3AF', fontSize: 13, marginTop: 6 },
-
-  verifyBanner: { borderWidth: 1, borderRadius: 8, padding: 12, marginBottom: 16 },
-  verifyBannerOk: { backgroundColor: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.2)' },
-  verifyBannerPending: { backgroundColor: 'rgba(250,204,21,0.1)', borderColor: 'rgba(250,204,21,0.2)' },
-  verifyBannerText: { fontSize: 13 },
-
-  errorBanner: {
-    backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)',
-    borderRadius: 8, padding: 12, marginBottom: 16,
+  backLink: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 4 },
+  backLinkText: {
+    fontFamily: font.mono.medium, fontSize: 9.5, color: color.mute,
+    letterSpacing: 1.4, textTransform: 'uppercase',
   },
-  errorBannerText: { color: '#F87171', fontSize: 13 },
 
-  successBanner: {
-    backgroundColor: 'rgba(34,197,94,0.1)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.2)',
-    borderRadius: 8, padding: 12, marginBottom: 16,
+  // Credentials band
+  credBand: {
+    borderTopWidth: 1, borderTopColor: color.line,
+    borderBottomWidth: 1, borderBottomColor: color.line,
+    paddingBottom: 18, marginBottom: 30,
   },
-  successBannerText: { color: '#4ADE80', fontSize: 13 },
+  credTick: { height: 2, marginBottom: 16 },
+  credRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 },
+  credFill: { flex: 1, height: 1, backgroundColor: color.lineSoft },
+  credValue: {
+    fontFamily: font.mono.medium, fontSize: 13, color: color.bone, letterSpacing: 0.4,
+  },
+  credNote: {
+    fontFamily: font.sans.regular, fontSize: 11.5, lineHeight: 17.5,
+    color: color.faint, marginTop: 10,
+  },
 
-  card: {
-    backgroundColor: '#141414', borderWidth: 1, borderColor: '#222',
-    borderRadius: 12, padding: 16, marginBottom: 16,
+  // Location
+  confirmRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  confirmText: {
+    flex: 1, fontFamily: font.sans.medium, fontSize: 13.5,
+    color: color.lifeLite, letterSpacing: -0.2,
   },
-  cardTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '600', marginBottom: 12 },
+  confirmSub: {
+    fontFamily: font.sans.regular, fontSize: 12.5, lineHeight: 18.5,
+    color: color.mute, marginTop: 9, marginBottom: 14,
+  },
+  promptHead: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  promptTitle: {
+    fontFamily: font.sans.medium, fontSize: 14.5, color: color.bone, letterSpacing: -0.2,
+  },
+  promptDesc: {
+    fontFamily: font.sans.regular, fontSize: 12.5, lineHeight: 19,
+    color: color.mute, marginTop: 9,
+  },
+  promptCurrent: {
+    fontFamily: font.mono.regular, fontSize: 11, lineHeight: 16,
+    color: color.faint, marginTop: 12,
+    borderLeftWidth: 2, borderLeftColor: color.line,
+    paddingLeft: 10, paddingVertical: 2,
+  },
 
-  label: { color: '#9CA3AF', fontSize: 13, marginBottom: 6 },
-  optional: { color: '#6B7280' },
-  input: {
-    backgroundColor: '#0F0F0F', borderWidth: 1, borderColor: '#2A2A2A',
-    borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12,
-    color: '#FFFFFF', fontSize: 14, marginBottom: 14, justifyContent: 'center',
+  // Session
+  logoutRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 16 },
+  logoutText: {
+    fontFamily: font.mono.medium, fontSize: 10, color: color.bloodLite,
+    letterSpacing: 1.4, textTransform: 'uppercase',
   },
-  inputDisabled: { backgroundColor: '#0A0A0A', borderColor: '#1A1A1A' },
-  inputDisabledText: { color: '#6B7280', fontSize: 14 },
-
-  locationConfirmedBox: {
-    backgroundColor: 'rgba(34,197,94,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.2)',
-    borderRadius: 8,
-    padding: 12,
-  },
-  locationConfirmedText: { color: '#4ADE80', fontSize: 14, marginBottom: 4 },
-  locationSwitchText: { color: '#6B7280', fontSize: 12, textDecorationLine: 'underline' },
-
-  locationPromptBox: {
-    backgroundColor: '#0F0F0F',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-  },
-  locationPromptTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '600', marginBottom: 4 },
-  locationPromptDesc: { color: '#6B7280', fontSize: 12, textAlign: 'center', marginBottom: 12 },
-  locationButton: {
-    backgroundColor: '#DC2626',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  locationButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
-  locationManualText: { color: '#6B7280', fontSize: 12, textDecorationLine: 'underline' },
-  locationErrorText: { color: '#F87171', fontSize: 12, marginTop: 8, textAlign: 'center' },
-
-  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
-  cancelText: { color: '#6B7280', fontSize: 14 },
-  saveButton: { backgroundColor: '#DC2626', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 8, minWidth: 140, alignItems: 'center' },
-  saveButtonDisabled: { backgroundColor: 'rgba(220,38,38,0.5)' },
-  saveButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
 })

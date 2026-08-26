@@ -1,32 +1,23 @@
+// app/requests/[id].tsx
 import { useEffect, useState } from 'react'
-import {
-  View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Share, ActivityIndicator
-} from 'react-native'
+import { View, Text, StyleSheet, Pressable, Share } from 'react-native'
 import { useLocalSearchParams, router } from 'expo-router'
+import {
+  ArrowLeft, Droplet, HandHeart, Share2, ShieldCheck,
+} from 'lucide-react-native'
 import api from '../../src/lib/api'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
+import {
+  Screen, Label, SectionLabel, Rule, Chip, Button, Skeleton, EmptyState,
+  TextAction,
+} from '../../src/components/fk'
+import {
+  color, font, radius, urgencyTone, statusTone, toneFor, bloodLabel,
+} from '../../src/theme'
+
 dayjs.extend(relativeTime)
-
-const bloodGroupLabels: Record<string, string> = {
-  A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
-  AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
-}
-
-const urgencyColors: Record<string, { bg: string; border: string; text: string }> = {
-  CRITICAL: { bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.2)', text: '#F87171' },
-  URGENT:   { bg: 'rgba(251,146,60,0.1)',  border: 'rgba(251,146,60,0.2)',  text: '#FB923C' },
-  NORMAL:   { bg: 'rgba(74,222,128,0.1)',  border: 'rgba(74,222,128,0.2)',  text: '#4ADE80' },
-}
-
-const statusColors: Record<string, { bg: string; border: string; text: string }> = {
-  PENDING:   { bg: 'rgba(250,204,21,0.1)',  border: 'rgba(250,204,21,0.2)',  text: '#FACC15' },
-  MATCHED:   { bg: 'rgba(96,165,250,0.1)',  border: 'rgba(96,165,250,0.2)',  text: '#60A5FA' },
-  FULFILLED: { bg: 'rgba(74,222,128,0.1)',  border: 'rgba(74,222,128,0.2)',  text: '#4ADE80' },
-  EXPIRED:   { bg: 'rgba(107,114,128,0.1)', border: 'rgba(107,114,128,0.2)', text: '#6B7280' },
-}
 
 export default function RequestDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -44,7 +35,7 @@ export default function RequestDetailScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `ForiKhoon — Blood request: ${request?.bloodGroup} needed at ${request?.hospital?.name}. Check it out on ForiKhoon app.`,
+        message: `ForiKhoon — Blood request: ${bloodLabel(request?.bloodGroup)} needed at ${request?.hospital?.name}. Check it out on ForiKhoon app.`,
       })
     } catch (e) {
       console.error(e)
@@ -52,183 +43,302 @@ export default function RequestDetailScreen() {
   }
 
   if (loading) {
+    /* Skeletons in the shape of the page that is coming, rather than a
+       centred spinner on an otherwise empty screen. */
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color="#DC2626" size="large" />
-      </View>
+      <Screen>
+        <View style={styles.gutter}>
+          <Rule tick />
+          <View style={{ marginTop: 22, gap: 12 }}>
+            <Skeleton width="32%" height={11} />
+            <Skeleton width="76%" height={26} />
+            <Skeleton width="52%" height={12} />
+          </View>
+          <View style={{ marginTop: 36, gap: 16 }}>
+            <Skeleton width="40%" height={62} />
+            <Skeleton width="64%" height={12} />
+          </View>
+          <View style={{ marginTop: 36, gap: 1 }}>
+            {[0, 1, 2, 3].map(i => (
+              <View key={i} style={styles.loadRow}>
+                <Skeleton width="38%" height={11} />
+                <Skeleton width={40} height={15} />
+              </View>
+            ))}
+          </View>
+        </View>
+      </Screen>
     )
   }
 
   if (!request) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.notFoundIcon}>🩸</Text>
-        <Text style={styles.notFoundTitle}>Request not found</Text>
-        <Text style={styles.notFoundSub}>This request may have expired or been fulfilled.</Text>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backBtnText}>View all requests</Text>
-        </TouchableOpacity>
-      </View>
+      <Screen ember>
+        <View style={[styles.gutter, { paddingTop: 6 }]}>
+          <Pressable onPress={() => router.back()} style={styles.backLink} hitSlop={8}>
+            {/* Was a → arrow inside the button copy. */}
+            <ArrowLeft size={13} color={color.mute} strokeWidth={2} />
+            <Text style={styles.backLinkText}>Requests</Text>
+          </Pressable>
+
+          <EmptyState
+            /* Was a 🩸 emoji at 48px. */
+            icon={Droplet}
+            title="Request not found"
+            body="This request may have expired or been fulfilled. Open requests are listed on the requests screen."
+            action={
+              <Button tone="primary" onPress={() => router.back()}>
+                View all requests
+              </Button>
+            }
+            style={{ marginTop: 28 }}
+          />
+        </View>
+      </Screen>
     )
   }
 
-  const urgency = urgencyColors[request.urgency] || urgencyColors.NORMAL
-  const status = statusColors[request.status] || statusColors.PENDING
+  const urg = toneFor(urgencyTone, request.urgency)
+  const stat = toneFor(statusTone, request.status)
+  const notified = request.matches?.length || 0
+  const isOpen = request.status === 'PENDING'
+  const expiryPassed = request.expiresAt ? dayjs(request.expiresAt).isBefore(dayjs()) : false
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <Screen ember grid tail={40}>
+      {/* ── Header rail ────────────────────────────────────────────────────*/}
+      <View style={[styles.gutter, styles.rail, { paddingTop: 6 }]}>
+        <Pressable onPress={() => router.back()} style={styles.backLink} hitSlop={8}>
+          {/* Was a ← text arrow. */}
+          <ArrowLeft size={13} color={color.mute} strokeWidth={2} />
+          <Text style={styles.backLinkText}>Requests</Text>
+        </Pressable>
 
-      {/* Header */}
-      <View style={styles.headerRow}>
-        <View style={styles.headerInfo}>
-          <Text style={styles.eyebrow}>BLOOD REQUEST</Text>
-          <Text style={styles.hospitalName}>{request.hospital?.name}</Text>
-          <Text style={styles.hospitalSub}>
-            {request.hospital?.user?.city} · {request.hospital?.address}
-          </Text>
-        </View>
-        <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-          <Text style={styles.shareBtnText}>Share</Text>
-        </TouchableOpacity>
+        <Pressable onPress={handleShare} style={styles.shareBtn} hitSlop={6}>
+          <Share2 size={12} color={color.mute} strokeWidth={2} />
+          <Text style={styles.shareText}>Share</Text>
+        </Pressable>
       </View>
 
-      {/* Main card */}
-      <View style={styles.card}>
+      {/* ── Masthead ───────────────────────────────────────────────────────
+          The hospital is the headline, because that is the fact a donor acts
+          on. The old version put a rounded 64px badge beside three pill
+          badges — three competing focal points and no reading order. */}
+      <View style={[styles.gutter, { marginTop: 24 }]}>
+        <Label loud style={{ color: urg.fg }}>
+          {urg.label} · blood request
+        </Label>
+        <Text style={styles.hospital}>{request.hospital?.name}</Text>
+        <Text style={styles.where}>
+          {request.hospital?.user?.city} · {request.hospital?.address}
+        </Text>
 
-        {/* Blood group + badges */}
-        <View style={styles.cardTop}>
-          <View style={styles.bloodGroupBox}>
-            <Text style={styles.bloodGroupText}>
-              {bloodGroupLabels[request.bloodGroup] || request.bloodGroup}
+        {request.hospital?.verified ? (
+          <View style={styles.verifiedRow}>
+            {/* Was a "Verified" pill in a row of three pills. */}
+            <ShieldCheck size={13} color={color.lifeLite} strokeWidth={2} />
+            <Text style={styles.verifiedText}>
+              Licence checked by a ForiKhoon admin
             </Text>
           </View>
-          <View style={styles.badgesRow}>
-            <View style={[styles.badge, { backgroundColor: urgency.bg, borderColor: urgency.border }]}>
-              <Text style={[styles.badgeText, { color: urgency.text }]}>{request.urgency}</Text>
-            </View>
-            <View style={[styles.badge, { backgroundColor: status.bg, borderColor: status.border }]}>
-              <Text style={[styles.badgeText, { color: status.text }]}>{request.status}</Text>
-            </View>
-            {request.hospital?.verified && (
-              <View style={[styles.badge, { backgroundColor: 'rgba(74,222,128,0.1)', borderColor: 'rgba(74,222,128,0.2)' }]}>
-                <Text style={[styles.badgeText, { color: '#4ADE80' }]}>Verified</Text>
-              </View>
-            )}
-          </View>
-        </View>
+        ) : null}
+      </View>
 
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statLabel}>UNITS NEEDED</Text>
-            <Text style={styles.statValue}>{request.units}</Text>
+      {/* ── The ask ────────────────────────────────────────────────────────
+          One large figure, the group, set against an urgency-tinted rule.
+          Everything else on this screen is a supporting record. */}
+      <View style={styles.band}>
+        <View style={[styles.bandTick, { backgroundColor: urg.fg }]} />
+        <View style={[styles.gutter, styles.askRow]}>
+          <Text style={styles.askFigure}>{bloodLabel(request.bloodGroup)}</Text>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.askUnits}>
+              {request.units} unit{request.units !== 1 ? 's' : ''} needed
+            </Text>
+            <Text style={styles.askNote}>
+              {notified > 0
+                ? `${notified} matching donor${notified !== 1 ? 's' : ''} already notified`
+                : 'No donor has been matched to this request yet'}
+            </Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statLabel}>DONORS NOTIFIED</Text>
-            <Text style={styles.statValue}>{request.matches?.length || 0}</Text>
-          </View>
+          <Chip tone={stat} />
         </View>
+      </View>
 
-        {/* Notes */}
-        {request.notes && (
-          <View style={styles.notesBox}>
-            <Text style={styles.notesLabel}>NOTES</Text>
-            <Text style={styles.notesText}>{request.notes}</Text>
+      {/* ── Record ─────────────────────────────────────────────────────────*/}
+      <View style={styles.gutter}>
+        <SectionLabel index="01">The record</SectionLabel>
+
+        <DetailRow label="Blood group" value={bloodLabel(request.bloodGroup)} mono tint={color.bloodLite} />
+        <DetailRow label="Units needed" value={String(request.units)} mono />
+        <DetailRow
+          label="Donors notified"
+          value={String(notified)}
+          mono
+          tint={notified > 0 ? color.lifeLite : color.faint}
+        />
+        <DetailRow label="Urgency" value={urg.label} tint={urg.fg} />
+        <DetailRow label="Status" value={stat.label} tint={stat.fg} />
+        <DetailRow label="Posted" value={dayjs(request.createdAt).fromNow()} />
+        <DetailRow
+          label={expiryPassed ? 'Expired' : 'Expires'}
+          value={request.expiresAt ? dayjs(request.expiresAt).fromNow() : 'No expiry set'}
+          tint={expiryPassed ? color.faint : undefined}
+        />
+
+        {request.notes ? (
+          <View style={{ marginTop: 30 }}>
+            <SectionLabel index="02">From the hospital</SectionLabel>
+            <Text style={styles.notes}>{request.notes}</Text>
+          </View>
+        ) : null}
+
+        {/* ── Action ───────────────────────────────────────────────────────*/}
+        {isOpen ? (
+          <View style={{ marginTop: 30 }}>
+            <Button
+              tone="primary"
+              size="lg"
+              full
+              icon={HandHeart}
+              onPress={() => router.push('/register')}
+            >
+              I can help — register as a donor
+            </Button>
+            <Text style={styles.ctaNote}>
+              Registering takes your blood group and city. You are only contacted
+              when a hospital near you needs your group.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.closed}>
+            <Rule />
+            <Text style={styles.closedText}>
+              This request is{' '}
+              <Text style={[styles.closedStrong, { color: stat.fg }]}>
+                {stat.label.toLowerCase()}
+              </Text>
+              , so no further donors are being contacted for it.
+            </Text>
+            <TextAction onPress={() => router.back()} tint={color.bloodLite}>
+              View other requests
+            </TextAction>
           </View>
         )}
       </View>
+    </Screen>
+  )
+}
 
-      {/* Time info */}
-      <View style={styles.timeCard}>
-        <View>
-          <Text style={styles.timeLabel}>Posted</Text>
-          <Text style={styles.timeValue}>{dayjs(request.createdAt).fromNow()}</Text>
-        </View>
-        <View style={styles.timeDivider} />
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={styles.timeLabel}>Expires</Text>
-          <Text style={styles.timeValue}>
-            {request.expiresAt ? dayjs(request.expiresAt).fromNow() : 'No expiry set'}
-          </Text>
-        </View>
-      </View>
-
-      {/* CTA */}
-      {request.status === 'PENDING' ? (
-        <TouchableOpacity
-          style={styles.ctaBtn}
-          onPress={() => router.push('/register')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.ctaBtnText}>I can help — Register as donor</Text>
-        </TouchableOpacity>
-      ) : (
-        <View style={styles.fulfilledBox}>
-          <Text style={styles.fulfilledText}>
-            This request has been {request.status.toLowerCase()}.
-          </Text>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.fulfilledLink}>View other requests →</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-    </ScrollView>
+/** One line of the record: name left, hairline, value right. */
+function DetailRow({ label, value, mono, tint }: {
+  label: string
+  value: string
+  mono?: boolean
+  tint?: string
+}) {
+  return (
+    <View style={styles.detailRow}>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <View style={styles.detailFill} />
+      <Text
+        style={[
+          mono ? styles.detailValueMono : styles.detailValue,
+          tint ? { color: tint } : null,
+        ]}
+      >
+        {value}
+      </Text>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0A0A0A' },
-  content: { padding: 20, paddingBottom: 48 },
+  gutter: { paddingHorizontal: 20 },
 
-  center: { flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  notFoundIcon: { fontSize: 48, marginBottom: 16 },
-  notFoundTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '700', marginBottom: 8 },
-  notFoundSub: { color: '#6B7280', fontSize: 13, textAlign: 'center', marginBottom: 24 },
-  backBtn: { backgroundColor: '#DC2626', borderRadius: 8, paddingHorizontal: 24, paddingVertical: 12 },
-  backBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
-
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-  headerInfo: { flex: 1, marginRight: 12 },
-  eyebrow: { color: '#DC2626', fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginBottom: 6 },
-  hospitalName: { color: '#FFFFFF', fontSize: 20, fontWeight: '700', marginBottom: 4 },
-  hospitalSub: { color: '#9CA3AF', fontSize: 12 },
-  shareBtn: { borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
-  shareBtnText: { color: '#9CA3AF', fontSize: 12 },
-
-  card: { backgroundColor: '#141414', borderWidth: 1, borderColor: '#222', borderRadius: 16, padding: 18, marginBottom: 12 },
-
-  cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 18 },
-  bloodGroupBox: {
-    width: 64, height: 64, borderRadius: 14,
-    backgroundColor: 'rgba(220,38,38,0.1)', borderWidth: 1, borderColor: 'rgba(220,38,38,0.2)',
-    justifyContent: 'center', alignItems: 'center',
+  loadRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderTopWidth: 1, borderTopColor: color.lineSoft, paddingVertical: 16,
   },
-  bloodGroupText: { color: '#DC2626', fontSize: 22, fontWeight: '800' },
-  badgesRow: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  badge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeText: { fontSize: 11, fontWeight: '600' },
 
-  statsRow: { flexDirection: 'row', backgroundColor: '#0F0F0F', borderWidth: 1, borderColor: '#1A1A1A', borderRadius: 12 },
-  statBox: { flex: 1, padding: 16, alignItems: 'center' },
-  statDivider: { width: 1, backgroundColor: '#1A1A1A', marginVertical: 12 },
-  statLabel: { color: '#6B7280', fontSize: 9, fontWeight: '700', letterSpacing: 1, marginBottom: 6 },
-  statValue: { color: '#FFFFFF', fontSize: 28, fontWeight: '800' },
+  rail: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  backLink: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 4 },
+  backLinkText: {
+    fontFamily: font.mono.medium, fontSize: 9.5, color: color.mute,
+    letterSpacing: 1.4, textTransform: 'uppercase',
+  },
+  shareBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    borderWidth: 1, borderColor: color.line, borderRadius: radius.sm,
+    paddingHorizontal: 11, paddingVertical: 7,
+  },
+  shareText: {
+    fontFamily: font.mono.medium, fontSize: 9.5, color: color.mute,
+    letterSpacing: 1.3, textTransform: 'uppercase',
+  },
 
-  notesBox: { marginTop: 14, backgroundColor: '#0F0F0F', borderWidth: 1, borderColor: '#1A1A1A', borderRadius: 10, padding: 14 },
-  notesLabel: { color: '#6B7280', fontSize: 9, fontWeight: '700', letterSpacing: 1, marginBottom: 6 },
-  notesText: { color: '#9CA3AF', fontSize: 13, lineHeight: 19 },
+  // Masthead
+  hospital: {
+    fontFamily: font.sans.semibold, fontSize: 30, lineHeight: 34,
+    color: color.bone, letterSpacing: -1.4, marginTop: 12,
+  },
+  where: {
+    fontFamily: font.sans.regular, fontSize: 13, lineHeight: 19,
+    color: color.mute, marginTop: 9,
+  },
+  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
+  verifiedText: {
+    flex: 1, fontFamily: font.sans.regular, fontSize: 12, color: color.faint,
+  },
 
-  timeCard: { backgroundColor: '#141414', borderWidth: 1, borderColor: '#222', borderRadius: 16, padding: 18, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  timeDivider: { width: 1, height: 40, backgroundColor: '#222' },
-  timeLabel: { color: '#6B7280', fontSize: 10, marginBottom: 4 },
-  timeValue: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+  // The ask
+  band: {
+    borderTopWidth: 1, borderTopColor: color.line,
+    borderBottomWidth: 1, borderBottomColor: color.line,
+    paddingBottom: 22, marginTop: 30, marginBottom: 32,
+  },
+  bandTick: { height: 2, marginBottom: 20 },
+  askRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  askFigure: {
+    fontFamily: font.mono.medium, fontSize: 50, lineHeight: 54,
+    color: color.bone, letterSpacing: -3.5,
+  },
+  askUnits: {
+    fontFamily: font.sans.medium, fontSize: 14.5, color: color.bone, letterSpacing: -0.3,
+  },
+  askNote: {
+    fontFamily: font.sans.regular, fontSize: 11.5, lineHeight: 17,
+    color: color.faint, marginTop: 5,
+  },
 
-  ctaBtn: { backgroundColor: '#DC2626', borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
-  ctaBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  // Record ledger
+  detailRow: {
+    flexDirection: 'row', alignItems: 'baseline', gap: 10,
+    borderTopWidth: 1, borderTopColor: color.lineSoft, paddingVertical: 14,
+  },
+  detailLabel: { fontFamily: font.sans.regular, fontSize: 13, color: color.mute },
+  detailFill: { flex: 1, height: 1, backgroundColor: color.lineSoft, alignSelf: 'center' },
+  detailValue: { fontFamily: font.sans.medium, fontSize: 13.5, color: color.bone },
+  detailValueMono: {
+    fontFamily: font.mono.medium, fontSize: 15, color: color.bone,
+    letterSpacing: -0.4, fontVariant: ['tabular-nums'],
+  },
 
-  fulfilledBox: { alignItems: 'center', paddingVertical: 16 },
-  fulfilledText: { color: '#6B7280', fontSize: 13, marginBottom: 8 },
-  fulfilledLink: { color: '#DC2626', fontSize: 13, fontWeight: '600' },
+  notes: {
+    fontFamily: font.sans.regular, fontSize: 13.5, lineHeight: 21,
+    color: color.mute, marginTop: 4,
+    borderLeftWidth: 2, borderLeftColor: color.line, paddingLeft: 14,
+  },
+
+  ctaNote: {
+    fontFamily: font.sans.regular, fontSize: 11.5, lineHeight: 17.5,
+    color: color.faint, marginTop: 14,
+  },
+
+  closed: { marginTop: 30, gap: 14 },
+  closedText: {
+    fontFamily: font.sans.regular, fontSize: 13, lineHeight: 20,
+    color: color.mute, marginTop: 16,
+  },
+  closedStrong: { fontFamily: font.sans.medium },
 })

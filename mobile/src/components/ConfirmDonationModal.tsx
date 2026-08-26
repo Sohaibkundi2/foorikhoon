@@ -1,11 +1,18 @@
 // src/components/ConfirmDonationModal.tsx
 import { useState } from 'react'
 import {
-  View, Text, StyleSheet, Modal, TouchableOpacity, Image,
-  ActivityIndicator, Alert, Linking
+  View, Text, StyleSheet, Modal, Pressable, Image, Alert, Linking,
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import {
+  Camera, Check, Images, TriangleAlert, X,
+} from 'lucide-react-native'
 import api from '../lib/api'
+
+import {
+  Label, Button, Notice, SegmentMeter, TextAction,
+} from './fk'
+import { color, font, radius, statusTone, toneFor } from '../theme'
 
 interface Props {
   visible: boolean
@@ -155,70 +162,90 @@ export default function ConfirmDonationModal({
     }
   }
 
+  const errorTone = toneFor(statusTone, 'NO_SHOW')
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
       <View style={styles.backdrop}>
+        {/* A ruled sheet with a red tick at the head, matching the bands the
+            hospital screens use. The old sheet was a rounded card with two
+            dashed emoji tiles. */}
         <View style={styles.sheet}>
-          <Text style={styles.title}>Confirm Donation</Text>
+          <View style={styles.tick} />
+
+          <View style={styles.head}>
+            <Label loud>Confirm donation</Label>
+            {/* The caller passes an already-formatted group ("A+"). */}
+            <Text style={styles.group}>{bloodGroupLabel}</Text>
+          </View>
+
           <Text style={styles.subtitle}>
-            Photograph the blood bag for the{' '}
-            <Text style={styles.blood}>{bloodGroupLabel}</Text> request
+            Photograph the blood bag for this request
             {donorName ? <Text> donated by <Text style={styles.strong}>{donorName}</Text></Text> : null}.
-            This is stored as proof and shown to the donor.
+            It is stored as proof and shown to the donor.
           </Text>
 
           {asset ? (
             <View style={styles.previewWrap}>
               <Image source={{ uri: asset.uri }} style={styles.preview} resizeMode="contain" />
               {!uploading && (
-                <TouchableOpacity onPress={() => setAsset(null)} style={styles.changeBtn}>
+                <Pressable onPress={() => setAsset(null)} style={styles.changeBtn} hitSlop={6}>
+                  {/* Was a text-only "Change" chip. */}
+                  <X size={11} color={color.bone} strokeWidth={2} />
                   <Text style={styles.changeText}>Change</Text>
-                </TouchableOpacity>
+                </Pressable>
               )}
             </View>
           ) : (
             <View style={styles.pickRow}>
-              <TouchableOpacity onPress={takePhoto} style={[styles.pickBtn, styles.pickPrimary]}>
-                <Text style={styles.pickEmoji}>📷</Text>
-                <Text style={styles.pickLabel}>Take Photo</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={pickFromGallery} style={styles.pickBtn}>
-                <Text style={styles.pickEmoji}>🖼️</Text>
-                <Text style={styles.pickLabel}>From Gallery</Text>
-              </TouchableOpacity>
+              <Pressable onPress={takePhoto} style={[styles.pickBtn, styles.pickPrimary]}>
+                {/* Were 📷 and 🖼️ emojis. */}
+                <Camera size={19} color={color.bloodLite} strokeWidth={1.75} />
+                <Text style={styles.pickLabel}>Take photo</Text>
+                <Text style={styles.pickHint}>Camera</Text>
+              </Pressable>
+              <Pressable onPress={pickFromGallery} style={styles.pickBtn}>
+                <Images size={19} color={color.mute} strokeWidth={1.75} />
+                <Text style={styles.pickLabel}>From gallery</Text>
+                <Text style={styles.pickHint}>JPG, PNG or WebP · max 5MB</Text>
+              </Pressable>
             </View>
           )}
 
           {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
+            <Notice tone={errorTone} icon={TriangleAlert} style={{ marginTop: 14 }}>
+              {error}
+            </Notice>
           )}
 
           {uploading && (
             <View style={styles.progressWrap}>
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${progress}%` }]} />
-              </View>
+              <SegmentMeter value={progress} max={100} segments={20} tint={color.blood} />
               <Text style={styles.progressText}>
                 {progress < 100 ? `Uploading… ${progress}%` : 'Saving donation…'}
               </Text>
             </View>
           )}
 
-          <TouchableOpacity
-            onPress={handleUpload}
+          <Button
+            tone="affirm"
+            size="lg"
+            full
+            icon={Check}
+            busy={uploading}
             disabled={!asset || uploading}
-            style={[styles.submitBtn, (!asset || uploading) && styles.submitDisabled]}
+            onPress={handleUpload}
+            style={{ marginTop: 18 }}
           >
-            {uploading
-              ? <ActivityIndicator size="small" color="#4ADE80" />
-              : <Text style={styles.submitText}>Upload and Confirm Donation</Text>}
-          </TouchableOpacity>
+            {uploading ? 'Uploading…' : 'Upload and confirm'}
+          </Button>
 
-          <TouchableOpacity onPress={handleClose} disabled={uploading} style={styles.cancelBtn}>
-            <Text style={[styles.cancelText, uploading && styles.dimmed]}>Cancel</Text>
-          </TouchableOpacity>
+          <TextAction
+            onPress={handleClose}
+            style={{ marginTop: 14, alignSelf: 'center', opacity: uploading ? 0.4 : 1 }}
+          >
+            Cancel
+          </TextAction>
         </View>
       </View>
     </Modal>
@@ -227,61 +254,60 @@ export default function ConfirmDonationModal({
 
 const styles = StyleSheet.create({
   backdrop: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.75)',
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.8)',
     justifyContent: 'center', alignItems: 'center', padding: 20,
   },
   sheet: {
-    width: '100%', maxWidth: 420, backgroundColor: '#141414',
-    borderWidth: 1, borderColor: '#222', borderRadius: 18, padding: 20,
+    width: '100%', maxWidth: 420, backgroundColor: color.raised,
+    borderWidth: 1, borderColor: color.line, borderRadius: radius.lg,
+    paddingHorizontal: 20, paddingBottom: 20, overflow: 'hidden',
   },
+  tick: { height: 2, backgroundColor: color.blood, marginHorizontal: -20, marginBottom: 18 },
 
-  title: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
-  subtitle: { color: '#9CA3AF', fontSize: 12.5, lineHeight: 18, marginTop: 6, marginBottom: 16 },
-  blood: { color: '#DC2626', fontWeight: '700' },
-  strong: { color: '#FFFFFF', fontWeight: '600' },
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  group: {
+    fontFamily: font.mono.medium, fontSize: 20, color: color.bloodLite, letterSpacing: -1,
+  },
+  subtitle: {
+    fontFamily: font.sans.regular, fontSize: 12.5, lineHeight: 19,
+    color: color.mute, marginTop: 10, marginBottom: 18,
+  },
+  strong: { fontFamily: font.sans.medium, color: color.bone },
 
-  pickRow: { flexDirection: 'row', gap: 10 },
+  pickRow: { flexDirection: 'row', gap: 9 },
   pickBtn: {
-    flex: 1, backgroundColor: '#0F0F0F', borderWidth: 1, borderColor: '#2A2A2A',
-    borderStyle: 'dashed', borderRadius: 12, paddingVertical: 22, alignItems: 'center',
+    flex: 1, backgroundColor: color.ink,
+    borderWidth: 1, borderColor: color.line, borderRadius: radius.md,
+    paddingVertical: 18, paddingHorizontal: 12, gap: 9,
   },
-  pickPrimary: { borderColor: 'rgba(220,38,38,0.4)' },
-  pickEmoji: { fontSize: 24, marginBottom: 6 },
-  pickLabel: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '600' },
+  pickPrimary: { borderColor: color.line, backgroundColor: color.surface },
+  pickLabel: {
+    fontFamily: font.sans.medium, fontSize: 13, color: color.bone, letterSpacing: -0.2,
+  },
+  pickHint: {
+    fontFamily: font.mono.regular, fontSize: 9, color: color.faint,
+    letterSpacing: 0.7, textTransform: 'uppercase',
+  },
 
   previewWrap: {
-    borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12,
-    overflow: 'hidden', backgroundColor: '#0F0F0F',
+    borderWidth: 1, borderColor: color.line, borderRadius: radius.md,
+    overflow: 'hidden', backgroundColor: color.ink,
   },
   preview: { width: '100%', height: 220 },
   changeBtn: {
     position: 'absolute', top: 8, right: 8,
-    backgroundColor: 'rgba(0,0,0,0.75)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(10,10,10,0.86)',
+    borderWidth: 1, borderColor: color.line, borderRadius: radius.sm,
+    paddingHorizontal: 9, paddingVertical: 5,
   },
-  changeText: { color: '#FFFFFF', fontSize: 11.5, fontWeight: '600' },
-
-  errorBox: {
-    marginTop: 12, backgroundColor: 'rgba(248,113,113,0.1)',
-    borderWidth: 1, borderColor: 'rgba(248,113,113,0.2)', borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 9,
+  changeText: {
+    fontFamily: font.mono.medium, fontSize: 9, color: color.bone,
+    letterSpacing: 1.1, textTransform: 'uppercase',
   },
-  errorText: { color: '#F87171', fontSize: 12, lineHeight: 17 },
 
-  progressWrap: { marginTop: 14 },
-  progressTrack: { height: 4, backgroundColor: '#222', borderRadius: 999, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#DC2626' },
-  progressText: { color: '#6B7280', fontSize: 11.5, marginTop: 7 },
-
-  submitBtn: {
-    marginTop: 18, backgroundColor: 'rgba(74,222,128,0.1)',
-    borderWidth: 1, borderColor: 'rgba(74,222,128,0.2)',
-    borderRadius: 10, paddingVertical: 13, alignItems: 'center', justifyContent: 'center',
+  progressWrap: { marginTop: 16, gap: 9 },
+  progressText: {
+    fontFamily: font.mono.regular, fontSize: 10.5, color: color.mute, letterSpacing: 0.4,
   },
-  submitDisabled: { opacity: 0.4 },
-  submitText: { color: '#4ADE80', fontSize: 13.5, fontWeight: '700' },
-
-  cancelBtn: { marginTop: 10, paddingVertical: 10, alignItems: 'center' },
-  cancelText: { color: '#9CA3AF', fontSize: 13 },
-  dimmed: { opacity: 0.4 },
 })

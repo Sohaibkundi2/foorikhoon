@@ -173,7 +173,12 @@ export default function HeroCertificate({
     <View style={styles.wrapper}>
       {/* Card only — action buttons stay outside the captured image. */}
       <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }}>
-        <View style={styles.card}>
+        {/* The proof strip adds its own height to the card rather than taking it
+            from the hero block. `heroSection` is the only flex child, so without
+            this the strip stole ~60pt from it and the centred name and title rode
+            upward (and clipped on short screens) the moment the photo was
+            switched on. */}
+        <View style={[styles.card, showPhoto && { height: CARD_HEIGHT + PROOF_BLOCK }]}>
           <View style={styles.glowTopRight} />
           <View style={styles.glowBottomLeft} />
           <View style={styles.patternTopRight} />
@@ -354,6 +359,13 @@ export default function HeroCertificate({
 
 const CARD_WIDTH = 300
 const CARD_HEIGHT = 500
+
+/* Proof-strip geometry, kept as constants because the card height is computed
+   from it. Row = 34pt thumbnail + 7pt padding top and bottom + 1pt border top
+   and bottom; the block adds the strip's bottom margin. */
+const PROOF_ROW = 50
+const PROOF_GAP = 10
+const PROOF_BLOCK = PROOF_ROW + PROOF_GAP
 
 const styles = StyleSheet.create({
   wrapper: {
@@ -614,12 +626,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 9,
+    // Fixed height: the card reserves exactly PROOF_BLOCK for this row, so it
+    // must not grow if the hospital name wraps.
+    height: PROOF_ROW,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.16)',
     backgroundColor: 'rgba(0,0,0,0.22)',
-    padding: 7,
-    marginBottom: 10,
+    paddingHorizontal: 7,
+    marginBottom: PROOF_GAP,
   },
   proofThumb: {
     width: 34,

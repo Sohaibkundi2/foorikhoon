@@ -1,37 +1,16 @@
 // src/components/WeeklyHeroes.tsx
 import { useEffect, useRef, useState } from 'react'
-import {
-  View, Text, StyleSheet, FlatList, ActivityIndicator, Dimensions, TouchableOpacity
-} from 'react-native'
+import { View, Text, StyleSheet, FlatList, Dimensions, Pressable } from 'react-native'
+import { Droplet } from 'lucide-react-native'
 import api from '../lib/api'
+import { Skeleton } from './fk'
+import { color, font, radius, bloodLabel, tintFor, initialsFor } from '../theme'
 
 interface Hero {
   name: string
   city: string
   bloodGroup: string | null
   commitmentScore: number
-}
-
-const bloodGroupLabels: Record<string, string> = {
-  A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
-  AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−',
-}
-
-const avatarPalettes = [
-  { bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.3)', text: '#F87171' },
-  { bg: 'rgba(251,146,60,0.12)',  border: 'rgba(251,146,60,0.3)',  text: '#FB923C' },
-  { bg: 'rgba(74,222,128,0.12)',  border: 'rgba(74,222,128,0.3)',  text: '#4ADE80' },
-  { bg: 'rgba(96,165,250,0.12)',  border: 'rgba(96,165,250,0.3)',  text: '#60A5FA' },
-  { bg: 'rgba(192,132,252,0.12)', border: 'rgba(192,132,252,0.3)', text: '#C084FC' },
-]
-
-function getInitials(name: string) {
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-}
-
-function getPalette(name: string) {
-  const index = name.charCodeAt(0) % avatarPalettes.length
-  return avatarPalettes[index]
 }
 
 const CARD_WIDTH = Dimensions.get('window').width - 40 // matches 20px screen padding each side
@@ -72,9 +51,16 @@ export default function WeeklyHeroes() {
   }
 
   if (loading) {
+    /* A skeleton at the card's real height rather than a spinner in a box: the
+       section keeps its place in the scroll, so nothing below it jumps when the
+       response lands. */
     return (
-      <View style={styles.loadingBox}>
-        <ActivityIndicator color="#DC2626" />
+      <View style={styles.card}>
+        <Skeleton width={38} height={38} />
+        <View style={{ flex: 1, gap: 9 }}>
+          <Skeleton width="62%" height={13} />
+          <Skeleton width="40%" height={10} />
+        </View>
       </View>
     )
   }
@@ -83,9 +69,14 @@ export default function WeeklyHeroes() {
 
   return (
     <View>
+      {/* The caller supplies the section heading; this row carries the two
+          things it can't — what the ordering means, and where you are in it. */}
       <View style={styles.headerRow}>
-        <Text style={styles.eyebrow}>This week's heroes</Text>
-        <Text style={styles.count}>{heroes.length} donor{heroes.length !== 1 ? 's' : ''}</Text>
+        <Text style={styles.headerText}>Ranked by commitment score</Text>
+        <Text style={styles.counter}>
+          {String(activeIndex + 1).padStart(2, '0')}
+          <Text style={styles.counterDim}>{` / ${String(heroes.length).padStart(2, '0')}`}</Text>
+        </Text>
       </View>
 
       <FlatList
@@ -102,35 +93,43 @@ export default function WeeklyHeroes() {
           setActiveIndex(i)
         }}
         getItemLayout={(_, index) => ({ length: CARD_WIDTH, offset: CARD_WIDTH * index, index })}
-        renderItem={({ item: hero }) => {
-          const palette = getPalette(hero.name)
+        renderItem={({ item: hero, index }) => {
+          const tint = tintFor(hero.name)
           return (
             <View style={{ width: CARD_WIDTH }}>
               <View style={styles.card}>
-                <View style={[styles.avatar, { backgroundColor: palette.bg, borderColor: palette.border }]}>
-                  <Text style={[styles.avatarText, { color: palette.text }]}>{getInitials(hero.name)}</Text>
+                {/* Square, not a circle. A round avatar beside a mono rank
+                    numeral is the stock leaderboard row; the square keeps this
+                    in the same family as the blood-group lattice. */}
+                <View style={[styles.avatar, { backgroundColor: tint.bg }]}>
+                  <Text style={[styles.avatarText, { color: tint.fg }]}>{initialsFor(hero.name)}</Text>
                 </View>
 
                 <View style={styles.infoWrap}>
-                  <Text style={styles.heroName} numberOfLines={1}>{hero.name}</Text>
-                  <Text style={styles.heroCity}>{hero.city}</Text>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.rank}>{String(index + 1).padStart(2, '0')}</Text>
+                    <Text style={styles.heroName} numberOfLines={1}>{hero.name}</Text>
+                  </View>
+
                   <View style={styles.metaRow}>
+                    <Text style={styles.heroCity} numberOfLines={1}>{hero.city}</Text>
                     {hero.bloodGroup && (
-                      <View style={styles.bloodPill}>
-                        <Text style={styles.bloodPillText}>
-                          {bloodGroupLabels[hero.bloodGroup] || hero.bloodGroup}
-                        </Text>
-                      </View>
+                      <>
+                        <View style={styles.metaDot} />
+                        <Text style={styles.heroGroup}>{bloodLabel(hero.bloodGroup)}</Text>
+                      </>
                     )}
-                    <Text style={styles.scoreText}>
-                      Score: <Text style={styles.scoreValue}>{hero.commitmentScore}</Text>
-                    </Text>
                   </View>
                 </View>
 
-                <View style={styles.badgeWrap}>
-                  <Text style={styles.badgeEmoji}>🩸</Text>
-                  <Text style={styles.badgeLabel}>Donated</Text>
+                <View style={styles.scoreWrap}>
+                  <Text style={styles.scoreValue}>{hero.commitmentScore}</Text>
+                  <View style={styles.scoreLabelRow}>
+                    {/* Was a 🩸 glyph. Same meaning, and it inherits the
+                        stroke weight every other icon in the app uses. */}
+                    <Droplet size={9} color={color.faint} strokeWidth={2} />
+                    <Text style={styles.scoreLabel}>Score</Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -139,11 +138,13 @@ export default function WeeklyHeroes() {
       />
 
       {heroes.length > 1 && (
-        <View style={styles.dotsRow}>
+        /* A segmented rail rather than dots: it shows how many there are at a
+           glance, and each segment is a wider tap target than a 6px dot. */
+        <View style={styles.rail}>
           {heroes.map((_, i) => (
-            <TouchableOpacity key={i} onPress={() => goToIndex(i)}>
-              <View style={[styles.dot, i === activeIndex && styles.dotActive]} />
-            </TouchableOpacity>
+            <Pressable key={i} onPress={() => goToIndex(i)} style={styles.railHit} hitSlop={6}>
+              <View style={[styles.railSeg, i === activeIndex && styles.railSegOn]} />
+            </Pressable>
           ))}
         </View>
       )}
@@ -152,56 +153,56 @@ export default function WeeklyHeroes() {
 }
 
 const styles = StyleSheet.create({
-  loadingBox: {
-    height: 128,
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+  headerRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: 12,
   },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  eyebrow: { color: '#6B7280', fontSize: 11, letterSpacing: 1.5, fontWeight: '600' },
-  count: { color: '#6B7280', fontSize: 11.5 },
+  headerText: { fontFamily: font.sans.regular, fontSize: 12, color: color.faint },
+  counter: {
+    fontFamily: font.mono.medium, fontSize: 10.5, color: color.bone,
+    letterSpacing: 0.6, fontVariant: ['tabular-nums'],
+  },
+  counterDim: { fontFamily: font.mono.regular, color: color.faint },
 
   card: {
-    backgroundColor: '#141414',
+    backgroundColor: color.surface,
     borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 16,
-    padding: 18,
+    borderColor: color.line,
+    borderRadius: radius.lg,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
   },
   avatar: {
-    width: 54, height: 54, borderRadius: 27,
-    borderWidth: 1, alignItems: 'center', justifyContent: 'center',
+    width: 44, height: 44, borderRadius: radius.md,
+    alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { fontSize: 17, fontWeight: '700' },
+  avatarText: { fontFamily: font.mono.medium, fontSize: 14, letterSpacing: 0.4 },
 
   infoWrap: { flex: 1, minWidth: 0 },
-  heroName: { color: '#FFFFFF', fontSize: 15.5, fontWeight: '700' },
-  heroCity: { color: '#9CA3AF', fontSize: 12.5, marginTop: 2 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
-  bloodPill: {
-    backgroundColor: 'rgba(220,38,38,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(220,38,38,0.25)',
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 2,
+  nameRow: { flexDirection: 'row', alignItems: 'baseline', gap: 9 },
+  rank: { fontFamily: font.mono.regular, fontSize: 10, color: color.blood, letterSpacing: 0.4 },
+  heroName: { flex: 1, fontFamily: font.sans.medium, fontSize: 15, color: color.bone, letterSpacing: -0.3 },
+
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, paddingLeft: 19 },
+  heroCity: { fontFamily: font.sans.regular, fontSize: 12.5, color: color.mute, flexShrink: 1 },
+  metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: color.faint },
+  heroGroup: { fontFamily: font.mono.medium, fontSize: 12, color: color.bloodLite, letterSpacing: -0.2 },
+
+  scoreWrap: { alignItems: 'flex-end' },
+  scoreValue: {
+    fontFamily: font.mono.medium, fontSize: 20, color: color.bone,
+    letterSpacing: -0.8, fontVariant: ['tabular-nums'],
   },
-  bloodPillText: { color: '#F87171', fontSize: 11.5, fontWeight: '700' },
-  scoreText: { color: '#6B7280', fontSize: 11.5 },
-  scoreValue: { color: '#FFFFFF', fontWeight: '700' },
+  scoreLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  scoreLabel: {
+    fontFamily: font.mono.regular, fontSize: 8.5, color: color.faint,
+    letterSpacing: 1.1, textTransform: 'uppercase',
+  },
 
-  badgeWrap: { alignItems: 'center' },
-  badgeEmoji: { fontSize: 22 },
-  badgeLabel: { color: '#F87171', fontSize: 10.5, fontWeight: '700', marginTop: 3 },
-
-  dotsRow: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 14 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#333' },
-  dotActive: { width: 16, backgroundColor: '#DC2626' },
+  rail: { flexDirection: 'row', gap: 4, marginTop: 14 },
+  railHit: { flex: 1, paddingVertical: 6 },
+  railSeg: { height: 2, borderRadius: 1, backgroundColor: color.line },
+  railSegOn: { backgroundColor: color.blood },
 })
