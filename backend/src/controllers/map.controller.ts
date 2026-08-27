@@ -2,6 +2,9 @@ import { Request, Response } from 'express'
 import prisma from '../lib/prisma'
 import axios from 'axios'
 
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://localhost:5001'
+
+
 const getMapStats = async (req: Request, res: Response) => {
   try {
     const distinctCities = await prisma.user.findMany({
@@ -113,7 +116,7 @@ const getShortagePrediiction = async (req: Request, res: Response) => {
     )
 
     // call Flask AI engine
-    const aiResponse = await axios.post('http://localhost:5001/ai/predict', {
+    const aiResponse = await axios.post(`${AI_ENGINE_URL}/ai/predict`, {
       bloodStats
     })
 

@@ -13,6 +13,9 @@ import {
   requestStatesLeadingTo
 } from '../lib/statusTransitions'
 
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://localhost:5001'
+
+
 const bloodGroupLabels: Record<string, string> = {
   A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
   AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
@@ -260,7 +263,7 @@ export async function escalateAfterDecline(requestId: string) {
 
   if (matches.length === 0) return // no replacement found at any radius tier
 
-  const aiResponse = await axios.post('http://localhost:5001/ai/match', {
+  const aiResponse = await axios.post(`${AI_ENGINE_URL}/ai/match`, {
     donors: matches.map(w => ({
       id: w.donor.id,
       bloodGroup: w.donor.bloodGroup,
