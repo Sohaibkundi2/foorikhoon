@@ -2,6 +2,8 @@
 
 A full-stack blood donation platform connecting donors with hospitals across Pakistan in real time. Built as a Final Year Project at Gomal University, D.I. Khan.
 
+**Live demo:** [http://98.82.70.84:3000](http://98.82.70.84:3000)
+
 ---
 
 ## The Problem
@@ -14,7 +16,7 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 
 **For donors** — register once, set your blood group and location, get notified when someone nearby needs your blood type, earn badges and shareable donation certificates for milestones, and build a commitment score based on your actual donation track record.
 
-**For hospitals** — post emergency requests, track donor responses in real time, mark a match as fulfilled or as a no-show, manage blood inventory, view analytics, and get matched with the most reliable donors first.
+**For hospitals** — post emergency requests, track donor responses in real time, mark a match as fulfilled (with required photo verification) or as a no-show, manage blood inventory, view analytics, and get matched with the most reliable donors first.
 
 **For administrators** — monitor donation activity across cities, verify hospitals, view live stats, shortage predictions, and manage all users.
 
@@ -24,22 +26,23 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 
 ## Key Features
 
-- Role-based access for donors, hospitals, and admins
+- Role-based access for donors, hospitals, and admins — public registration cannot create an admin account under any circumstances
 - **Reliability-weighted multi-factor scoring engine** — donor ranking is a deterministic weighted sum of blood compatibility, proximity, availability, and commitment score, computed by a Python Flask scoring microservice. The formula is explicit and auditable, not a trained model; nothing here learns from data
 - **Conservative compatibility matching with strict rare-type reservation** — donors are ranked using a compatible-donor matrix per blood group. This is deliberately narrower than textbook ABO/Rh compatibility: full universal-donor logic (O− to any recipient) is **not** implemented, because treating the scarcest types as universal substitutes drains them first. The matrix encodes a scarcity-management policy, not a claim of clinical correctness — any real deployment needs sign-off from a qualified transfusion service
 - **Strict rare-type reservation** — scarce types (O−, AB−) are matched only against requests for their own exact type; they are never used as cross-type substitutes for other blood groups, regardless of urgency
 - **Geolocation-based matching** — donors and hospitals are geocoded (via Nominatim/OpenStreetMap) to real coordinates, with hardened validation against garbage or misleading geocoding results; requests search a widening radius (10km → 25km → 50km → 100km), stopping at the first tier with a qualifying donor
-- **GPS-based location capture** — donors and hospitals can share their device location directly at registration for faster, more accurate matching, with manual address entry (geocoded via Nominatim) as a fallback if permission is denied. Donor coordinates are fuzzed before storage to preserve privacy; hospital coordinates are stored exact
+- **GPS-based location capture** — donors and hospitals can share their device location directly at registration or profile edit for faster, more accurate matching, with manual address entry (geocoded via Nominatim) as a fallback if permission is denied. Donor coordinates are fuzzed before storage to preserve privacy; hospital coordinates are stored exact
 - **90-day donor eligibility window** — donors are automatically excluded from matching for 90 days after their last donation, regardless of their manual availability toggle, reflecting the real medical recovery period for whole-blood donation
 - **Escalation on decline or no-show** — if a donor declines, or a hospital reports a no-show after acceptance, the system immediately searches for and notifies a replacement donor, excluding everyone already tried for that request
 - **Escalation on silence** — a background job checks every 5 minutes for requests where no donor has responded within 15 minutes, and escalates to a new batch of donors
 - **Commitment score reflects real outcomes, not just replies** — score increases only when a donor actually completes a donation, and decreases for both declines and no-shows (no-shows penalized more heavily, since they break trust after other donors were already excluded); score is clamped between 0 and 100
+- **Server-side status-transition validation** — Match and BloodRequest status changes are checked against explicit allowed-transition maps before being applied; a client cannot force an illegal state (e.g. skip straight to COMPLETED). MATCHED → EXPIRED is intentionally allowed, since a hospital must be able to cancel a request even after a donor has accepted
 - Donors ranked by blood compatibility, proximity, availability, and commitment score
 - Shortage prediction — predicts which blood groups will run low based on 30-day history
 - Request auto-expiry — PENDING requests expire after 24 hours via background job
 - Badge system — donors earn badges (First Blood, Lifesaver, Hero etc)
 - **Photo verification of donations (Cloudinary)** — a hospital cannot mark a request fulfilled without uploading a photo of the blood bag, which carries the donor's details printed on the label. The photo becomes the donor's proof that their blood was actually collected, visible in their match history and optionally on their hero certificate. Photos are stored on Cloudinary as `authenticated` assets and served only through server-signed URLs, so a leaked link cannot expose a donor's name and blood group to the public web
-- **Hero certificates — shareable donation cards (web + mobile)** — when a hospital marks a request fulfilled, the donor is notified their donation was confirmed and can view a designed, downloadable/shareable certificate card (blood group, donation count, commitment score, badge earned, donation details) directly from their match history. Shareable to WhatsApp and other apps via the native share sheet; downloadable as PNG on web, savable to photos on mobile (native dev builds)
+- **Hero certificates — shareable donation cards (web + mobile)** — when a hospital marks a request fulfilled, the donor is notified their donation was confirmed and can view a designed, downloadable/shareable certificate card (blood group, donation count, commitment score, badge earned, donation details, verification photo) directly from their match history. Shareable to WhatsApp and other apps via the native share sheet; downloadable as PNG on web, savable to photos on mobile
 - City-level heatmap showing blood demand across Pakistan
 - Live public stats on landing page
 - Weekly heroes slider — showcases donors who donated this week
@@ -65,7 +68,7 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 | Mobile App | React Native, Expo SDK 54, Expo Router |
 | Backend | Node.js, Express, TypeScript |
 | Database | PostgreSQL (Neon), Prisma ORM v7 |
-| Scoring Engine (`ai-engine/`) | Python 3, Flask |
+| Scoring Engine (`ai-engine/`) | Python 3, Flask, gunicorn |
 | Auth | JWT (jsonwebtoken, bcryptjs) |
 | Mobile Auth | Expo SecureStore |
 | State (Web) | Zustand with persistence |
@@ -80,7 +83,8 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 | Background Jobs | node-cron |
 | HTTP Client | Axios |
 | Date Handling | Day.js |
-| Infrastructure | Docker (docker-compose) |
+| Testing | Jest + ts-jest + supertest (backend), Jest + React Testing Library (frontend) |
+| Infrastructure | Docker, Docker Compose, AWS EC2 (Elastic IP), Neon (managed Postgres) |
 
 ---
 
@@ -100,19 +104,77 @@ Next.js Web App (port 3000)          React Native Mobile App
            (Neon DB)        Scoring Engine (port 5001)
 ```
 
+All three services (backend, scoring engine, web frontend) run as separate Docker containers on a single AWS EC2 instance, coordinated by `docker-compose.yml`. The database remains external, managed by Neon.
+
+---
+
+## Deployment
+
+The full stack is containerized and runs on a single AWS EC2 instance (Amazon Linux 2023, t3.micro) with an Elastic IP for a stable public address.
+
+```
+deploy/
+├── backend.Dockerfile      multi-stage build: TypeScript compile + Prisma generate, then a slim runtime image
+├── ai-engine.Dockerfile    Python slim image running the Flask app under gunicorn (not the dev server)
+└── frontend.Dockerfile     multi-stage build using Next.js `output: 'standalone'`, with NEXT_PUBLIC_API_URL baked in at build time
+
+docker-compose.yml          wires all three services together on a shared network;
+                             the backend reaches the scoring engine via the service
+                             name (ai-engine:5001), not localhost
+```
+
+**Update flow**, run directly on the EC2 instance:
+```bash
+git pull
+docker compose up --build -d
+```
+
+### A real bug we found and fixed during deployment
+
+Every Prisma query intermittently failed with `ETIMEDOUT` once the app had been running under Docker for more than a few minutes — cron jobs would fail, then live API requests started failing too. The cause: Node 20 enables "Happy Eyeballs" (`autoSelectFamily`) by default, racing IPv4 and IPv6 connection attempts and abandoning each after ~250ms. The Docker container has no IPv6 route, so IPv6 attempts failed instantly — but the network round-trip to Neon's `us-east-1` endpoint sometimes took longer than the 250ms window, so the IPv4 attempt kept getting cut off before it could complete, and Node reported the whole race as a timeout. Forcing IPv4-first DNS resolution resolved it. Nothing in the application logic was wrong; this was a Node/Docker networking interaction specific to containerized IPv4-only environments.
+
+---
+
+## Testing
+
+**Backend** — 145 tests across 7 suites (Jest + ts-jest + supertest, run against an isolated Neon test database, never against dev/production data):
+- Unit: blood compatibility matrix (including the strict rare-type-reservation policy), 90-day donor eligibility, status-transition validation
+- Integration: all 5 security fixes from an external code audit (admin-registration lockdown, donor match IDOR, hospital resource-ownership checks, public-endpoint field leaks, status-transition enforcement), commitment-score math, full request lifecycle (post → match → decline → escalate → no-show → escalate → fulfill)
+
+The suite caught a real, pre-existing bug during this pass: `AB_NEG` was still present in `AB_POS`'s compatible-donor list, violating the intended strict rare-type-reservation policy. Fixed in both `backend/lib/compatibility.ts` and the separately-maintained `ai-engine/app.py` mapping.
+
+**Frontend** — 67 tests (Jest + React Testing Library, mocked API) covering the GPS-or-manual location picker, conditional UI logic (fulfil/no-show button visibility, donor contact-sharing display), and form validation across the registration, donor dashboard, hospital requests, and donor profile pages. Verified with mutation testing (deliberately breaking the underlying logic to confirm the tests actually catch the regression, not just pass). Re-ran in full after a complete UI redesign — all 67 still passed, confirming the redesign preserved underlying component logic.
+
+**Scoring engine** — manually verified; no automated suite yet.
+
+---
+
+## Security
+
+An external code-level audit identified several issues, all of which were fixed and covered by the integration test suite above:
+
+- **Public registration could accept a client-supplied `role: "ADMIN"`** — fixed; registration now only ever creates `DONOR` or `HOSPITAL` accounts, regardless of what the request body contains
+- **Donor match-response endpoint had no ownership check (IDOR)** — a donor could potentially respond to another donor's match by guessing its ID; fixed with an explicit ownership check
+- **Hospital request/fulfil/no-show endpoints had no ownership check** — a hospital could potentially modify another hospital's request; fixed the same way
+- **Public request feed leaked hospital password hashes** (`include: { user: true }` instead of an explicit field `select`) — also caught and fixed a second leak of the same shape: donor push tokens, match response tokens, and Cloudinary photo IDs on the same public endpoints
+- **No server-side validation of status transitions** — a client could previously send any enum value directly; both `Match` and `BloodRequest` status changes are now validated against explicit allowed-transition maps before being applied
+
 ---
 
 ## Project Structure
 
 ```
 foorikhoon/
+├── deploy/                    Dockerfiles for each service (see Deployment)
+├── docker-compose.yml
+│
 ├── frontend/                  Next.js web app
-│   ├── jest.config.js         serial by necessity — see the note in the file
-│   ├── tests/                 React Testing Library suites (register, donor, hospital)
+│   ├── jest.config.js
+│   ├── tests/                 React Testing Library suites
 │   └── src/
 │       ├── app/               Pages (App Router)
 │       │   ├── page.tsx       Landing page
-│       │   ├── globals.css    Tailwind v4 @theme tokens + texture utilities
+│       │   ├── globals.css    Tailwind v4 @theme tokens
 │       │   ├── login/
 │       │   ├── register/
 │       │   ├── requests/
@@ -121,7 +183,7 @@ foorikhoon/
 │       │   ├── hospital/
 │       │   └── admin/
 │       ├── components/
-│       │   ├── fk.tsx         shared design-system primitives (see Design System)
+│       │   ├── fk.tsx         shared design-system primitives
 │       │   ├── Navbar.tsx
 │       │   ├── Map.tsx
 │       │   ├── BadgePopup.tsx
@@ -133,41 +195,27 @@ foorikhoon/
 │
 ├── mobile/                    React Native app (Expo)
 │   └── app/
-│       ├── index.tsx          Landing screen
+│       ├── index.tsx
 │       ├── login.tsx
 │       ├── register.tsx
 │       ├── donor/
-│       │   ├── dashboard.tsx
-│       │   ├── matches.tsx
-│       │   └── profile.tsx
 │       ├── hospital/
-│       │   ├── dashboard.tsx
-│       │   └── new-request.tsx
 │       ├── requests/
-│       │   ├── index.tsx
-│       │   └── [id].tsx
 │       └── leaderboard.tsx
 │   └── src/
 │       ├── components/
-│       │   ├── WeeklyHeroes.tsx
-│       │   ├── CityStats.tsx
-│       │   ├── HeroCertificate.tsx
-│       │   └── OfflineBanner.tsx
 │       ├── hooks/useNetwork.ts
 │       ├── lib/
-│       │   ├── api.ts
-│       │   ├── cache.ts
-│       │   └── notifications.ts
 │       └── store/authStore.ts
 │
 ├── backend/
+│   ├── tests/                 unit + integration Jest suites
 │   └── src/
 │       ├── index.ts
 │       ├── routes/
 │       ├── controllers/
 │       ├── middleware/
 │       ├── services/
-│       │   └── notification.service.ts
 │       ├── jobs/
 │       │   ├── expiry.job.ts
 │       │   └── escalation.job.ts
@@ -176,7 +224,8 @@ foorikhoon/
 │           ├── geocode.ts
 │           ├── distance.ts
 │           ├── compatibility.ts
-│           └── donorMatching.ts
+│           ├── donorMatching.ts
+│           └── statusTransitions.ts
 │   └── prisma/
 │       ├── schema.prisma
 │       ├── seed.ts
@@ -194,7 +243,7 @@ foorikhoon/
 │   ├── compatibility.py
 │   └── response_model.py
 │
-└── docker-compose.yml
+└── diagrams/                  system architecture, ER, DFD, sequence, state diagrams
 ```
 
 ---
@@ -208,7 +257,7 @@ Donor        — blood group, availability, commitment score (0-100), lastDonate
 Hospital     — name, address, latitude/longitude (required), license, verified, pushToken
 BloodRequest — blood group, units, urgency, status, expiry
 Match        — links donor to request; status: PENDING, ACCEPTED, DECLINED, COMPLETED, NO_SHOW
-               photoPublicId, photoUploadedAt — Cloudinary proof-of-donation photo (see below)
+               photoPublicId, photoUploadedAt, responseToken
 Inventory    — hospital blood stock per blood group
 ```
 
@@ -218,7 +267,7 @@ Inventory    — hospital blood stock per blood group
 
 ```
 AUTH
-POST  /api/auth/register
+POST  /api/auth/register        → role coerced to DONOR/HOSPITAL only, ADMIN not reachable
 POST  /api/auth/login
 
 DONOR
@@ -228,10 +277,8 @@ PUT   /api/donor/profile
 PUT   /api/donor/availability
 PUT   /api/donor/push-token
 GET   /api/donor/matches
-PUT   /api/donor/matches/:id          → donor accepts/declines a match
-GET   /api/donor/certificate/:matchId → returns hero-certificate data for a COMPLETED match
-                                         (donor name, blood group, city, hospital, date,
-                                         badge earned, donation count, commitment score)
+PUT   /api/donor/matches/:id          → donor accepts/declines; ownership + transition validated
+GET   /api/donor/certificate/:matchId → hero-certificate data for a COMPLETED match
 
 HOSPITAL
 POST  /api/hospital/profile
@@ -241,17 +288,16 @@ GET   /api/hospital/inventory
 PUT   /api/hospital/inventory
 GET   /api/hospital/requests
 GET   /api/hospital/analytics
-PUT   /api/hospital/requests/:id/fulfill   → multipart/form-data, field "photo" (required).
-                                              Marks donation complete, rewards donor, sends a
-                                              "Donation Confirmed" push notification
-PATCH /api/hospital/matches/:id/no-show    → marks accepted donor as no-show, penalizes, escalates
-PUT   /api/hospital/push-token             → saves hospital's Expo push token
+PUT   /api/hospital/requests/:id/fulfill   → multipart/form-data, field "photo" (required);
+                                              ownership + transition validated
+PATCH /api/hospital/matches/:id/no-show    → ownership + transition validated
+PUT   /api/hospital/push-token
 
 REQUESTS
 POST  /api/requests             → creates request + donor scoring + push notifications
-GET   /api/requests             → public, sorted ascending
+GET   /api/requests             → public; explicit field select, no password/token leaks
 GET   /api/requests/:id
-PUT   /api/requests/:id
+PUT   /api/requests/:id         → ownership + transition validated
 
 ADMIN
 GET    /api/admin/stats
@@ -259,13 +305,13 @@ GET    /api/admin/hospitals
 PUT    /api/admin/hospitals/:id/verify
 DELETE /api/admin/hospitals/:id
 GET    /api/admin/users
-DELETE /api/admin/users/:id     → deletes a donor/hospital account and its profile; admin accounts excluded
+DELETE /api/admin/users/:id     → admin accounts excluded
 GET    /api/admin/requests
 
 MAP
 GET   /api/map/stats
 GET   /api/map/public-stats
-GET   /api/map/weekly-heroes    → includes matchId per hero, linking to their certificate
+GET   /api/map/weekly-heroes
 GET   /api/map/leaderboard
 GET   /api/map/shortage
 ```
@@ -274,12 +320,7 @@ GET   /api/map/shortage
 
 ## Scoring Engine (`ai-engine/`)
 
-A standalone Python/Flask microservice that ranks donors and projects shortages. The
-directory and route prefix are named `ai` for historical reasons, but nothing in it is
-machine learning: both endpoints are deterministic arithmetic over the weights documented
-below, so the same inputs always produce the same ranking and any result can be explained
-by hand. Replacing the rule-based scoring with a trained model is on the roadmap, not in
-the codebase.
+A standalone Python/Flask microservice that ranks donors and projects shortages, run under gunicorn in production (not Flask's debug server). The directory and route prefix are named `ai` for historical reasons, but nothing in it is machine learning: both endpoints are deterministic arithmetic over the weights documented below, so the same inputs always produce the same ranking.
 
 ```
 POST /ai/match    — scores and ranks donors for a blood request
@@ -296,17 +337,15 @@ Is available                    → +20 points
 Commitment score                → score × 0.5 bonus
 ```
 
-**Rare blood types (O−, AB−) are excluded from every other group's compatible-donor list.** They are only ever considered for requests of their own exact type — never surfaced as a cross-type substitute for another blood group, even under CRITICAL urgency. This keeps scarce donors reserved for the patients who specifically need them.
+**Rare blood types (O−, AB−) are excluded from every other group's compatible-donor list.** They are only ever considered for requests of their own exact type — never surfaced as a cross-type substitute for another blood group, even under CRITICAL urgency.
 
-**Donor eligibility** for any match — initial matching, decline-escalation, or timeout-escalation — requires: matching blood compatibility, `isAvailable = true`, and either no prior donation or at least 90 days since `lastDonated` (the standard whole-blood recovery window). This is enforced by a single shared query (`lib/donorMatching.ts`) used by all three matching entry points, so the rule can't drift out of sync between them.
+**Donor eligibility** for any match — initial matching, decline-escalation, or timeout-escalation — requires: matching blood compatibility, `isAvailable = true`, and either no prior donation or at least 90 days since `lastDonated`. Enforced by a single shared query (`lib/donorMatching.ts`) used by all three matching entry points.
 
-**Radius escalation:** for a given request, the eligible donor pool is searched at increasing radii — 10km, then 25km, 50km, 100km — using a bounding-box pre-filter (cheap, indexable) followed by precise Haversine distance on the much smaller candidate set. The search stops at the first radius tier with any qualifying donor, so nearby donors are always preferred over farther ones.
+**Radius escalation:** the eligible donor pool is searched at increasing radii — 10km, 25km, 50km, 100km — using a bounding-box pre-filter followed by precise Haversine distance. The search stops at the first radius tier with any qualifying donor.
 
-**Escalation on decline or no-show:** the moment a donor declines, or a hospital reports an accepted donor as a no-show, the system immediately re-runs the eligibility search — excluding every donor already tried for that request — and notifies a single replacement, rather than waiting for a timeout. The request's status is reset to PENDING at this point, since it no longer has a confirmed donor.
+**Escalation on decline or no-show:** the moment a donor declines, or a hospital reports an accepted donor as a no-show, the system immediately re-runs the eligibility search — excluding every donor already tried — and notifies a single replacement. The request's status returns to PENDING.
 
-**Escalation on silence:** a background job (`escalation.job.ts`) runs every 5 minutes and finds any PENDING request where every existing match is still PENDING and was created more than 15 minutes ago. It re-runs the same eligibility search (excluding already-tried donors) and notifies a fresh batch of up to 3 donors.
-
-Top 3 ranked donors (from the winning radius tier) are matched and notified via push notification on initial request creation; escalation notifies one donor at a time (decline/no-show) or a fresh batch of 3 (timeout).
+**Escalation on silence:** a background job runs every 5 minutes and escalates any PENDING request whose matches have all gone unanswered for 15+ minutes, notifying a fresh batch of up to 3 donors.
 
 ### Shortage Prediction
 
@@ -326,11 +365,11 @@ ratio <  0.3  → LOW
 ```
 PENDING   → request posted, matching donors notified
 MATCHED   → donor accepted, on their way
-FULFILLED → hospital marks complete after blood is actually donated
-EXPIRED   → no donor responded within 24 hours (auto by cron job)
+FULFILLED → hospital marks complete after blood is actually donated (requires photo + an ACCEPTED match)
+EXPIRED   → no donor responded within 24 hours, or hospital manually cancelled
 ```
 
-A request can move back from MATCHED to PENDING if the accepted donor is later reported as a no-show — the request isn't considered resolved until a donation is actually marked FULFILLED.
+A request can move back from MATCHED to PENDING if the accepted donor is later reported as a no-show — the request isn't considered resolved until a donation is actually marked FULFILLED. A hospital can also cancel a MATCHED request (→ EXPIRED) if the patient is transferred or blood is sourced elsewhere; the 24-hour auto-expiry cron only ever acts on PENDING requests, so a request with a donor en route is never silently expired by the timer.
 
 ---
 
@@ -341,10 +380,11 @@ PENDING    → donor notified, awaiting response
 ACCEPTED   → donor said yes
 DECLINED   → donor said no — commitment score -5, replacement escalation triggered
 COMPLETED  → donor actually donated — commitment score +10, lastDonated updated,
-             donor notified with a "Donation Confirmed" push and can view their
-             hero certificate
+             photo attached, donor notified with a hero certificate available
 NO_SHOW    → donor accepted but never donated — commitment score -10, replacement escalation triggered
 ```
+
+All transitions are validated server-side against an explicit allowed-transition map.
 
 ---
 
@@ -353,14 +393,11 @@ NO_SHOW    → donor accepted but never donated — commitment score -10, replac
 ```
 Donor completes a donation (COMPLETED)    → +10 points
 Donor declines a match (DECLINED)         → -5 points
-Donor accepts but never donates (NO_SHOW) → -10 points (penalized more than a decline,
-                                             since it wastes the request's time after
-                                             other donors were already excluded)
+Donor accepts but never donates (NO_SHOW) → -10 points
 Score range: 0 - 100 (clamped)
-Higher score = ranked higher in future donor ranking
 ```
 
-Accepting a match, on its own, no longer changes the score — only a confirmed outcome (an actual donation, or a confirmed no-show) does, since simply saying yes isn't proof of reliability.
+Accepting a match, on its own, does not change the score — only a confirmed outcome does.
 
 ---
 
@@ -377,103 +414,44 @@ Hero         → accepted 10+ matches
 
 ---
 
-## Photo Verification of Donations
-
-A hospital cannot mark a request as fulfilled without attaching a photo of the blood bag. Because Pakistani blood bags carry the donor's name and blood group printed on the label, that photo doubles as the donor's independent evidence that their blood was actually collected rather than the hospital simply clicking a button.
-
-The fulfil endpoint accepts `multipart/form-data` with a single `photo` field. Uploads are capped at 5MB and restricted to JPEG, PNG and WebP. The request is authorised before a single byte is buffered, and the file is pushed to Cloudinary before any database write happens — so a failed upload leaves the request exactly as it was, and a failed database write deletes the just-uploaded asset instead of orphaning it. The status change, the score increment and the photo attachment all happen inside one Prisma transaction; the push notification is sent afterwards, outside it, so an external HTTP call can never hold a database connection open.
-
-Fulfilment now also requires an ACCEPTED match to exist. Previously a request could be marked FULFILLED with no donor attached, which awarded nothing to anybody and left a misleading record.
-
----
-
-## Hero Certificates
-
-When a hospital marks a request as fulfilled, the donor whose match is COMPLETED:
-
-1. Has their commitment score incremented and `lastDonated` updated (as above)
-2. Receives a push notification confirming their donation, including whether it unlocked a new badge
-3. Can open a "View Certificate" action from their match history to see a designed, portrait shareable card — donor name, blood group, donation count, commitment score, badge earned (if any), and donation details (date, hospital, certificate ID)
-4. Can share the card directly via the device's native share sheet (WhatsApp, etc.) or download it as a PNG
-
-**Web** — the card is rendered as plain-inline-styled HTML/CSS (deliberately avoiding Tailwind's oklch/oklab-based color utilities, which `html2canvas` can't parse) and exported client-side via `html2canvas`.
-
-**Mobile** — the same design is built with React Native `StyleSheet` and captured via `react-native-view-shot`; sharing uses `expo-sharing`.
-
-
----
-
-## Design System (web)
-
-The web app has one visual language, defined in two files.
-
-**`src/app/globals.css`** holds the palette and textures as Tailwind v4 `@theme` tokens, so
-they compile to ordinary utilities — `bg-ink`, `bg-surface`, `bg-raised`, `bg-blood`,
-`text-bone`, `text-mute`, `text-faint`, `text-life`, `text-warn`, `border-line`,
-`border-line-soft`. There is no `tailwind.config.js`; Tailwind v4 is configured in CSS.
-
-**`src/components/fk.tsx`** holds the shared primitives every route builds from —
-`PageHead`, `SectionLabel`, `Panel`, `Lattice`, `Stat`, `Chip`, `EmptyState`, `Field`,
-`SegmentMeter`, `Texture`, `Reveal`, `LiveDot` — plus named class strings (`primaryBtn`,
-`ghostBtn`, `inputClass`, `selectClass`, …) and the enum→colour maps (`urgencyTone`,
-`statusTone`, `riskTone`). The class strings are complete variants rather than a base to
-override, because Tailwind resolves conflicting utilities by CSS source order, not by the
-order they appear in a `className`.
-
-Three rules the whole UI holds to:
-
-- **Four colour families only** — blood red for danger and brand, amber for the middle
-  tier, green for confirmed good outcomes, and neutral bone/grey for everything else. A
-  fifth hue would mean colour is decorating rather than meaning something.
-- **No emoji.** Every glyph that carried meaning is a `lucide-react` icon, or geometry
-  where an icon cannot survive rasterisation (see below).
-- **Nothing implied that the page did not fetch.** Figures are labelled with what they
-  actually count — e.g. hospital analytics draws its low-stock rule at `units < 5` because
-  that is the threshold the analytics controller itself uses, and the admin shortage table
-  states outright that request counts are 30-day windowed while donor counts are not.
-
-`HeroCertificate.tsx` is the one deliberate exception: everything inside the captured card
-uses plain inline hex/rgba, since `html2canvas` cannot parse the `oklch()` values Tailwind
-v4 compiles its palette to. Every text node in it also carries an explicit `lineHeight`,
-without which the exported PNG mis-centres text that looks correct on screen. Its marks are
-CSS shapes rather than icons or glyphs for the same reason.
-
----
-
 ## Local Setup
 
 ### Prerequisites
 - Node.js 20+
 - Python 3.11+
 - PostgreSQL (Neon DB free tier)
+- Docker + Docker Compose (for containerized run)
 - Expo Go app (for mobile development)
 
-### Backend
+### Docker (all services, recommended)
+```bash
+cp .env.example .env
+# fill in DATABASE_URL, JWT_SECRET, CLOUDINARY_*, AI_ENGINE_URL, NEXT_PUBLIC_API_URL
+docker compose up --build -d
+```
+
+### Backend (without Docker)
 ```bash
 cd backend
 npm install
 cp .env.example .env
-# Fill in DATABASE_URL, JWT_SECRET, and the three CLOUDINARY_* values
-# (Cloudinary is required for donation photo verification — the fulfil
-#  endpoint returns a clear error if the keys are missing)
 npx prisma migrate dev
 npx ts-node prisma/seed.ts
 npx ts-node prisma/seed-admin.ts
 npm run dev
 ```
 
-### Web Frontend
+### Web Frontend (without Docker)
 ```bash
 cd frontend
 npm install
-# Add NEXT_PUBLIC_API_URL=http://localhost:5000 to .env.local
 npm run dev
 ```
 
-### Scoring Engine (`ai-engine/`)
+### AI Engine (without Docker)
 ```bash
 cd ai-engine
-pip install flask flask-cors
+pip install -r requirements.txt
 python app.py
 ```
 
@@ -481,36 +459,21 @@ python app.py
 ```bash
 cd mobile
 yarn install
-# Add EXPO_PUBLIC_API_URL=http://<your-local-ip>:5000 to .env
-# (must be your machine's local network IP, not localhost — a physical
-# device can't resolve localhost back to your dev machine)
+# EXPO_PUBLIC_API_URL must be your machine's local network IP, not localhost
 yarn expo start --go
 ```
 
-### Docker (all services)
+### Running Tests
 ```bash
-cp .env.example .env
-docker-compose up --build
+cd backend
+cp .env.test.example .env.test  # fill in a separate Neon test database URL
+npm run test:migrate
+npm run test:unit
+npm run test:integration
+
+cd frontend
+npm test
 ```
-
----
-
-## Tests
-
-```bash
-cd frontend && npm test          # React Testing Library suites, jsdom
-cd backend  && npm run test:unit  # no database needed
-cd backend  && npm test           # unit + integration (needs .env.test)
-```
-
-The backend's integration tests run against **real Postgres** — create a second Neon branch,
-point `.env.test` at it, and run `npm run test:migrate` once. The loader refuses to run if
-`.env.test` and `.env` resolve to the same database. Full instructions, cleanup and the known
-gaps are in [`backend/tests/README.md`](./backend/tests/README.md).
-
-`frontend/jest.config.js` pins `maxWorkers: 1` deliberately: the SWC binary installed on the
-development machine cannot load inside a Jest worker process, so parallel runs fail whenever
-the transform cache is cold. The reasoning is documented in the file.
 
 ---
 
@@ -524,48 +487,29 @@ Admin:    admin@321.com / (set via prisma/seed-admin.ts)
 
 ---
 
-## Mobile App Features
-
-- Full donor and hospital flows
-- Push notifications (production via Expo Push Service + FCM)
-- Offline support with cached data and "Last updated X ago" banner
-- City stats, weekly heroes, public request board
-- Leaderboard with city filter
-- Secure token storage via Expo SecureStore
-- Shareable hero certificate cards for completed donations
-- Blood-bag photo capture (camera or gallery) for hospitals confirming a donation, and proof-photo viewing for donors
-
----
-
 ## Known Limitations
 
-- The radius query currently pulls candidates per tier from Postgres using a lat/lng bounding-box filter, then computes precise distance in the application layer. This is efficient enough for the project's current scale, but a production deployment with a very large donor base would benefit from a PostGIS spatial index (`ST_DWithin`) to push distance filtering fully into the database.
-- Saving a hero certificate directly to the mobile photo library needs a native `expo-media-library` permission declaration that Expo Go's fixed binary doesn't support; this only works once the project is built with EAS or a custom dev client. In the meantime, mobile users can still share the certificate via the native share sheet.
-- Signed URLs for donation photos are access-controlled but do **not** expire. Cloudinary's standard plans sign `authenticated` assets without a TTL; genuine short-lived links require either the token-based authentication add-on or proxying the image bytes through our own API. In practice this means a signed URL, if deliberately copied out of the app, stays valid — the meaningful protection is that the URL cannot be guessed or discovered without authenticating first.
+The radius query pulls candidates per tier from Postgres using a lat/lng bounding-box filter, then computes precise distance in the application layer. This is efficient enough for the project's current scale, but a production deployment with a very large donor base would benefit from a PostGIS spatial index (`ST_DWithin`).
+
+No-show detection is currently manual — a hospital must actively report it; there is no automatic timeout-based flag.
+
+The scoring engine's compatibility matrix is deliberately maintained in two places (`backend/lib/compatibility.ts` and `ai-engine/app.py`) rather than one shared source of truth, since they're separate languages/services; a test in the backend suite checks the two stay in sync, but this remains a manual-sync risk if either is edited without the other.
 
 ---
 
 ## Roadmap — Planned Features
 
-- Twilio SMS notifications for donors without smartphones
-- Chart.js analytics for admin and hospital dashboards — hospital analytics currently draws
-  its stock profile with hand-built CSS columns, since `/api/hospital/analytics` returns no
-  time series and there is nothing yet for a charting library to plot over time. Chart.js is
-  not a dependency
 - Real-time updates via WebSockets (Socket.io)
 - Redis caching for public stats, leaderboard, heatmap
 - Urdu language support (i18n) for web and mobile
+- Automatic (cron-based) no-show detection
+- Automated test suite for the scoring engine (currently manually verified)
 - Blood drive event scheduling
 - Hospital-to-hospital inventory transfer
-- Donor health eligibility checklist before match acceptance
-- Streak & achievement system
 - Trained ML model (logistic regression) replacing rule-based scoring, once sufficient real/synthetic data is available
-- End-to-end tests (Cypress) and CI/CD via GitHub Actions — unit and integration suites
-  already exist for both backend and web frontend (see [Tests](#tests))
-- AWS deployment (EC2, S3, RDS, CloudWatch)
+- CI/CD pipeline (GitHub Actions) for automated test-and-deploy
 - Small-scale user study (SUS usability testing) for FYP evaluation
-- Google Play Store release, including moving mobile builds to EAS/dev-client (also unlocks direct photo-library saving for certificates)
-- Automatic (cron-based) no-show detection — currently a hospital must manually report a no-show; a timeout-based auto-flag is a possible future improvement
+- Google Play Store release
 
 ---
 
@@ -583,11 +527,11 @@ A Monte Carlo simulation (30 trials per scenario, synthetic donor/request popula
 | Moderate | 300 | 88.41% | +1.07pp (p=0.008) | +1.92pp (p<0.001) |
 | Scarce | 150 | 81.14% | +0.07pp (p=0.89, not significant) | +2.84pp (p<0.001) |
 
-RWDP produced a statistically significant fulfillment-rate improvement over both baselines under abundant and moderate donor supply, and a consistently lower no-show rate than random selection across every scenario (e.g. 5.87% vs 11.83% under abundant supply) — evidence that commitment-score weighting measurably improves donor reliability, not just match speed.
+RWDP produced a statistically significant fulfillment-rate improvement over both baselines under abundant and moderate donor supply, and a consistently lower no-show rate than random selection across every scenario (e.g. 5.87% vs 11.83% under abundant supply).
 
-Under severe donor scarcity, RWDP's advantage over random selection disappears (not statistically significant), since a very small candidate pool leaves little room for donor ordering to matter — nearly every available donor ends up contacted regardless of priority. RWDP still significantly outperforms the exact-match-only baseline in this condition, since compatibility-matrix matching alone continues to expand the usable donor pool.
+Under severe donor scarcity, RWDP's advantage over random selection disappears (not statistically significant), since a very small candidate pool leaves little room for donor ordering to matter. RWDP still significantly outperforms the exact-match-only baseline in this condition, since compatibility-matrix matching alone continues to expand the usable donor pool.
 
-**Known limitation:** RWDP consistently produces a higher maximum donor load than the random baseline across all scenarios (e.g. ~21–26 vs ~8–19 times the most-contacted donor was reached), since top-scored donors are repeatedly prioritized. This is a fairness trade-off worth addressing in future work (e.g. a temporary priority cooldown after consecutive matches), not currently implemented.
+**Known limitation:** RWDP consistently produces a higher maximum donor load than the random baseline across all scenarios, since top-scored donors are repeatedly prioritized — a fairness trade-off worth addressing in future work (e.g. a temporary priority cooldown after consecutive matches).
 
 Full methodology, results, and discussion available in [RWDP_Research_Report.pdf](./research/RWDP_Research_Report.pdf).
 
@@ -600,7 +544,7 @@ Architecture, ER, DFD (levels 0-1), sequence, and state diagrams are available i
 
 ## Status
 
-Active development. Final Year Project — Gomal University, D.I. Khan (2023–2027).
+Deployed. Final Year Project — Gomal University, D.I. Khan (2023–2027).
 
 ## Author
 
