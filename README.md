@@ -112,6 +112,14 @@ All three services (backend, scoring engine, web frontend) run as separate Docke
 
 The full stack is containerized and runs on a single AWS EC2 instance (Amazon Linux 2023, t3.micro) with an Elastic IP for a stable public address.
 
+| Service | Published port | URL |
+|---|---|---|
+| Web frontend (Next.js) | 3000 | [http://98.82.70.84:3000](http://98.82.70.84:3000) |
+| Backend API (Express) | 5000 | `http://98.82.70.84:5000/api` |
+| Scoring engine (Flask) | 5001 | `http://98.82.70.84:5001` |
+
+The scoring engine only needs to be reachable from the backend container, so publishing 5001 to the internet is wider than necessary — closing it to the host and letting the two services talk over the compose network alone is a hardening step worth taking before any real use.
+
 ```
 deploy/
 ├── backend.Dockerfile      multi-stage build: TypeScript compile + Prisma generate, then a slim runtime image
@@ -129,9 +137,11 @@ git pull
 docker compose up --build -d
 ```
 
-### A real bug we found and fixed during deployment
+### Real bugs found and fixed during deployment
 
-Every Prisma query intermittently failed with `ETIMEDOUT` once the app had been running under Docker for more than a few minutes — cron jobs would fail, then live API requests started failing too. The cause: Node 20 enables "Happy Eyeballs" (`autoSelectFamily`) by default, racing IPv4 and IPv6 connection attempts and abandoning each after ~250ms. The Docker container has no IPv6 route, so IPv6 attempts failed instantly — but the network round-trip to Neon's `us-east-1` endpoint sometimes took longer than the 250ms window, so the IPv4 attempt kept getting cut off before it could complete, and Node reported the whole race as a timeout. Forcing IPv4-first DNS resolution resolved it. Nothing in the application logic was wrong; this was a Node/Docker networking interaction specific to containerized IPv4-only environments.
+**Prisma queries intermittently timing out.** Every Prisma query intermittently failed with `ETIMEDOUT` once the app had been running under Docker for more than a few minutes — cron jobs would fail, then live API requests started failing too. The cause: Node 20 enables "Happy Eyeballs" (`autoSelectFamily`) by default, racing IPv4 and IPv6 connection attempts and abandoning each after ~250ms. The Docker container has no IPv6 route, so IPv6 attempts failed instantly — but the network round-trip to Neon's `us-east-1` endpoint sometimes took longer than the 250ms window, so the IPv4 attempt kept getting cut off before it could complete, and Node reported the whole race as a timeout. Forcing IPv4-first DNS resolution resolved it. Nothing in the application logic was wrong; this was a Node/Docker networking interaction specific to containerized IPv4-only environments.
+
+**The escalation job could not reach the scoring engine.** `jobs/escalation.job.ts` hardcoded `http://localhost:5001/ai/match` while the three controllers all correctly used `AI_ENGINE_URL`. Inside the backend container `localhost` is the backend itself, which listens on 5000 — nothing answers on 5001 there — so timeout-escalation's ranking call failed every time the job ran. It went unnoticed locally, where both services share a host, and was masked in the first containerized run because the job was already dying on the Prisma timeout above before it ever reached the HTTP call. Fixed by using the same `AI_ENGINE_URL` env var as everywhere else, which `docker-compose.yml` sets to the `ai-engine:5001` service name.
 
 ---
 
@@ -145,7 +155,15 @@ The suite caught a real, pre-existing bug during this pass: `AB_NEG` was still p
 
 **Frontend** — 67 tests (Jest + React Testing Library, mocked API) covering the GPS-or-manual location picker, conditional UI logic (fulfil/no-show button visibility, donor contact-sharing display), and form validation across the registration, donor dashboard, hospital requests, and donor profile pages. Verified with mutation testing (deliberately breaking the underlying logic to confirm the tests actually catch the regression, not just pass). Re-ran in full after a complete UI redesign — all 67 still passed, confirming the redesign preserved underlying component logic.
 
-**Scoring engine** — manually verified; no automated suite yet.
+**Scoring engine** — 104 behavioural checks (`ai-engine/tests/test_logic.py`) driven through Flask's test client against the real route handlers: no server, no database, no network, since both endpoints are pure functions of the POST body. Covers the compatible-donor matrix against the documented reservation policy, hard rejection of every incompatible donor/request combination, the exact point credit for all 16 permitted pairs, ranking order, every shortage-risk threshold and boundary, and malformed-input handling.
+
+The suite's first run surfaced three real defects, all since fixed:
+
+- **Blood group was a scoring bonus, not a filter.** An incompatible donor earned 0 compatibility points but still collected 30 for proximity and 20 for availability — 50 points, clearing the `score > 30` cutoff — so seven of the eight request groups could be offered a donor they must never receive. Only the backend's pre-filter kept this out of production; the engine, whose port is published, had no gate of its own. Blood group is now checked before scoring, and a separate check confirms the gate doesn't overreach and drop the weakest *legitimate* donor (permitted group, 100km away, unavailable, no history — 35 points, which must still qualify).
+- **Every blood group reported CRITICAL.** A group with zero donors had its ratio pinned to a hardcoded `1.0` regardless of `requestCount`, and `1.0 >= 0.8` is CRITICAL — so blood groups nobody had requested were raising the top-level shortage alarm on the landing page. The same sentinel collapsed severity (1 unmet request scored identically to 99) and sorted a zero-supply group *below* any group whose ratio exceeded 1, which mattered because the landing page renders only the top three.
+- **Malformed payloads returned 500, and unknown blood groups returned 200.** Missing fields raised a bare `KeyError` on a publicly-reachable port, and an unrecognised blood group was silently accepted and scored. Both endpoints now validate up front and return `400` with a message naming the offending field and index.
+
+The compatibility matrix is asserted against a policy table written out longhand in the test file rather than read from `app.py` — comparing the module against itself would always pass. Any future edit to the matrix fails that section, so widening it past the rare-type reservation policy has to be a deliberate decision in both places.
 
 ---
 
@@ -232,7 +250,10 @@ foorikhoon/
 │       └── seed-admin.ts
 │
 ├── ai-engine/
-│   └── app.py
+│   ├── app.py
+│   ├── requirements.txt
+│   └── tests/
+│       └── test_logic.py      104 behavioural checks via Flask's test client
 │
 ├── research/                  RWDP simulation study
 │   ├── RWDP_Research_Report.pdf
@@ -329,6 +350,8 @@ POST /ai/predict  — predicts blood group shortage based on 30-day history
 
 ### Matching Algorithm (Reliability-Weighted Donor Prioritization)
 
+Blood-group compatibility is a **hard gate, checked before any scoring happens** — an incompatible donor is not a low-ranked match, they are not a match at all. No amount of proximity, availability or commitment history can promote them. Points are only ever awarded to donors who have already cleared that gate:
+
 ```
 Exact blood-group match         → +50 points
 Compatible (non-exact) match    → +35 points
@@ -336,6 +359,8 @@ Proximity (gradient, 0-100km)   → up to +30 points, fading to 0 at 100km
 Is available                    → +20 points
 Commitment score                → score × 0.5 bonus
 ```
+
+Both endpoints validate their payload before doing any work and return `400` with the offending field named — a missing or unknown blood group, a missing donor `id`, a non-boolean `isAvailable`, or a negative count is a client error, not a `500`. `distanceKm` is the one optional field: an absent distance is treated as the far edge of the search radius and scores no proximity credit.
 
 **Rare blood types (O−, AB−) are excluded from every other group's compatible-donor list.** They are only ever considered for requests of their own exact type — never surfaced as a cross-type substitute for another blood group, even under CRITICAL urgency.
 
@@ -350,13 +375,15 @@ Commitment score                → score × 0.5 bonus
 ### Shortage Prediction
 
 ```
-ratio = requestCount / donorCount (last 30 days)
+ratio = requestCount / max(donorCount, 1)     (requestCount over the last 30 days)
 
 ratio >= 0.8  → CRITICAL
 ratio >= 0.5  → HIGH
 ratio >= 0.3  → MODERATE
 ratio <  0.3  → LOW
 ```
+
+A blood group with no available donors is treated as having one notional donor, so its ratio becomes its count of unfillable requests. That keeps severity monotonic — 40 unmet requests outranks 7, which outranks 2 — and keeps a zero-supply group above groups that still have donors, which matters because the landing page shows only the three highest-risk groups. A group with no donors *and* no requests scores 0.0 and stays LOW rather than raising an alarm nobody asked for.
 
 ---
 
@@ -473,6 +500,9 @@ npm run test:integration
 
 cd frontend
 npm test
+
+cd ai-engine
+python tests/test_logic.py   # no server or database needed
 ```
 
 ---
@@ -493,7 +523,7 @@ The radius query pulls candidates per tier from Postgres using a lat/lng boundin
 
 No-show detection is currently manual — a hospital must actively report it; there is no automatic timeout-based flag.
 
-The scoring engine's compatibility matrix is deliberately maintained in two places (`backend/lib/compatibility.ts` and `ai-engine/app.py`) rather than one shared source of truth, since they're separate languages/services; a test in the backend suite checks the two stay in sync, but this remains a manual-sync risk if either is edited without the other.
+The scoring engine's compatibility matrix is deliberately maintained in two places (`backend/lib/compatibility.ts` and `ai-engine/app.py`) rather than one shared source of truth, since they're separate languages/services. Both sides are now pinned by tests — a backend unit test checks the TypeScript matrix, and `ai-engine/tests/test_logic.py` asserts the Python one against a policy table written out longhand — so editing either without the other fails a test rather than silently diverging. It remains two files to keep in step, though, and that is a manual-sync risk.
 
 ---
 
@@ -503,7 +533,6 @@ The scoring engine's compatibility matrix is deliberately maintained in two plac
 - Redis caching for public stats, leaderboard, heatmap
 - Urdu language support (i18n) for web and mobile
 - Automatic (cron-based) no-show detection
-- Automated test suite for the scoring engine (currently manually verified)
 - Blood drive event scheduling
 - Hospital-to-hospital inventory transfer
 - Trained ML model (logistic regression) replacing rule-based scoring, once sufficient real/synthetic data is available
@@ -549,4 +578,4 @@ Deployed. Final Year Project — Gomal University, D.I. Khan (2023–2027).
 ## Author
 
 Sohaib Khan · BSCS · Gomal University, D.I. Khan
-github.com/sohaibkundi2 · sohaibkhan.me
+github.com/sohaibkundi2 · https://mr-sohaib.vercel.app

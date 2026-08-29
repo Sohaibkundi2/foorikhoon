@@ -5,6 +5,8 @@ import { sendPushNotification } from '../services/notification.service'
 import { COMPATIBLE_DONOR_GROUPS } from '../lib/compatibility'
 import { findEligibleDonors } from '../lib/donorMatching'
 
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://localhost:5001'
+
 const RESPONSE_TIMEOUT_MINUTES = 15
 
 export const startEscalationJob = () => {
@@ -44,7 +46,7 @@ export const startEscalationJob = () => {
 
         if (matches.length === 0) continue
 
-        const aiResponse = await axios.post('http://localhost:5001/ai/match', {
+        const aiResponse = await axios.post(`${AI_ENGINE_URL}/ai/match`, {
           donors: matches.map(w => ({
             id: w.donor.id,
             bloodGroup: w.donor.bloodGroup,
