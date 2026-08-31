@@ -1,0 +1,19 @@
+# Testing
+
+**Backend** — 145 tests across 7 suites (Jest + ts-jest + supertest, run against an isolated Neon test database, never against dev/production data):
+- Unit: blood compatibility matrix (including the strict rare-type-reservation policy), 90-day donor eligibility, status-transition validation
+- Integration: all 5 security fixes from an external code audit (admin-registration lockdown, donor match IDOR, hospital resource-ownership checks, public-endpoint field leaks, status-transition enforcement), commitment-score math, full request lifecycle (post → match → decline → escalate → no-show → escalate → fulfill)
+
+The suite caught a real, pre-existing bug during this pass: `AB_NEG` was still present in `AB_POS`'s compatible-donor list, violating the intended strict rare-type-reservation policy. Fixed in both `backend/lib/compatibility.ts` and the separately-maintained `ai-engine/app.py` mapping.
+
+**Frontend** — 67 tests (Jest + React Testing Library, mocked API) covering the GPS-or-manual location picker, conditional UI logic (fulfil/no-show button visibility, donor contact-sharing display), and form validation across the registration, donor dashboard, hospital requests, and donor profile pages. Verified with mutation testing (deliberately breaking the underlying logic to confirm the tests actually catch the regression, not just pass). Re-ran in full after a complete UI redesign — all 67 still passed, confirming the redesign preserved underlying component logic.
+
+**Scoring engine** — 104 behavioural checks (`ai-engine/tests/test_logic.py`) driven through Flask's test client against the real route handlers: no server, no database, no network, since both endpoints are pure functions of the POST body. Covers the compatible-donor matrix against the documented reservation policy, hard rejection of every incompatible donor/request combination, the exact point credit for all 16 permitted pairs, ranking order, every shortage-risk threshold and boundary, and malformed-input handling.
+
+The suite's first run surfaced three real defects, all since fixed:
+
+- **Blood group was a scoring bonus, not a filter.** An incompatible donor earned 0 compatibility points but still collected 30 for proximity and 20 for availability — 50 points, clearing the `score > 30` cutoff — so seven of the eight request groups could be offered a donor they must never receive. Only the backend's pre-filter kept this out of production; the engine, whose port is published, had no gate of its own. Blood group is now checked before scoring, and a separate check confirms the gate doesn't overreach and drop the weakest *legitimate* donor (permitted group, 100km away, unavailable, no history — 35 points, which must still qualify).
+- **Every blood group reported CRITICAL.** A group with zero donors had its ratio pinned to a hardcoded `1.0` regardless of `requestCount`, and `1.0 >= 0.8` is CRITICAL — so blood groups nobody had requested were raising the top-level shortage alarm on the landing page. The same sentinel collapsed severity (1 unmet request scored identically to 99) and sorted a zero-supply group *below* any group whose ratio exceeded 1, which mattered because the landing page renders only the top three.
+- **Malformed payloads returned 500, and unknown blood groups returned 200.** Missing fields raised a bare `KeyError` on a publicly-reachable port, and an unrecognised blood group was silently accepted and scored. Both endpoints now validate up front and return `400` with a message naming the offending field and index.
+
+The compatibility matrix is asserted against a policy table written out longhand in the test file rather than read from `app.py` — comparing the module against itself would always pass. Any future edit to the matrix fails that section, so widening it past the rare-type reservation policy has to be a deliberate decision in both places.

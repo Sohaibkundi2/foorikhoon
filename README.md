@@ -108,7 +108,7 @@ Next.js Web App                       React Native Mobile App
 
 All three services (backend, scoring engine, web frontend) run as separate Docker containers on a single AWS EC2 instance, coordinated by `docker-compose.yml`, with nginx handling TLS and routing in front of them. The database remains external, managed by Neon.
 
-Full deployment notes, real bugs found in production, and the security audit are in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+Full deployment notes and real bugs found in production are in [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
 
 ---
 
@@ -116,7 +116,10 @@ Full deployment notes, real bugs found in production, and the security audit are
 
 - [`docs/PROJECT_STRUCTURE.md`](./docs/PROJECT_STRUCTURE.md) — full repo layout, database models, request/match lifecycle, badge and commitment-score systems
 - [`docs/API.md`](./docs/API.md) — all API endpoints
-- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — scoring engine internals, deployment details, real bugs found and fixed, testing, security audit findings
+- [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) — EC2/Docker/nginx setup, real bugs found and fixed in production
+- [`docs/SCORING_ENGINE.md`](./docs/SCORING_ENGINE.md) — donor-matching algorithm and shortage-prediction internals
+- [`docs/TESTING.md`](./docs/TESTING.md) — test suites and defects the tests caught
+- [`docs/SECURITY.md`](./docs/SECURITY.md) — external audit findings and fixes
 
 ---
 
