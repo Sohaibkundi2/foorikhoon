@@ -114,8 +114,26 @@ html {
   animation: fk-ring 2.6s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
+/* Logo mark: the outer radius tier turns. One full revolution takes 16s, slow
+   enough that it is never the thing you are looking at — the point is that the
+   mark is alive, not that it spins. transform-box is stated explicitly because
+   the SVG default (view-box) is what puts the origin on the circle's centre
+   here, and that is too load-bearing to leave implicit. */
+@keyframes fk-scan {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.fk-scan {
+  transform-box: view-box;
+  transform-origin: center;
+  animation: fk-scan 16s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .fk-ring {
+  .fk-ring,
+  .fk-scan {
     animation: none;
   }
 }
