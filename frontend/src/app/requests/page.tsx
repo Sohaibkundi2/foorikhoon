@@ -94,7 +94,7 @@ export default function RequestsPage() {
 
   return (
     <div className="relative overflow-hidden">
-      <Texture />
+      <Texture ember={true} />
 
       <div className="relative mx-auto max-w-5xl px-6 py-12">
 

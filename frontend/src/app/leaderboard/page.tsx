@@ -67,7 +67,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="relative overflow-hidden">
-      <Texture />
+      <Texture ember={true} />
 
       <div className="relative mx-auto max-w-4xl px-6 pb-20 pt-12">
 

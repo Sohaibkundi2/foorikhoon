@@ -84,22 +84,19 @@ html {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* Engineering-drawing grid. Barely visible by design — it gives the eye a
-   sense of alignment without becoming a pattern you notice. */
+/* Engineering-drawing grid. Clean architectural CAD-style subtle lattice. */
 .fk-rule-grid {
   background-image:
-    linear-gradient(to right, rgba(244, 241, 236, 0.032) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(244, 241, 236, 0.032) 1px, transparent 1px);
-  background-size: 80px 80px;
+    linear-gradient(to right, rgba(244, 241, 236, 0.075) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(244, 241, 236, 0.075) 1px, transparent 1px);
+  background-size: 64px 64px;
 }
 
-/* Off-centre red wash. Deliberately anchored to the top-left corner and
-   asymmetric: a centred symmetrical glow behind a headline is the single most
-   recognisable stock-template move. */
+/* Off-centre red atmospheric glow. */
 .fk-ember {
   background:
-    radial-gradient(52% 44% at 6% -8%, rgba(220, 38, 38, 0.15), transparent 70%),
-    radial-gradient(36% 32% at 84% 6%, rgba(127, 29, 29, 0.18), transparent 72%);
+    radial-gradient(60% 50% at 8% -5%, rgba(220, 38, 38, 0.22), transparent 72%),
+    radial-gradient(45% 40% at 88% 10%, rgba(153, 27, 27, 0.20), transparent 75%);
 }
 
 /* Expanding ring for the live indicator. Tailwind's animate-ping snaps to full
