@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { AlertCircle, ArrowRight } from 'lucide-react'
+import { AlertCircle, ArrowRight, ShieldCheck, Droplet, Building2, Lock, Mail } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import api from '@/lib/api'
-import { Field, Texture, inputClass, noticeClass, primaryBtn } from '@/components/fk'
+import { Texture } from '@/components/fk'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -36,83 +36,129 @@ export default function LoginPage() {
       if (user.role === 'DONOR') router.push('/donor/dashboard')
       else if (user.role === 'HOSPITAL') router.push('/hospital/dashboard')
       else if (user.role === 'ADMIN') router.push('/admin/dashboard')
+      else router.push('/')
 
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Login failed. Try again.')
+      setError(err?.response?.data?.message || 'Invalid email or password. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="relative flex min-h-[90vh] items-center justify-center overflow-hidden px-4 py-16">
-      <Texture ember />
+    <div className="relative min-h-[90vh] flex items-center justify-center overflow-hidden px-4 py-12 bg-ink">
+      <Texture ember={true} grid={true} noise={true} />
 
-      {/* Offset ghost frame instead of a drop shadow: it gives the card weight
-          without the blurred halo that reads as a template. */}
-      <div className="relative w-full max-w-sm">
-        <div
-          aria-hidden
-          className="absolute -bottom-3 -right-3 left-3 top-3 rounded-xl border border-line-soft"
-        />
+      <div className="relative w-full max-w-md">
+        {/* Decorative ambient backdrop */}
+        <div className="overflow-hidden rounded-3xl border border-line bg-surface/90 shadow-2xl backdrop-blur-xl">
+          {/* Card Masthead */}
+          <div className="border-b border-line bg-raised/40 p-6 sm:p-7">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-blood">
+                Secure Access
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
+                Encrypted Session
+              </span>
+            </div>
 
-        <div className="relative rounded-xl border border-line bg-surface px-7 py-8">
-          <div className="relative mb-8 border-b border-line pb-6">
-            <span aria-hidden className="absolute -bottom-px left-0 h-px w-10 bg-blood" />
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
-              Welcome back
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-bone">Sign in</h1>
-            <p className="mt-2.5 text-sm text-mute">
-              Don&apos;t have an account?{' '}
-              <Link
-                href="/register"
-                className="text-bone underline decoration-line underline-offset-4 transition-colors hover:decoration-blood"
-              >
-                Register
-              </Link>
+            <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-bone sm:text-3xl">
+              Sign In to ForiKhoon
+            </h1>
+            <p className="mt-1.5 text-xs text-mute leading-relaxed sm:text-sm">
+              Access your on-call donor dashboard or hospital emergency dispatch console.
             </p>
           </div>
 
-          {error && (
-            <div className={`mb-5 ${noticeClass}`}>
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
-              <span>{error}</span>
+          <div className="p-6 sm:p-7 space-y-6">
+            {error && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-blood/40 bg-blood/10 p-3.5 text-xs text-bone">
+                <AlertCircle className="h-4 w-4 shrink-0 text-blood mt-0.5" />
+                <span className="leading-snug">{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="login-email"
+                  className="block font-mono text-[11px] uppercase tracking-wider text-mute"
+                >
+                  Email Address
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-faint">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <input
+                    id="login-email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@domain.com"
+                    required
+                    className="w-full rounded-xl border border-line bg-raised/60 py-2.5 pl-10 pr-4 text-sm text-bone placeholder-faint transition-all focus:border-blood focus:bg-surface focus:outline-none focus:ring-1 focus:ring-blood/50"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="login-password"
+                  className="block font-mono text-[11px] uppercase tracking-wider text-mute"
+                >
+                  Password
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-faint">
+                    <Lock className="h-4 w-4" />
+                  </div>
+                  <input
+                    id="login-password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    className="w-full rounded-xl border border-line bg-raised/60 py-2.5 pl-10 pr-4 text-sm text-bone placeholder-faint transition-all focus:border-blood focus:bg-surface focus:outline-none focus:ring-1 focus:ring-blood/50"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-blood py-3 px-5 text-sm font-semibold text-white shadow-[0_0_20px_-3px_rgba(220,38,38,0.5)] transition-all hover:bg-blood-dark active:scale-98 disabled:opacity-60 cursor-pointer"
+                >
+                  <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
+                  {!loading && <ArrowRight className="h-4 w-4" />}
+                </button>
+              </div>
+            </form>
+
+            {/* Registration CTA */}
+            <div className="border-t border-line pt-5 text-center">
+              <p className="text-xs text-mute">
+                Don't have an account yet?{' '}
+                <Link
+                  href="/register"
+                  className="font-semibold text-bone hover:text-white underline decoration-line hover:decoration-blood transition-colors"
+                >
+                  Create an account
+                </Link>
+              </p>
             </div>
-          )}
+          </div>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <Field label="Email address" htmlFor="login-email">
-              <input
-                id="login-email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className={inputClass}
-              />
-            </Field>
-
-            <Field label="Password" htmlFor="login-password">
-              <input
-                id="login-password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className={inputClass}
-              />
-            </Field>
-
-            <div className="pt-1">
-              <button type="submit" disabled={loading} className={`w-full ${primaryBtn}`}>
-                {loading ? 'Signing in...' : 'Sign in'}
-                {!loading && <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />}
-              </button>
-            </div>
-          </form>
+        {/* Footnote Badge */}
+        <div className="mt-4 flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-wider text-faint">
+          <ShieldCheck className="h-3.5 w-3.5 text-blood" />
+          <span>Pakistan 24/7 Transfusion Security Protocol</span>
         </div>
       </div>
     </div>

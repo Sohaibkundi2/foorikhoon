@@ -199,7 +199,7 @@ function HeroInteractiveSimulator() {
                         <span>Accepted — Hospital Navigation Active</span>
                       </div>
                       <p className="text-[11px] text-mute leading-relaxed">
-                        After donation, hospital staff photographs the sealed blood bag to credit +15 commitment points and issue your shareable Hero Certificate.
+                        After donation, hospital staff photographs the sealed blood bag to credit +10 commitment points and issue your shareable Hero Certificate.
                       </p>
                     </div>
                   ) : (

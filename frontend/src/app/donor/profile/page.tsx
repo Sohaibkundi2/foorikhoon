@@ -5,16 +5,21 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import api from '@/lib/api'
 import Link from 'next/link'
-import { ArrowLeft, Check, CircleAlert, MapPin } from 'lucide-react'
 import {
-  Field,
-  SectionLabel,
-  Texture,
-  inputClass,
-  noticeClass,
-  primaryBtn,
-  quietBtn
-} from '@/components/fk'
+  ArrowLeft,
+  Check,
+  CircleAlert,
+  MapPin,
+  ShieldCheck,
+  Navigation,
+  Lock,
+  User,
+  Phone,
+  Droplet,
+  Save,
+  Compass
+} from 'lucide-react'
+import { Texture } from '@/components/fk'
 
 const bloodGroups = ['A_POS', 'A_NEG', 'B_POS', 'B_NEG', 'AB_POS', 'AB_NEG', 'O_POS', 'O_NEG']
 const bloodGroupLabels: Record<string, string> = {
@@ -22,25 +27,14 @@ const bloodGroupLabels: Record<string, string> = {
   AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
 }
 
-/**
- * Settings switch.
- *
- * `role="switch"` + `aria-checked` + a real accessible name, because both toggles
- * on this page used to be nameless `<button>`s whose only state signal was a
- * background colour — a screen reader announced two unlabelled buttons and
- * conveyed neither what they controlled nor whether they were on. The knob also
- * changes width, not just position, so the state does not rest on hue alone.
- */
 function Switch({
   checked,
   onChange,
   label,
-  describedBy,
 }: {
   checked: boolean
   onChange: () => void
   label: string
-  describedBy?: string
 }) {
   return (
     <button
@@ -48,16 +42,15 @@ function Switch({
       role="switch"
       aria-checked={checked}
       aria-label={label}
-      aria-describedby={describedBy}
       onClick={onChange}
-      className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-200 ${
-        checked ? 'border-life/40 bg-life' : 'border-line bg-raised'
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 cursor-pointer ${
+        checked ? 'bg-blood shadow-[0_0_12px_-2px_rgba(220,38,38,0.7)]' : 'bg-raised border border-line'
       }`}
     >
       <span
         aria-hidden
-        className={`absolute left-1 top-1 h-4 rounded-full bg-bone transition-all duration-200 ${
-          checked ? 'w-4 translate-x-5' : 'w-3 translate-x-0'
+        className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform duration-200 ${
+          checked ? 'translate-x-5' : 'translate-x-0'
         }`}
       />
     </button>
@@ -90,7 +83,7 @@ export default function DonorProfilePage() {
     setLocationError('')
 
     if (!navigator.geolocation) {
-      setLocationError('unavailable')
+      setLocationError('Geolocation is not supported by your browser')
       return
     }
 
@@ -106,7 +99,11 @@ export default function DonorProfilePage() {
       },
       (err) => {
         console.error('Geolocation error:', err)
-        setLocationError(err.code === err.PERMISSION_DENIED ? 'permission_denied' : 'unavailable')
+        setLocationError(
+          err.code === err.PERMISSION_DENIED
+            ? 'Location permission was denied. You can manually enter your area below.'
+            : 'Unable to acquire GPS coordinates. Please enter your area manually.'
+        )
         setLocatingInProgress(false)
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -146,7 +143,10 @@ export default function DonorProfilePage() {
     try {
       setSaving(true)
       await api.put('/api/donor/profile', {
-        name, phone, city, bloodGroup,
+        name,
+        phone,
+        city,
+        bloodGroup,
         lastDonated: lastDonated || null,
         shareContactInfo,
         ...(locationMethod === 'gps' && coords
@@ -154,332 +154,266 @@ export default function DonorProfilePage() {
           : { area }),
       })
       setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
+      setTimeout(() => setSuccess(false), 4000)
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to save changes.')
+      setError(err?.response?.data?.message || 'Failed to save changes. Please try again.')
     } finally {
       setSaving(false)
-    }
-  }
-
-  const toggleShareContactInfo = async () => {
-    try {
-      await api.put('/api/donor/profile', { shareContactInfo: !shareContactInfo })
-      setShareContactInfo(!shareContactInfo)
-    } catch (err) {
-      console.error(err)
     }
   }
 
   if (loading) {
     return (
       <div className="flex min-h-[80vh] items-center justify-center">
-        <div className="h-2 w-40 animate-pulse rounded-full bg-raised" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
+          <p className="font-mono text-xs uppercase tracking-widest text-faint">
+            Retrieving donor credentials & location...
+          </p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="relative overflow-hidden">
-      <Texture />
+    <div className="relative min-h-screen overflow-hidden bg-ink py-8 sm:py-12">
+      <Texture ember={true} grid={true} noise={true} />
 
-      <div className="relative mx-auto max-w-3xl px-6 pb-32 pt-12">
-
-        {/* Masthead */}
+      <div className="relative mx-auto max-w-3xl px-4 sm:px-6">
+        {/* Navigation Breadcrumb */}
         <Link
           href="/donor/dashboard"
-          className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-faint transition-colors hover:text-bone"
+          className="group mb-6 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-mute hover:text-bone transition-colors"
         >
-          <ArrowLeft className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
-          Back to dashboard
+          <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
+          <span>Donor Dashboard</span>
         </Link>
 
-        <div className="relative mt-7 border-b border-line pb-7">
-          <span aria-hidden className="absolute -bottom-px left-0 h-px w-10 bg-blood" />
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">Donor</p>
-          <h1 className="mt-4 text-4xl font-semibold leading-none tracking-[-0.04em] text-bone">
-            Edit <span className="font-serif italic text-blood">Profile</span>
+        {/* Masthead */}
+        <div className="border-b border-line pb-6 mb-8">
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-blood">
+            On-Call Preferences
+          </span>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-bone sm:text-4xl">
+            Donor Settings & Coordinates
           </h1>
-          <p className="mt-4 max-w-md text-sm leading-relaxed text-mute">
-            Update your personal and donation information.
+          <p className="mt-1 text-sm text-mute leading-relaxed">
+            Update your blood group, emergency dispatch radius, and contact privacy preferences.
           </p>
         </div>
 
         {error && (
-          <div className={`mt-7 ${noticeClass}`}>
-            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+          <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-blood/40 bg-blood/10 p-3.5 text-xs text-bone">
+            <CircleAlert className="h-4 w-4 shrink-0 text-blood mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
         {success && (
-          <div className="mt-7 flex items-start gap-2.5 rounded-md border border-life/25 bg-life/10 px-3.5 py-3 text-sm text-life-lite">
-            <Check className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
-            <span>Profile updated successfully.</span>
+          <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-bone/30 bg-surface p-3.5 text-xs text-bone shadow-md">
+            <Check className="h-4 w-4 shrink-0 text-blood mt-0.5" />
+            <span className="font-medium">Profile and dispatch preferences updated successfully.</span>
           </div>
         )}
 
-        {/* Set as a spec sheet: numbered sections divided by rules, no nested card
-            boxes. Boxing each group makes them all look equally weighted and puts
-            three borders between the eye and the field it is trying to fill in. */}
-        <form onSubmit={handleSave}>
+        <form onSubmit={handleSave} className="space-y-8">
+          {/* Section 1: Personal Details */}
+          <div className="rounded-3xl border border-line bg-surface/90 p-5 sm:p-7 backdrop-blur-xl space-y-5">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <span className="font-mono text-xs font-bold text-blood">01 • Personal Identity</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Verified Credentials</span>
+            </div>
 
-          {/* ── 01 Personal ─────────────────────────────────────────────── */}
-          <section className="pt-11">
-            <SectionLabel heading index="01">Personal Information</SectionLabel>
-
-            <div className="grid gap-5 md:grid-cols-2">
-              <Field label="Full name" htmlFor="profile-name">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="block font-mono text-[10px] uppercase tracking-wider text-mute">
+                  Full Name
+                </label>
                 <input
-                  id="profile-name"
                   type="text"
-                  autoComplete="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className={inputClass}
+                  required
+                  className="w-full rounded-xl border border-line bg-raised/60 py-2.5 px-3.5 text-sm text-bone focus:border-blood focus:outline-none"
                 />
-              </Field>
+              </div>
 
-              <Field label="Phone" htmlFor="profile-phone">
+              <div className="space-y-1.5">
+                <label className="block font-mono text-[10px] uppercase tracking-wider text-mute">
+                  Phone Number
+                </label>
                 <input
-                  id="profile-phone"
-                  type="text"
-                  autoComplete="tel"
+                  type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="03001234567"
-                  className={inputClass}
+                  className="w-full rounded-xl border border-line bg-raised/60 py-2.5 px-3.5 text-sm text-bone focus:border-blood focus:outline-none"
                 />
-              </Field>
-
-              <div className="md:col-span-2">
-                <Field label="City" htmlFor="profile-city">
-                  <input
-                    id="profile-city"
-                    type="text"
-                    autoComplete="address-level2"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className={inputClass}
-                  />
-                </Field>
-              </div>
-            </div>
-          </section>
-
-          {/* ── 02 Match location ───────────────────────────────────────── */}
-          <section className="pt-11">
-            <SectionLabel heading index="02">Match Location</SectionLabel>
-
-            {locationMethod === 'gps' && coords ? (
-              <div className="flex items-start gap-2.5 rounded-md border border-life/25 bg-life/10 px-3.5 py-3">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-life" strokeWidth={2.5} aria-hidden />
-                <div>
-                  <p className="text-sm text-life-lite">
-                    We&apos;ll use this to match you with nearby requests
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => { setLocationMethod(null); setCoords(null) }}
-                    className="mt-1.5 text-xs text-mute underline decoration-line underline-offset-4 transition-colors hover:text-bone"
-                  >
-                    Use a different method
-                  </button>
-                </div>
-              </div>
-            ) : locationMethod === 'manual' ? (
-              <div>
-                <Field
-                  label="Area / neighborhood"
-                  htmlFor="profile-area"
-                  aside={
-                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-line">
-                      Update to refresh
-                    </span>
-                  }
-                  hint="Leave blank to keep your current saved location."
-                >
-                  <input
-                    id="profile-area"
-                    type="text"
-                    value={area}
-                    onChange={(e) => setArea(e.target.value)}
-                    placeholder="Hayatabad, Peshawar"
-                    className={inputClass}
-                  />
-                </Field>
-                <button
-                  type="button"
-                  onClick={() => setLocationMethod(null)}
-                  className="mt-3 text-xs text-mute underline decoration-line underline-offset-4 transition-colors hover:text-bone"
-                >
-                  Use my location instead
-                </button>
-              </div>
-            ) : (
-              /* Rule-topped block, left-aligned, rather than a bordered inset with
-                 centred text: it reads as part of the sheet instead of a dialog
-                 that has been dropped into the middle of it. */
-              <div className="relative border-t border-line pt-6">
-                <span aria-hidden className="absolute -top-px left-0 h-px w-10 bg-blood" />
-                <div className="flex items-start gap-3">
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blood" strokeWidth={2} aria-hidden />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-bone">Update your location</p>
-                    <p className="mt-1.5 max-w-md text-xs leading-relaxed text-mute">
-                      Share your current location for more accurate matching, or enter your area
-                      manually.
-                    </p>
-
-                    <div className="mt-5 flex flex-wrap items-center gap-4">
-                      <button
-                        type="button"
-                        onClick={requestLocation}
-                        disabled={locatingInProgress}
-                        className={primaryBtn}
-                      >
-                        {locatingInProgress ? 'Getting location...' : 'Use My Location'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLocationMethod('manual')}
-                        className="text-xs text-mute underline decoration-line underline-offset-4 transition-colors hover:text-bone"
-                      >
-                        Enter address instead
-                      </button>
-                    </div>
-
-                    {locationError && (
-                      <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-warn">
-                        <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                        {locationError === 'permission_denied'
-                          ? "We couldn't access your location. You can try again or enter your address manually."
-                          : 'Something went wrong getting your location. Please enter your address instead.'}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
-
-          {/* ── 03 Donation ─────────────────────────────────────────────── */}
-          <section className="pt-11">
-            <SectionLabel heading index="03">Donation Information</SectionLabel>
-
-            <div className="mb-6">
-              <div className="mb-2 flex items-baseline justify-between gap-3">
-                <p
-                  id="profile-bloodgroup-label"
-                  className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint"
-                >
-                  Blood group
-                </p>
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-line">
-                  Optional
-                </span>
-              </div>
-
-              {/* One continuous grid whose gaps are the rules, so the eight groups
-                  read as a single control rather than eight detached buttons. */}
-              <div
-                role="group"
-                aria-labelledby="profile-bloodgroup-label"
-                className="grid grid-cols-4 gap-px overflow-hidden rounded-lg border border-line-soft bg-line-soft"
-              >
-                {bloodGroups.map((bg) => (
-                  <button
-                    key={bg}
-                    type="button"
-                    aria-pressed={bloodGroup === bg}
-                    onClick={() => setBloodGroup(bloodGroup === bg ? '' : bg)}
-                    className={`py-3.5 font-mono text-sm font-medium tracking-[-0.01em] transition-colors duration-150 ${
-                      bloodGroup === bg
-                        ? 'bg-blood text-white'
-                        : 'bg-ink text-mute hover:bg-raised hover:text-bone'
-                    }`}
-                  >
-                    {bloodGroupLabels[bg]}
-                  </button>
-                ))}
               </div>
             </div>
 
-            <Field
-              label="Last donated"
-              htmlFor="profile-last-donated"
-              aside={
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-line">
-                  Optional
-                </span>
-              }
-            >
+            <div className="space-y-1.5">
+              <label className="block font-mono text-[10px] uppercase tracking-wider text-mute">
+                City
+              </label>
               <input
-                id="profile-last-donated"
-                type="date"
-                value={lastDonated}
-                onChange={(e) => setLastDonated(e.target.value)}
-                className={`${inputClass} [&::-webkit-calendar-picker-indicator]:opacity-40 [&::-webkit-calendar-picker-indicator]:invert`}
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                required
+                className="w-full rounded-xl border border-line bg-raised/60 py-2.5 px-3.5 text-sm text-bone focus:border-blood focus:outline-none"
               />
-            </Field>
-          </section>
-
-          {/* ── 04 Preferences ──────────────────────────────────────────── */}
-          <section className="pt-11">
-            <SectionLabel heading index="04">Preferences</SectionLabel>
-
-            <div className="divide-y divide-line-soft border-y border-line-soft">
-              <div className="flex items-start justify-between gap-6 py-5">
-                <div className="min-w-0">
-                  <h3 className="text-sm font-medium text-bone">Availability</h3>
-                  <p id="profile-availability-hint" className="mt-1.5 text-xs leading-relaxed text-mute">
-                    Allow hospitals to match you with requests.
-                  </p>
-                </div>
-                <Switch
-                  checked={isAvailable}
-                  onChange={() => setIsAvailable(!isAvailable)}
-                  label="Availability"
-                  describedBy="profile-availability-hint"
-                />
-              </div>
-
-              <div className="flex items-start justify-between gap-6 py-5">
-                <div className="min-w-0">
-                  <h3 className="text-sm font-medium text-bone">Share Contact Info</h3>
-                  <p id="profile-share-hint" className="mt-1.5 max-w-lg text-xs leading-relaxed text-mute">
-                    If enabled, the hospital can see your name and phone number when you accept
-                    their request, to help coordinate the donation.
-                  </p>
-                  {/* This one writes on click. Saying so is the only way a donor can
-                      tell it apart from the switch directly above it. */}
-                  <p className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.14em] text-line">
-                    Saves immediately
-                  </p>
-                </div>
-                <Switch
-                  checked={shareContactInfo}
-                  onChange={toggleShareContactInfo}
-                  label="Share Contact Info"
-                  describedBy="profile-share-hint"
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* Save bar, pinned to the viewport: the sheet is long enough that a
-              button at its end is off-screen for most of the time spent editing.
-              Solid, not translucent — the grid texture showing through a blurred
-              action bar is exactly the effect this design is avoiding. */}
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-ink">
-            <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-4">
-              <Link href="/donor/dashboard" className={quietBtn}>Cancel</Link>
-              <button type="submit" disabled={saving} className={primaryBtn}>
-                {saving ? 'Saving...' : 'Save Changes'}
-              </button>
             </div>
           </div>
 
+          {/* Section 2: Blood Group & Recovery Window */}
+          <div className="rounded-3xl border border-line bg-surface/90 p-5 sm:p-7 backdrop-blur-xl space-y-5">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <span className="font-mono text-xs font-bold text-blood">02 • Medical & Blood Specimen</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">WHO Standards</span>
+            </div>
+
+            <div>
+              <label className="block font-mono text-[10px] uppercase tracking-wider text-mute mb-2.5">
+                Select Blood Group
+              </label>
+              <div className="grid grid-cols-4 gap-2.5">
+                {bloodGroups.map((bg) => {
+                  const active = bloodGroup === bg
+                  return (
+                    <button
+                      key={bg}
+                      type="button"
+                      onClick={() => setBloodGroup(bg)}
+                      className={`rounded-xl py-2.5 px-3 font-mono text-sm font-bold transition-all cursor-pointer ${
+                        active
+                          ? 'border border-blood bg-blood text-white shadow-[0_0_15px_-3px_rgba(220,38,38,0.5)]'
+                          : 'border border-line bg-raised text-bone hover:border-line-soft'
+                      }`}
+                    >
+                      {bloodGroupLabels[bg]}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-2 border-t border-line">
+              <label className="block font-mono text-[10px] uppercase tracking-wider text-mute">
+                Last Donated Date (Optional — enforces 90-day recovery protection)
+              </label>
+              <input
+                type="date"
+                value={lastDonated}
+                onChange={(e) => setLastDonated(e.target.value)}
+                className="w-full rounded-xl border border-line bg-raised/60 py-2.5 px-3.5 text-sm text-bone focus:border-blood focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Section 3: Dispatch Coordinates & Privacy */}
+          <div className="rounded-3xl border border-line bg-surface/90 p-5 sm:p-7 backdrop-blur-xl space-y-6">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <span className="font-mono text-xs font-bold text-blood">03 • Dispatch Coordinates & Privacy</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">10km Geo-Scan</span>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-bold text-bone">Emergency Match Location</p>
+                  <p className="text-[11px] text-mute mt-0.5">
+                    Used by the algorithm to calculate hospital proximity (25% of match score).
+                  </p>
+                </div>
+                <Compass className="h-4 w-4 text-blood shrink-0" />
+              </div>
+
+              {locationMethod === 'gps' && coords ? (
+                <div className="rounded-xl border border-bone/20 bg-raised p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-bone">
+                    <Check className="h-4 w-4 text-blood" />
+                    <span>GPS Acquired ({coords.latitude.toFixed(3)}, {coords.longitude.toFixed(3)})</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setLocationMethod(null); setCoords(null) }}
+                    className="font-mono text-[10px] uppercase tracking-wider text-mute hover:text-bone"
+                  >
+                    Reset
+                  </button>
+                </div>
+              ) : locationMethod === 'manual' ? (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={area}
+                    onChange={(e) => setArea(e.target.value)}
+                    placeholder="e.g. University Town, Peshawar"
+                    className="w-full rounded-xl border border-line bg-raised/60 py-2.5 px-3.5 text-sm text-bone focus:border-blood focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setLocationMethod(null)}
+                    className="font-mono text-[10px] uppercase tracking-wider text-faint hover:text-bone"
+                  >
+                    Use GPS Coordinates Instead
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-2.5">
+                  <button
+                    type="button"
+                    onClick={requestLocation}
+                    disabled={locatingInProgress}
+                    className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-blood/40 bg-blood/10 py-2.5 px-3 text-xs font-semibold text-blood hover:bg-blood/20 transition-colors cursor-pointer"
+                  >
+                    <Navigation className="h-3.5 w-3.5" />
+                    <span>{locatingInProgress ? 'Detecting GPS...' : 'Auto-Detect Current GPS'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLocationMethod('manual')}
+                    className="flex items-center justify-center rounded-xl border border-line bg-raised py-2.5 px-3.5 text-xs font-medium text-mute hover:text-bone transition-colors"
+                  >
+                    {area ? `Area: ${area} (Edit)` : 'Enter Area Manually'}
+                  </button>
+                </div>
+              )}
+
+              {locationError && (
+                <p className="text-xs text-blood">{locationError}</p>
+              )}
+            </div>
+
+            {/* Contact Privacy Toggle */}
+            <div className="flex items-center justify-between gap-4 pt-4 border-t border-line">
+              <div>
+                <p className="text-xs font-bold text-bone">Automatic Phone Disclosure</p>
+                <p className="text-[11px] text-mute mt-0.5">
+                  When enabled, verified hospitals can see your direct contact upon accepting a match.
+                </p>
+              </div>
+
+              <Switch
+                checked={shareContactInfo}
+                onChange={() => setShareContactInfo(!shareContactInfo)}
+                label="Direct Phone Disclosure"
+              />
+            </div>
+          </div>
+
+          {/* Submit Action */}
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center justify-center gap-2 rounded-xl bg-blood py-3 px-6 text-sm font-semibold text-white shadow-[0_0_20px_-3px_rgba(220,38,38,0.5)] transition-all hover:bg-blood-dark active:scale-98 disabled:opacity-60 cursor-pointer"
+            >
+              <Save className="h-4 w-4" />
+              <span>{saving ? 'Saving Changes...' : 'Save Settings'}</span>
+            </button>
+          </div>
         </form>
       </div>
     </div>

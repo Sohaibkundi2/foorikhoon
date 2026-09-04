@@ -1,22 +1,25 @@
 "use client"
+
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import api from '@/lib/api'
 import Link from 'next/link'
-import { ArrowLeft, Check, CircleAlert, Minus, Plus } from 'lucide-react'
 import {
-  Chip,
-  Field,
-  SectionLabel,
-  Texture,
-  ghostBtn,
-  inputClass,
-  noticeClass,
-  primaryBtn,
-  primaryBtnLg,
-  urgencyTone
-} from '@/components/fk'
+  ArrowLeft,
+  Check,
+  CircleAlert,
+  Minus,
+  Plus,
+  Radio,
+  Clock,
+  AlertTriangle,
+  Droplet,
+  Send,
+  Building2,
+  Users
+} from 'lucide-react'
+import { Texture } from '@/components/fk'
 
 const bloodGroups = ['A_POS', 'A_NEG', 'B_POS', 'B_NEG', 'AB_POS', 'AB_NEG', 'O_POS', 'O_NEG']
 const bloodGroupLabels: Record<string, string> = {
@@ -25,9 +28,9 @@ const bloodGroupLabels: Record<string, string> = {
 }
 
 const urgencyOptions = [
-  { value: 'NORMAL', label: 'Normal', desc: 'Needed within a few days' },
-  { value: 'URGENT', label: 'Urgent', desc: 'Needed within 24 hours' },
-  { value: 'CRITICAL', label: 'Critical', desc: 'Needed immediately' },
+  { value: 'NORMAL', label: 'Normal', desc: 'Standard clinical scheduled need' },
+  { value: 'URGENT', label: 'Urgent', desc: 'Needed within 12–24 hours' },
+  { value: 'CRITICAL', label: 'Critical', desc: 'Immediate emergency transfusion (ICU / Trauma)' },
 ]
 
 export default function NewRequestPage() {
@@ -47,75 +50,76 @@ export default function NewRequestPage() {
     setError('')
 
     if (!bloodGroup) {
-      setError('Please select a blood group')
+      setError('Please select a blood group for this emergency broadcast')
       return
     }
 
     try {
       setLoading(true)
       const res = await api.post('/api/requests', { bloodGroup, units, urgency, notes })
-      setSuccess({ matchedDonors: res.data.matchedDonors })
+      setSuccess({ matchedDonors: res.data.matchedDonors ?? 0 })
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to post request. Try again.')
+      setError(err?.response?.data?.message || 'Failed to post blood request. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  // Success state. Set as the filed record rather than a centred confirmation
-  // badge: what the hospital wants to read here is the outcome figure, and a
-  // circle-and-tick centred on an empty screen is the most templated way to
-  // avoid saying it.
   if (success) {
     return (
-      <div className="relative overflow-hidden">
-        <Texture />
+      <div className="relative min-h-screen overflow-hidden bg-ink flex items-center justify-center p-6">
+        <Texture ember={true} grid={true} noise={true} />
 
-        <div className="relative mx-auto max-w-lg px-6 pb-20 pt-20">
-          <div className="relative border-b border-line pb-7">
-            <span aria-hidden className="absolute -bottom-px left-0 h-px w-10 bg-blood" />
-            <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-life">
-              <Check className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
-              Filed
-            </p>
-            <h1 className="mt-4 text-4xl font-semibold leading-none tracking-[-0.04em] text-bone">
-              Request Posted
-            </h1>
-            <p className="mt-4 text-sm leading-relaxed text-mute">
-              Your blood request has been posted successfully.
-            </p>
+        <div className="relative mx-auto max-w-lg w-full rounded-3xl border border-line bg-surface/90 p-6 sm:p-8 backdrop-blur-xl shadow-2xl text-center space-y-6">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-blood/30 bg-blood/10 text-blood">
+            <Radio className="h-7 w-7 animate-pulse" />
           </div>
 
-          {/* The outcome as a figure, because that is the one thing on this
-              screen the hospital has to act on knowing. */}
-          <div className="mt-8 flex items-baseline gap-4">
-            <span
-              className={`font-mono text-[3.5rem] font-medium leading-[0.85] tabular-nums ${
-                success.matchedDonors > 0 ? 'text-life' : 'text-warn'
-              }`}
-            >
-              {success.matchedDonors}
+          <div>
+            <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-blood">
+              Transmission Broadcasted
             </span>
-            <p className="max-w-xs text-sm leading-relaxed text-mute">
-              {success.matchedDonors > 0 ? (
-                <>
-                  donor{success.matchedDonors !== 1 ? 's' : ''} matched and notified.
-                </>
-              ) : (
-                <>
-                  matching donors found right now. We will notify you when one becomes available.
-                </>
-              )}
+            <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-bone sm:text-3xl">
+              Emergency Request Live
+            </h1>
+            <p className="mt-1.5 text-xs text-mute sm:text-sm">
+              Your requisition has been transmitted to qualified on-call donors within your geographical radius.
             </p>
           </div>
 
-          <div className="mt-10 flex flex-wrap gap-3 border-t border-line pt-7">
-            <Link href="/hospital/dashboard" className={primaryBtn}>Go to dashboard</Link>
-            <button
-              onClick={() => { setSuccess(null); setBloodGroup(''); setNotes(''); setUnits(1); setUrgency('NORMAL') }}
-              className={ghostBtn}
+          <div className="rounded-2xl border border-line bg-raised/50 p-5">
+            <div className="flex items-center justify-center gap-2">
+              <Users className="h-4 w-4 text-blood" />
+              <p className="font-mono text-xs uppercase tracking-wider text-faint">Immediate Matches</p>
+            </div>
+            <p className="mt-2 font-mono text-4xl font-extrabold text-bone">
+              {success.matchedDonors}
+            </p>
+            <p className="mt-1 text-xs text-mute">
+              {success.matchedDonors > 0
+                ? 'candidate donor(s) identified and notified via priority dispatch.'
+                : 'eligible donors currently found in direct radius. The algorithm will automatically expand reach.'}
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <Link
+              href="/hospital/requests"
+              className="flex-1 flex items-center justify-center rounded-xl bg-blood py-3 px-4 text-xs font-semibold text-white shadow hover:bg-blood-dark transition-colors"
             >
-              Post another
+              Monitor Requisitions
+            </Link>
+            <button
+              onClick={() => {
+                setSuccess(null)
+                setBloodGroup('')
+                setNotes('')
+                setUnits(1)
+                setUrgency('NORMAL')
+              }}
+              className="flex-1 rounded-xl border border-line bg-surface py-3 px-4 text-xs font-semibold text-bone hover:bg-raised transition-colors cursor-pointer"
+            >
+              Broadcast Another
             </button>
           </div>
         </div>
@@ -124,263 +128,171 @@ export default function NewRequestPage() {
   }
 
   return (
-    <div className="relative overflow-hidden">
-      <Texture />
+    <div className="relative min-h-screen overflow-hidden bg-ink py-8 sm:py-12">
+      <Texture ember={true} grid={true} noise={true} />
 
-      <div className="relative mx-auto max-w-5xl px-6 pb-20 pt-12">
-
+      <div className="relative mx-auto max-w-3xl px-4 sm:px-6">
+        {/* Navigation Breadcrumb */}
         <Link
           href="/hospital/dashboard"
-          className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-faint transition-colors hover:text-bone"
+          className="group mb-6 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-mute hover:text-bone transition-colors"
         >
-          <ArrowLeft className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
-          Back to dashboard
+          <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
+          <span>Hospital Dashboard</span>
         </Link>
 
-        <div className="relative mt-7 border-b border-line pb-7">
-          <span aria-hidden className="absolute -bottom-px left-0 h-px w-10 bg-blood" />
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-blood">New Request</p>
-          <h1 className="mt-4 text-4xl font-semibold leading-none tracking-[-0.04em] text-bone">
-            Post Blood Request
+        {/* Masthead */}
+        <div className="border-b border-line pb-6 mb-8">
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-blood">
+            Emergency Dispatch Composer
+          </span>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-bone sm:text-4xl">
+            Post Emergency Blood Request
           </h1>
-          <p className="mt-4 max-w-md text-sm leading-relaxed text-mute">
-            Compatible donors near your hospital are notified as soon as this is filed.
+          <p className="mt-1 text-sm text-mute leading-relaxed">
+            The platform will automatically match verified on-call donors within 10km, expanding outwards as needed.
           </p>
         </div>
 
         {error && (
-          <div className={`mt-7 ${noticeClass}`}>
-            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+          <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-blood/40 bg-blood/10 p-3.5 text-xs text-bone">
+            <CircleAlert className="h-4 w-4 shrink-0 text-blood mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Form on the left, the slip it will produce on the right. The preview
-            is not decoration: this form has four inputs whose combined effect is
-            a single record, and the slip is the only place that record is
-            legible before it is filed. It mirrors form state and nothing else. */}
-        <div className="mt-10 grid gap-12 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-16">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Section 1: Blood Group Required */}
+          <div className="rounded-3xl border border-line bg-surface/90 p-5 sm:p-7 backdrop-blur-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <span className="font-mono text-xs font-bold text-blood">01 • Required Blood Specimen</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Select One Group</span>
+            </div>
 
-          <form onSubmit={handleSubmit} className="min-w-0">
-
-            {/* ── 01 Blood group ─────────────────────────────────────────── */}
-            <section>
-              <SectionLabel heading index="01">Blood Group Required</SectionLabel>
-
-              <div
-                role="group"
-                aria-label="Blood group required"
-                className="grid grid-cols-4 gap-px overflow-hidden rounded-lg border border-line-soft bg-line-soft"
-              >
-                {bloodGroups.map((bg) => (
+            <div className="grid grid-cols-4 gap-2.5">
+              {bloodGroups.map((bg) => {
+                const active = bloodGroup === bg
+                return (
                   <button
                     key={bg}
                     type="button"
-                    aria-pressed={bloodGroup === bg}
                     onClick={() => setBloodGroup(bg)}
-                    className={`py-4 font-mono text-base font-medium tracking-[-0.01em] transition-colors duration-150 ${
-                      bloodGroup === bg
-                        ? 'bg-blood text-white'
-                        : 'bg-ink text-mute hover:bg-raised hover:text-bone'
+                    className={`rounded-2xl py-3 px-3 font-mono text-base font-extrabold transition-all cursor-pointer ${
+                      active
+                        ? 'border border-blood bg-blood text-white shadow-[0_0_15px_-3px_rgba(220,38,38,0.5)] scale-102'
+                        : 'border border-line bg-raised/60 text-bone hover:border-line-soft hover:bg-raised'
                     }`}
                   >
                     {bloodGroupLabels[bg]}
                   </button>
-                ))}
-              </div>
-            </section>
+                )
+              })}
+            </div>
+          </div>
 
-            {/* ── 02 Units ───────────────────────────────────────────────── */}
-            <section className="pt-11">
-              <SectionLabel heading index="02">Units Needed</SectionLabel>
+          {/* Section 2: Volume & Urgency */}
+          <div className="rounded-3xl border border-line bg-surface/90 p-5 sm:p-7 backdrop-blur-xl space-y-6">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <span className="font-mono text-xs font-bold text-blood">02 • Quantity & Urgency Level</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Triage Tier</span>
+            </div>
 
-              <div className="flex items-center gap-5">
-                <div className="flex items-center gap-px overflow-hidden rounded-md border border-line bg-line-soft">
+            {/* Units Stepper */}
+            <div>
+              <label className="block font-mono text-[10px] uppercase tracking-wider text-mute mb-2">
+                Number of Blood Units / Bags Needed
+              </label>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center rounded-2xl border border-line bg-raised/60 p-1">
                   <button
                     type="button"
-                    aria-label="Decrease units"
                     onClick={() => setUnits(Math.max(1, units - 1))}
-                    className="flex h-11 w-11 items-center justify-center bg-raised text-mute transition-colors duration-150 hover:bg-surface hover:text-bone"
+                    className="h-10 w-10 flex items-center justify-center rounded-xl bg-surface text-bone hover:border hover:border-line transition-colors cursor-pointer"
                   >
-                    <Minus className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+                    <Minus className="h-4 w-4" />
                   </button>
-                  <span
-                    aria-live="polite"
-                    className="flex h-11 w-16 items-center justify-center bg-ink font-mono text-2xl font-medium tabular-nums text-bone"
-                  >
+
+                  <span className="font-mono text-xl font-bold text-bone w-16 text-center">
                     {units}
                   </span>
+
                   <button
                     type="button"
-                    aria-label="Increase units"
                     onClick={() => setUnits(Math.min(20, units + 1))}
-                    className="flex h-11 w-11 items-center justify-center bg-raised text-mute transition-colors duration-150 hover:bg-surface hover:text-bone"
+                    className="h-10 w-10 flex items-center justify-center rounded-xl bg-surface text-bone hover:border hover:border-line transition-colors cursor-pointer"
                   >
-                    <Plus className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+                    <Plus className="h-4 w-4" />
                   </button>
                 </div>
-                <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint">
-                  unit{units !== 1 ? 's' : ''} · max 20
-                </p>
+
+                <span className="font-mono text-xs text-mute">
+                  Standard 450ml transfusion bags
+                </span>
               </div>
-            </section>
+            </div>
 
-            {/* ── 03 Urgency ─────────────────────────────────────────────── */}
-            <section className="pt-11">
-              <SectionLabel heading index="03">Urgency Level</SectionLabel>
-
-              {/* A single divided stack rather than three bordered cards: these
-                  are three points on one scale, and the tier that is selected
-                  gets a left edge so the choice is not carried by fill alone. */}
-              <div
-                role="group"
-                aria-label="Urgency level"
-                className="divide-y divide-line-soft overflow-hidden rounded-lg border border-line"
-              >
+            {/* Urgency Tiers */}
+            <div className="space-y-2 pt-2 border-t border-line">
+              <label className="block font-mono text-[10px] uppercase tracking-wider text-mute mb-2">
+                Urgency Tier
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {urgencyOptions.map((opt) => {
                   const active = urgency === opt.value
                   return (
                     <button
                       key={opt.value}
                       type="button"
-                      aria-pressed={active}
                       onClick={() => setUrgency(opt.value)}
-                      className={`relative flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors duration-150 ${
-                        active ? 'bg-raised' : 'bg-surface hover:bg-raised/50'
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                        active
+                          ? 'border-blood bg-blood/15 text-bone shadow-[0_0_15px_-4px_rgba(220,38,38,0.4)]'
+                          : 'border-line bg-raised/40 text-mute hover:border-line-soft'
                       }`}
                     >
-                      {active && (
-                        <span
-                          aria-hidden
-                          className={`absolute inset-y-0 left-0 w-[3px] ${
-                            opt.value === 'CRITICAL'
-                              ? 'bg-blood'
-                              : opt.value === 'URGENT'
-                                ? 'bg-warn'
-                                : 'bg-life'
-                          }`}
-                        />
-                      )}
-                      <div className="min-w-0">
-                        <p className={`text-sm font-medium ${active ? 'text-bone' : 'text-mute'}`}>
-                          {opt.label}
-                        </p>
-                        <p className="mt-0.5 text-xs text-faint">{opt.desc}</p>
-                      </div>
-                      {active && (
-                        <Check className="h-4 w-4 shrink-0 text-bone" strokeWidth={2.25} aria-hidden />
-                      )}
+                      <p className={`font-mono text-xs font-bold uppercase tracking-wider ${
+                        active ? 'text-blood' : 'text-bone'
+                      }`}>
+                        {opt.label}
+                      </p>
+                      <p className="text-[11px] text-mute mt-1 leading-snug">
+                        {opt.desc}
+                      </p>
                     </button>
                   )
                 })}
               </div>
-            </section>
+            </div>
+          </div>
 
-            {/* ── 04 Notes ───────────────────────────────────────────────── */}
-            <section className="pt-11">
-              <SectionLabel heading index="04">Additional Notes</SectionLabel>
-
-              <Field
-                label="Notes"
-                htmlFor="request-notes"
-                aside={
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-line">
-                    Optional
-                  </span>
-                }
-                hint="Donors see this alongside your request."
-              >
-                <textarea
-                  id="request-notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g. Patient is scheduled for surgery tomorrow morning"
-                  rows={3}
-                  className={`${inputClass} resize-none`}
-                />
-              </Field>
-            </section>
-
-            <button type="submit" disabled={loading} className={`mt-11 w-full ${primaryBtnLg}`}>
-              {loading ? 'Posting request...' : 'Post Blood Request'}
-            </button>
-          </form>
-
-          {/* ── Slip ──────────────────────────────────────────────────────── */}
-          <aside className="lg:sticky lg:top-24 lg:self-start">
-            <div className="relative">
-              <div
-                aria-hidden
-                className="absolute -bottom-2.5 -right-2.5 left-3 top-3 rounded-lg border border-line-soft"
-              />
-              <div className="relative rounded-lg border border-line bg-surface">
-                <div className="flex items-center gap-3 border-b border-line-soft px-5 py-3.5">
-                  <p className="whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
-                    Requisition
-                  </p>
-                  <span aria-hidden className="h-px flex-1 bg-line-soft" />
-                </div>
-
-                <dl className="divide-y divide-line-soft">
-                  <div className="flex items-baseline justify-between gap-4 px-5 py-4">
-                    <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-faint">
-                      Group
-                    </dt>
-                    <dd
-                      className={`font-mono text-2xl font-medium leading-none ${
-                        bloodGroup ? 'text-blood' : 'text-line'
-                      }`}
-                    >
-                      {bloodGroup ? bloodGroupLabels[bloodGroup] : '—'}
-                    </dd>
-                  </div>
-
-                  <div className="flex items-baseline justify-between gap-4 px-5 py-4">
-                    <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-faint">
-                      Units
-                    </dt>
-                    <dd className="font-mono text-2xl font-medium leading-none tabular-nums text-bone">
-                      {units}
-                    </dd>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-4 px-5 py-4">
-                    <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-faint">
-                      Urgency
-                    </dt>
-                    <dd>
-                      <Chip tone={urgencyTone[urgency]}>{urgency}</Chip>
-                    </dd>
-                  </div>
-
-                  <div className="px-5 py-4">
-                    <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-faint">
-                      Notes
-                    </dt>
-                    <dd
-                      className={`mt-2 text-sm leading-relaxed ${
-                        notes ? 'text-mute' : 'text-line'
-                      }`}
-                    >
-                      {notes || 'None'}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
+          {/* Section 3: Clinical Notes */}
+          <div className="rounded-3xl border border-line bg-surface/90 p-5 sm:p-7 backdrop-blur-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <span className="font-mono text-xs font-bold text-blood">03 • Clinical Notes (Optional)</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Visible to Donors</span>
             </div>
 
-            {/* Describes what the backend actually does — compatible group,
-                `isAvailable: true`, the 90-day recovery window, expanding radius
-                tiers, top three ranked donors matched. Not a paraphrase of "we
-                notify nearby donors", which was both vaguer and wrong about
-                city-based matching. */}
-            <p className="mt-5 max-w-[18rem] text-xs leading-relaxed text-faint">
-              Up to three donors are notified — compatible blood group, marked available, and
-              past the 90-day recovery window. The search starts within 10 km and widens to
-              100 km if nobody closer is eligible.
-            </p>
-          </aside>
-        </div>
+            <textarea
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g. Trauma patient in Emergency ICU, Room 4B. Immediate cross-match ready."
+              className="w-full rounded-2xl border border-line bg-raised/60 p-3 text-sm text-bone placeholder-faint focus:border-blood focus:outline-none"
+            />
+          </div>
+
+          {/* Broadcast Submit Button */}
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2.5 rounded-2xl bg-blood py-3.5 px-6 text-sm font-bold text-white shadow-[0_0_20px_-3px_rgba(220,38,38,0.5)] transition-all hover:bg-blood-dark active:scale-98 disabled:opacity-60 cursor-pointer"
+            >
+              <Send className="h-4 w-4" />
+              <span>{loading ? 'Transmitting Broadcast...' : 'Broadcast Emergency Requisition'}</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )

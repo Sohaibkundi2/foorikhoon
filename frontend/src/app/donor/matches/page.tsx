@@ -1,20 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { useRouter } from 'next/navigation'
 import api from '@/lib/api'
-import { Check, Inbox } from 'lucide-react'
-import {
-  Chip,
-  EmptyState,
-  SectionLabel,
-  Texture,
-  affirmBtn,
-  ghostBtn,
-  statusTone,
-  urgencyTone
-} from '@/components/fk'
+import { Check, Inbox, Droplet, ArrowLeft, ShieldCheck, MapPin, Calendar, Clock } from 'lucide-react'
+import Link from 'next/link'
+import { Texture } from '@/components/fk'
 
 interface Match {
   id: string
@@ -48,7 +40,6 @@ export default function DonorMatchesPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('ALL')
   const [respondingId, setRespondingId] = useState<string | null>(null)
-  // Blood-bag proof photo opened full size.
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   useEffect(() => {
@@ -60,7 +51,7 @@ export default function DonorMatchesPage() {
   const fetchMatches = async () => {
     try {
       const res = await api.get('/api/donor/matches')
-      setMatches(res.data.matches)
+      setMatches(res.data.matches || [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -80,198 +71,197 @@ export default function DonorMatchesPage() {
     }
   }
 
-  const filteredMatches = activeTab === 'ALL'
-    ? matches
-    : matches.filter(m => m.status === activeTab)
+  const filteredMatches = useMemo(() => {
+    if (activeTab === 'ALL') return matches
+    return matches.filter(m => m.status === activeTab)
+  }, [matches, activeTab])
 
   if (loading) {
     return (
       <div className="flex min-h-[80vh] items-center justify-center">
-        <div className="h-2 w-40 animate-pulse rounded-full bg-raised" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
+          <p className="font-mono text-xs uppercase tracking-widest text-faint">
+            Loading incoming emergency dispatches...
+          </p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="relative overflow-hidden">
-      <Texture />
+    <div className="relative min-h-screen overflow-hidden bg-ink py-8 sm:py-12">
+      <Texture ember={true} grid={true} noise={true} />
 
-      <div className="relative mx-auto max-w-4xl px-6 pb-16 pt-12">
+      <div className="relative mx-auto max-w-5xl px-4 sm:px-6">
+        {/* Navigation Breadcrumb */}
+        <Link
+          href="/donor/dashboard"
+          className="group mb-6 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-mute hover:text-bone transition-colors"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
+          <span>Donor Dashboard</span>
+        </Link>
 
-        {/* Masthead. The count is the headline figure here — this page is a
-            record of what the donor has been asked for, so it leads with how
-            many, not with a restatement of the page name. */}
-        <div className="relative flex flex-wrap items-end justify-between gap-6 border-b border-line pb-7">
-          <span aria-hidden className="absolute -bottom-px left-0 h-px w-10 bg-blood" />
+        {/* Masthead */}
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end border-b border-line pb-6 mb-8">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">Donor</p>
-            <h1 className="mt-4 text-4xl font-semibold leading-none tracking-[-0.04em] text-bone">
-              My Matches
+            <div className="flex items-center gap-2 rounded-full border border-blood/30 bg-blood/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-blood w-fit mb-3">
+              <Droplet className="h-3 w-3 fill-blood" />
+              <span>Transfusion Dispatch Log</span>
+            </div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-bone sm:text-4xl">
+              My Emergency Matches
             </h1>
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-mute">
-              Blood requests you&apos;ve been matched with.
+            <p className="mt-1.5 text-sm text-mute">
+              History of all hospital emergency dispatches routed to your profile.
             </p>
           </div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] tabular-nums text-faint">
-            {matches.length} total
-          </p>
+
+          <div className="rounded-2xl border border-line bg-surface/80 px-4 py-2 text-right font-mono text-xs text-bone">
+            <span className="font-bold text-blood text-lg">{matches.length}</span> Total Requests
+          </div>
         </div>
 
-        {/* Filter rail. A vertical mono list on wide screens instead of a tab
-            strip: the counts line up as a column of figures you can compare,
-            which a horizontal row of pills cannot do. */}
-        <div className="mt-10 grid gap-10 md:grid-cols-[11rem_1fr] md:gap-12">
+        {/* Filter Tabs */}
+        <div className="mb-6 flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+          {TABS.map(tab => {
+            const count = tab === 'ALL'
+              ? matches.length
+              : matches.filter(m => m.status === tab).length
+            const active = activeTab === tab
 
-          <nav aria-label="Filter matches" className="md:border-r md:border-line-soft md:pr-6">
-            <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.2em] text-line">
-              Status
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`shrink-0 flex items-center gap-2 rounded-xl px-4 py-2 font-mono text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                  active
+                    ? 'border border-blood bg-blood text-white font-bold shadow-[0_0_15px_-3px_rgba(220,38,38,0.5)]'
+                    : 'border border-line bg-surface/80 text-mute hover:text-bone hover:border-line-soft'
+                }`}
+              >
+                <span>{tab}</span>
+                <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${
+                  active ? 'bg-white/20 text-white' : 'bg-raised text-faint'
+                }`}>
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Matches List */}
+        {filteredMatches.length === 0 ? (
+          <div className="rounded-2xl border border-line bg-surface/60 p-10 text-center backdrop-blur-md">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-line bg-raised text-mute">
+              <Inbox className="h-6 w-6 text-faint" />
+            </div>
+            <h3 className="mt-4 text-base font-semibold text-bone">No Matches Found</h3>
+            <p className="mt-1 text-xs text-mute">
+              {activeTab === 'ALL'
+                ? 'When a verified medical center alerts your blood group, it will appear here.'
+                : `You currently have no ${activeTab.toLowerCase()} requests.`}
             </p>
-            <ul className="flex flex-wrap gap-x-4 gap-y-1 md:block">
-              {TABS.map(tab => {
-                const count = tab === 'ALL'
-                  ? matches.length
-                  : matches.filter(m => m.status === tab).length
-                const active = activeTab === tab
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredMatches.map(match => {
+              const isPending = match.status === 'PENDING'
+              const isCritical = match.request.urgency === 'CRITICAL'
 
-                return (
-                  <li key={tab}>
-                    <button
-                      onClick={() => setActiveTab(tab)}
-                      aria-current={active ? 'true' : undefined}
-                      className={`group relative flex w-full items-center justify-between gap-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors duration-150 ${
-                        active ? 'text-bone' : 'text-faint hover:text-mute'
-                      }`}
-                    >
-                      {/* The active marker is a rule, not a fill — it reads as a
-                          cursor in a list rather than a selected chip. */}
-                      <span className="flex items-center gap-2.5">
-                        <span
-                          aria-hidden
-                          className={`h-px transition-all duration-200 ${
-                            active ? 'w-4 bg-blood' : 'w-0 bg-transparent group-hover:w-2 group-hover:bg-line'
-                          }`}
-                        />
-                        {tab}
-                      </span>
-                      <span className={`tabular-nums ${active ? 'text-blood' : 'text-line'}`}>
-                        {count}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          </nav>
-
-          {/* Ledger. Each row carries the date in its own left gutter, so the
-              list reads chronologically down the page. */}
-          <div className="min-w-0">
-            <SectionLabel heading>
-              {activeTab === 'ALL' ? 'All matches' : activeTab.toLowerCase()}
-            </SectionLabel>
-
-            {filteredMatches.length === 0 ? (
-              <EmptyState
-                icon={Inbox}
-                title="No matches in this category."
-                hint={
-                  activeTab === 'ALL'
-                    ? 'Requests you are matched with will appear here.'
-                    : `You have no ${activeTab.toLowerCase()} matches.`
-                }
-              />
-            ) : (
-              <ul className="border-t border-line">
-                {filteredMatches.map((match) => (
-                  <li
-                    key={match.id}
-                    className="relative border-b border-line-soft py-6 transition-colors duration-150 hover:bg-surface/50"
-                  >
-                    {match.request.urgency === 'CRITICAL' && match.status === 'PENDING' && (
-                      <span aria-hidden className="absolute inset-y-0 -left-4 w-[2px] bg-blood" />
-                    )}
-
-                    <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
-
-                      <div className="min-w-0 flex-1">
-                        {/* Date sits above the hospital name as a dateline —
-                            small, mono, unemphasised. */}
-                        <p className="font-mono text-[10px] uppercase tracking-[0.16em] tabular-nums text-line">
-                          {new Date(match.createdAt).toLocaleDateString()}
-                        </p>
-
-                        <div className="mt-2 flex flex-wrap items-center gap-2.5">
-                          <span className="truncate text-base font-medium tracking-[-0.01em] text-bone">
-                            {match.request.hospital.name}
-                          </span>
-                          <Chip tone={urgencyTone[match.request.urgency]}>
-                            {match.request.urgency}
-                          </Chip>
-                          <Chip tone={statusTone[match.status]}>{match.status}</Chip>
-                        </div>
-
-                        <p className="mt-1.5 truncate text-xs text-mute">
-                          {match.request.hospital.address}
-                        </p>
-
-                        <p className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.14em] tabular-nums text-faint">
-                          Needs {match.request.units} unit{match.request.units > 1 ? 's' : ''} of{' '}
-                          <span className="text-blood">
-                            {bloodGroupLabels[match.request.bloodGroup] || match.request.bloodGroup}
-                          </span>
-                        </p>
-
-                        {match.status === 'COMPLETED' && match.photoUrl && (
-                          <button
-                            type="button"
-                            onClick={() => setLightboxUrl(match.photoUrl!)}
-                            className="group mt-3.5 flex items-center gap-2.5"
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={match.photoUrl}
-                              alt="Blood bag proof of donation"
-                              className="h-10 w-10 rounded-md border border-line object-cover transition-colors duration-150 group-hover:border-blood/40"
-                            />
-                            <span className="flex items-center gap-1.5 text-xs text-life/80 transition-colors duration-150 group-hover:text-life">
-                              <Check className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
-                              Collection verified by photo
-                            </span>
-                          </button>
-                        )}
+              return (
+                <div
+                  key={match.id}
+                  className={`rounded-2xl border p-5 backdrop-blur-md transition-all ${
+                    isPending && isCritical
+                      ? 'border-blood/50 bg-surface shadow-[0_0_20px_-8px_rgba(220,38,38,0.3)]'
+                      : 'border-line bg-surface/80'
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-start gap-4 min-w-0">
+                      <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl border border-blood/30 bg-blood/10 shadow-inner">
+                        <span className="font-mono text-lg font-bold text-blood">
+                          {bloodGroupLabels[match.request.bloodGroup] || match.request.bloodGroup}
+                        </span>
                       </div>
 
-                      {match.status === 'PENDING' && (
-                        <div className="flex shrink-0 gap-2">
-                          <button
-                            onClick={() => respondToMatch(match.id, 'ACCEPTED')}
-                            disabled={respondingId === match.id}
-                            className={affirmBtn}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-bold text-bone truncate">{match.request.hospital.name}</p>
+                          <span
+                            className={`rounded-md px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
+                              isCritical
+                                ? 'border border-blood bg-blood/20 text-blood'
+                                : 'border border-line bg-raised text-mute'
+                            }`}
                           >
-                            <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-                            Accept
-                          </button>
-                          <button
-                            onClick={() => respondToMatch(match.id, 'DECLINED')}
-                            disabled={respondingId === match.id}
-                            className={ghostBtn}
-                          >
-                            Decline
-                          </button>
+                            {match.request.urgency}
+                          </span>
+                          <span className="rounded-md border border-line bg-raised px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-bone font-medium">
+                            {match.status}
+                          </span>
                         </div>
-                      )}
+
+                        <p className="mt-1 text-xs text-mute truncate">{match.request.hospital.address}</p>
+
+                        <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-faint">
+                          <span>{match.request.units} Unit{match.request.units > 1 ? 's' : ''} Needed</span>
+                          <span>•</span>
+                          <span>{new Date(match.createdAt).toLocaleDateString()}</span>
+                        </div>
+
+                        {match.status === 'COMPLETED' && match.photoUrl && (
+                          <div className="mt-3 flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setLightboxUrl(match.photoUrl!)}
+                              className="h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-line hover:border-blood cursor-pointer"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={match.photoUrl} alt="Bag proof" className="h-full w-full object-cover" />
+                            </button>
+                            <span className="text-xs text-bone font-medium">
+                              Photo-verified collection proof
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+
+                    {isPending && (
+                      <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t border-line sm:border-t-0">
+                        <button
+                          onClick={() => respondToMatch(match.id, 'ACCEPTED')}
+                          disabled={respondingId === match.id}
+                          className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-blood py-2 px-4 text-xs font-semibold text-white shadow hover:bg-blood-dark transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          <span>Accept</span>
+                        </button>
+                        <button
+                          onClick={() => respondToMatch(match.id, 'DECLINED')}
+                          disabled={respondingId === match.id}
+                          className="flex-1 sm:flex-none rounded-xl border border-line bg-raised py-2 px-3 text-xs font-medium text-mute hover:text-bone transition-colors active:scale-95 cursor-pointer disabled:opacity-50"
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        </div>
+        )}
       </div>
 
+      {/* Lightbox for Photo Proof */}
       {lightboxUrl && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
           onClick={() => setLightboxUrl(null)}
         >
           <div className="flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
@@ -279,23 +269,21 @@ export default function DonorMatchesPage() {
             <img
               src={lightboxUrl}
               alt="Blood bag proof of donation"
-              className="max-h-[75vh] max-w-full rounded-xl border border-line"
+              className="max-h-[75vh] max-w-full rounded-2xl border border-line shadow-2xl"
             />
-            <p className="max-w-sm text-center text-xs text-faint">
-              Photo uploaded by the hospital when your donation was collected. Only you and
-              that hospital can view it.
+            <p className="max-w-sm text-center text-xs text-mute">
+              Tamper-proof photo proof uploaded by the hospital upon collection.
             </p>
           </div>
           <button
             type="button"
             onClick={() => setLightboxUrl(null)}
-            className="absolute right-5 top-5 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-mute transition-colors hover:text-bone"
+            className="absolute right-5 top-5 rounded-xl border border-line bg-surface px-3.5 py-2 text-xs font-semibold text-bone hover:border-blood transition-colors cursor-pointer"
           >
             Close
           </button>
         </div>
       )}
-
     </div>
   )
 }

@@ -1,23 +1,31 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { useRouter } from 'next/navigation'
 import api from '@/lib/api'
 import Link from 'next/link'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { ArrowRight, BadgeCheck, Clock, Plus, TriangleAlert } from 'lucide-react'
+import {
+  ArrowRight,
+  BadgeCheck,
+  Clock,
+  Plus,
+  TriangleAlert,
+  Building2,
+  Droplet,
+  Activity,
+  ShieldCheck,
+  Layers,
+  ChevronRight
+} from 'lucide-react'
 import {
   Chip,
   LiveDot,
-  SectionLabel,
-  SegmentMeter,
   Texture,
-  primaryBtn,
-  quietBtn,
-  statusTone,
-  urgencyTone
+  urgencyTone,
+  statusTone
 } from '@/components/fk'
 
 dayjs.extend(relativeTime)
@@ -58,21 +66,7 @@ const bloodGroupLabels: Record<string, string> = {
   AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
 }
 
-/**
- * Below this many units a group counts as low. Not a number invented for the UI —
- * it is the same threshold `hospital.controller.ts` uses to build the `lowStock`
- * array for the analytics endpoint, so the dashboard and the analytics page agree.
- */
 const LOW_STOCK_UNITS = 5
-
-/**
- * The worklist grid. One column template shared by the header row and every data
- * row, so the two cannot drift apart. Below `md` it collapses to a block stack —
- * a five-column table at phone width is unreadable, and a horizontally scrolling
- * one is worse.
- */
-const WORKLIST_COLS =
-  'md:grid md:grid-cols-[4.5rem_minmax(0,1fr)_8rem_7rem_6rem] md:items-center md:gap-x-5'
 
 export default function HospitalDashboard() {
   const { user } = useAuthStore()
@@ -104,8 +98,8 @@ export default function HospitalDashboard() {
         api.get('/api/hospital/inventory'),
       ])
       setHospital(profileRes.data.hospitalProfile)
-      setRequests(requestsRes.data.requests)
-      setInventory(inventoryRes.data.inventory)
+      setRequests(requestsRes.data.requests || [])
+      setInventory(inventoryRes.data.inventory || [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -113,326 +107,319 @@ export default function HospitalDashboard() {
     }
   }
 
-  const activeRequests = requests.filter(r => r.status === 'PENDING' || r.status === 'MATCHED')
-  const pastRequests = requests.filter(r => r.status === 'FULFILLED' || r.status === 'EXPIRED')
+  const activeRequests = useMemo(() => {
+    return requests.filter(r => r.status === 'PENDING' || r.status === 'MATCHED')
+  }, [requests])
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[80vh] items-center justify-center">
-        <div className="h-2 w-40 animate-pulse rounded-full bg-raised" />
-      </div>
-    )
-  }
+  const pastRequests = useMemo(() => {
+    return requests.filter(r => r.status === 'FULFILLED' || r.status === 'EXPIRED')
+  }, [requests])
 
-  // Every figure below is derived from the three payloads already fetched above.
   const fulfilledCount = requests.filter(r => r.status === 'FULFILLED').length
   const unitsOnShelf = inventory.reduce((sum, i) => sum + i.units, 0)
   const lowStock = inventory.filter(i => i.units < LOW_STOCK_UNITS)
   const peakStock = Math.max(...inventory.map(i => i.units), 1)
 
+  if (loading) {
+    return (
+      <div className="flex min-h-[80vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
+          <p className="font-mono text-xs uppercase tracking-widest text-faint">
+            Loading hospital command center & active requests...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="relative overflow-hidden">
-      <Texture ember />
+    <div className="relative min-h-screen overflow-hidden bg-ink py-8 sm:py-12">
+      <Texture ember={true} grid={true} noise={true} />
 
-      <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-12">
-
-        {/* ── Masthead ────────────────────────────────────────────────────
-            Asymmetric: the hospital's identity and its running tally are two
-            different kinds of information, so they get two columns rather than
-            being flattened into one row of equal-weight boxes. */}
-        <div className="grid gap-10 lg:grid-cols-[1fr_17rem] lg:gap-14">
-
-          <div className="min-w-0">
-            <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
+      <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
+        {/* Top Masthead & Telemetry */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_20rem] lg:gap-8 mb-8">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 rounded-full border border-blood/30 bg-blood/10 px-3.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-blood w-fit">
               <LiveDot />
-              Requisition board
-            </p>
-
-            <h1 className="mt-5 text-[2.75rem] font-semibold leading-[0.95] tracking-[-0.04em] text-bone">
-              {hospital?.name}
-            </h1>
-
-            {/* Hairline dividers rather than middot separators — the metadata is
-                a set of distinct fields, not a sentence. */}
-            <div className="mt-4 flex flex-wrap items-center gap-3 font-mono text-[11px] uppercase tracking-[0.14em] text-mute">
-              <span>{hospital?.user.city}</span>
-              {hospital?.address && (
-                <>
-                  <span aria-hidden className="h-2.5 w-px bg-line" />
-                  <span className="normal-case tracking-normal text-faint">{hospital.address}</span>
-                </>
-              )}
-              {hospital?.licenseNo && (
-                <>
-                  <span aria-hidden className="h-2.5 w-px bg-line" />
-                  <span className="tabular-nums text-faint">Lic {hospital.licenseNo}</span>
-                </>
-              )}
+              <span>Hospital Dispatch Console</span>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center gap-2.5">
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-bone sm:text-4xl md:text-5xl">
+                {hospital?.name}
+              </h1>
+              <p className="mt-1.5 text-sm text-mute">
+                {hospital?.user.city} • {hospital?.address}
+                {hospital?.licenseNo && (
+                  <span className="font-mono text-xs text-faint"> (Lic #{hospital.licenseNo})</span>
+                )}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 pt-1">
               {hospital?.verified ? (
-                <Chip tone={statusTone.FULFILLED} icon={BadgeCheck}>Verified</Chip>
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-bone">
+                  <BadgeCheck className="h-4 w-4 text-blood" />
+                  <span>Accredited Medical Center</span>
+                </span>
               ) : (
-                <Chip tone={statusTone.PENDING} icon={Clock}>Pending verification</Chip>
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-amber-300">
+                  <Clock className="h-4 w-4" />
+                  <span>Verification Under Review</span>
+                </span>
               )}
+
               {lowStock.length > 0 && (
-                <Chip tone={urgencyTone.CRITICAL} icon={TriangleAlert}>
-                  {lowStock.length} group{lowStock.length > 1 ? 's' : ''} low
-                </Chip>
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-blood/30 bg-blood/15 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-blood">
+                  <TriangleAlert className="h-4 w-4" />
+                  <span>{lowStock.length} Blood Group{lowStock.length > 1 ? 's' : ''} Deficit</span>
+                </span>
               )}
             </div>
 
-            <div className="mt-9 flex flex-wrap items-center gap-2.5">
-              <Link href="/hospital/request/new" className={primaryBtn}>
-                <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-                New Request
+            <div className="flex flex-wrap items-center gap-3 pt-3">
+              <Link
+                href="/hospital/request/new"
+                className="flex items-center gap-2 rounded-xl bg-blood px-4 py-2.5 text-xs font-semibold text-white shadow-[0_0_20px_-3px_rgba(220,38,38,0.5)] transition-all hover:bg-blood-dark active:scale-95"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Post Emergency Request</span>
               </Link>
-              <Link href="/hospital/requests" className={quietBtn}>All requests</Link>
-              <Link href="/hospital/analytics" className={quietBtn}>Analytics</Link>
-              <Link href="/hospital/profile" className={quietBtn}>Edit profile</Link>
+              <Link
+                href="/hospital/requests"
+                className="rounded-xl border border-line bg-surface px-4 py-2.5 text-xs font-semibold text-mute hover:text-bone hover:border-line-soft transition-colors"
+              >
+                All Requests ({requests.length})
+              </Link>
+              <Link
+                href="/hospital/inventory"
+                className="rounded-xl border border-line bg-surface px-4 py-2.5 text-xs font-semibold text-mute hover:text-bone hover:border-line-soft transition-colors"
+              >
+                Stock Tracker
+              </Link>
+              <Link
+                href="/hospital/analytics"
+                className="rounded-xl border border-line bg-surface px-4 py-2.5 text-xs font-semibold text-mute hover:text-bone hover:border-line-soft transition-colors"
+              >
+                Shortage AI
+              </Link>
             </div>
           </div>
 
-          {/* ── Tally ─────────────────────────────────────────────────────
-              A column of right-aligned figures rather than a row of cards: read
-              down, the four numbers line up on their last digit and can be
-              compared at a glance. Cards in a row cannot do that. */}
-          <div className="relative">
-            <div
-              aria-hidden
-              className="absolute -bottom-2.5 -right-2.5 left-3 top-3 rounded-lg border border-line-soft"
-            />
-            <div className="relative rounded-lg border border-line bg-surface">
-              <div className="flex items-center gap-3 border-b border-line-soft px-5 py-3.5">
-                <p className="whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
-                  Standing count
-                </p>
-                <span aria-hidden className="h-px flex-1 bg-line-soft" />
+          {/* Standing Count Card */}
+          <div className="rounded-3xl border border-line bg-surface/90 p-5 backdrop-blur-xl shadow-2xl space-y-3">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
+                Transfusion Operations
+              </span>
+              <span className="rounded-md border border-line bg-raised px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-blood font-semibold">
+                Live
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="rounded-2xl border border-line bg-raised/40 p-3">
+                <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Total Requests</p>
+                <p className="mt-1 font-mono text-xl font-bold text-bone">{requests.length}</p>
               </div>
 
-              <dl className="divide-y divide-line-soft">
-                {[
-                  { label: 'Requests filed', value: requests.length, tone: 'text-bone' },
-                  { label: 'Active now', value: activeRequests.length, tone: 'text-blood' },
-                  { label: 'Fulfilled', value: fulfilledCount, tone: 'text-life' },
-                  { label: 'Units on shelf', value: unitsOnShelf, tone: 'text-bone' },
-                ].map((row) => (
-                  <div key={row.label} className="flex items-baseline justify-between gap-4 px-5 py-3.5">
-                    <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-faint">
-                      {row.label}
-                    </dt>
-                    <dd className={`font-mono text-2xl font-medium leading-none tabular-nums ${row.tone}`}>
-                      {row.value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
+              <div className="rounded-2xl border border-blood/30 bg-blood/10 p-3">
+                <p className="font-mono text-[9px] uppercase tracking-wider text-blood">Active Now</p>
+                <p className="mt-1 font-mono text-xl font-bold text-blood">{activeRequests.length}</p>
+              </div>
+
+              <div className="rounded-2xl border border-line bg-raised/40 p-3">
+                <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Fulfilled</p>
+                <p className="mt-1 font-mono text-xl font-bold text-bone">{fulfilledCount}</p>
+              </div>
+
+              <div className="rounded-2xl border border-line bg-raised/40 p-3">
+                <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Stocked Units</p>
+                <p className="mt-1 font-mono text-xl font-bold text-bone">{unitsOnShelf}</p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* ── 01 Inventory ─────────────────────────────────────────────────
-            Stock as a bar per group instead of eight equal tiles. Eight tiles
-            make every group look the same until you read all eight numbers; a
-            bar is comparable without reading. Bars are scaled to this
-            hospital's own largest holding — the unit count is printed beside
-            each one so the absolute figure is never inferred from length. */}
-        <section className="mt-16">
-          <SectionLabel
-            heading
-            index="01"
-            aside={
-              <Link
-                href="/hospital/inventory"
-                className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-faint transition-colors hover:text-bone"
-              >
-                Manage
-                <ArrowRight className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-              </Link>
-            }
-          >
-            Blood Inventory
-          </SectionLabel>
+        {/* Section 1: Blood Inventory Health */}
+        <div className="mb-10 rounded-3xl border border-line bg-surface/80 p-5 sm:p-7 backdrop-blur-xl">
+          <div className="flex items-center justify-between border-b border-line pb-4 mb-5">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-bold text-blood">01</span>
+              <h2 className="text-lg font-bold tracking-tight text-bone">
+                Blood Bank Stock Monitor
+              </h2>
+            </div>
+
+            <Link
+              href="/hospital/inventory"
+              className="flex items-center gap-1 font-mono text-xs text-mute hover:text-blood transition-colors"
+            >
+              <span>Manage Units</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
 
           {inventory.length === 0 ? (
-            <div className="border-t border-line py-10">
-              <p className="text-sm text-mute">No inventory added yet.</p>
+            <div className="text-center py-6">
+              <p className="text-xs text-mute">No inventory data recorded for your facility.</p>
               <Link
                 href="/hospital/inventory"
-                className="mt-2 inline-block text-xs text-blood underline decoration-blood/30 underline-offset-4 hover:decoration-blood"
+                className="mt-2 inline-block text-xs font-semibold text-blood hover:underline"
               >
-                Add inventory
+                Add Inventory Units
               </Link>
             </div>
           ) : (
-            <ul className="border-t border-line md:grid md:grid-cols-2 md:gap-x-12">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {inventory.map((item) => {
-                const low = item.units < LOW_STOCK_UNITS
-                return (
-                  <li
-                    key={item.id}
-                    className="flex items-center gap-4 border-b border-line-soft py-3.5"
-                  >
-                    <span className="w-9 shrink-0 font-mono text-sm font-medium tabular-nums text-blood">
-                      {bloodGroupLabels[item.bloodGroup] || item.bloodGroup}
-                    </span>
+                const isLow = item.units < LOW_STOCK_UNITS
+                const pct = Math.min(Math.round((item.units / peakStock) * 100), 100)
 
-                    <div className="min-w-0 flex-1">
-                      <SegmentMeter
-                        value={item.units}
-                        max={peakStock}
-                        segments={12}
-                        tone={low ? 'bg-warn' : 'bg-blood'}
-                      />
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-2xl border p-4 transition-all ${
+                      isLow
+                        ? 'border-blood/40 bg-blood/10 shadow-[0_0_15px_-4px_rgba(220,38,38,0.2)]'
+                        : 'border-line bg-raised/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xl font-extrabold text-blood">
+                        {bloodGroupLabels[item.bloodGroup] || item.bloodGroup}
+                      </span>
+                      {isLow && (
+                        <span className="font-mono text-[9px] uppercase font-bold text-blood">
+                          Deficit
+                        </span>
+                      )}
                     </div>
 
-                    <span className="w-14 shrink-0 text-right font-mono text-sm tabular-nums text-bone">
-                      {item.units}
-                      <span className="ml-1 text-[9px] uppercase tracking-[0.12em] text-faint">u</span>
-                    </span>
+                    <div className="mt-3 flex items-baseline justify-between">
+                      <span className="font-mono text-2xl font-bold text-bone">{item.units}</span>
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Units</span>
+                    </div>
 
-                    {/* The word, not only the colour — low stock is the one thing
-                        on this row a colour-blind reader must not miss. */}
-                    <span className="w-9 shrink-0 text-right font-mono text-[9px] uppercase tracking-[0.12em] text-warn">
-                      {low ? 'Low' : ''}
-                    </span>
-                  </li>
+                    <div className="mt-2.5 h-1.5 w-full rounded-full bg-surface overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          isLow ? 'bg-blood' : 'bg-bone/60'
+                        }`}
+                        style={{ width: `${Math.max(pct, 5)}%` }}
+                      />
+                    </div>
+                  </div>
                 )
               })}
-            </ul>
+            </div>
           )}
-        </section>
+        </div>
 
-        {/* ── 02 Active requests ──────────────────────────────────────────
-            A worklist with a real column header, because that is what this is:
-            a queue somebody works down. Stacked cards hide the comparison that
-            matters — which line has the fewest donors matched against it. */}
-        <section className="mt-16">
-          <SectionLabel
-            heading
-            index="02"
-            aside={
-              <Link
-                href="/hospital/requests"
-                className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-faint transition-colors hover:text-bone"
-              >
-                View all
-                <ArrowRight className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-              </Link>
-            }
-          >
-            Active Requests
-          </SectionLabel>
+        {/* Section 2: Active Requisitions Queue */}
+        <div className="mb-10">
+          <div className="flex items-center justify-between border-b border-line pb-3 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-bold text-blood">02</span>
+              <h2 className="text-lg font-bold tracking-tight text-bone">
+                Active Hospital Requisitions
+              </h2>
+            </div>
+
+            <Link
+              href="/hospital/requests"
+              className="flex items-center gap-1 font-mono text-xs text-mute hover:text-blood transition-colors"
+            >
+              <span>View History</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
 
           {activeRequests.length === 0 ? (
-            <div className="border-t border-line py-10">
-              <p className="text-sm text-mute">No active requests.</p>
+            <div className="rounded-2xl border border-line bg-surface/60 p-8 text-center backdrop-blur-md">
+              <p className="text-sm font-semibold text-bone">No active broadcasts</p>
+              <p className="mt-1 text-xs text-mute">All patient requests have been fulfilled.</p>
               <Link
                 href="/hospital/request/new"
-                className="mt-2 inline-block text-xs text-blood underline decoration-blood/30 underline-offset-4 hover:decoration-blood"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blood py-2 px-4 text-xs font-semibold text-white shadow hover:bg-blood-dark transition-colors"
               >
-                Post a new request
+                <Plus className="h-3.5 w-3.5" />
+                <span>Broadcast New Request</span>
               </Link>
             </div>
           ) : (
-            <div>
-              <div
-                aria-hidden
-                className={`${WORKLIST_COLS} hidden border-y border-line px-4 py-2.5 font-mono text-[9px] uppercase tracking-[0.18em] text-line`}
-              >
-                <span>Group</span>
-                <span>Requirement</span>
-                <span>Urgency</span>
-                <span>Matched</span>
-                <span className="text-right">Filed</span>
-              </div>
+            <div className="space-y-3">
+              {activeRequests.map((req) => {
+                const isCritical = req.urgency === 'CRITICAL'
+                const matched = req.matches?.length ?? 0
 
-              <ul className="border-t border-line md:border-t-0">
-                {activeRequests.map((req) => {
-                  const matched = req.matches?.length ?? 0
-                  return (
-                    <li
-                      key={req.id}
-                      className="relative border-b border-line-soft transition-colors duration-150 hover:bg-surface/60"
-                    >
-                      {/* Critical requests get an edge rather than a coloured row:
-                          it scans down the queue without shouting per line. */}
-                      {req.urgency === 'CRITICAL' && (
-                        <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-blood" />
-                      )}
+                return (
+                  <div
+                    key={req.id}
+                    className={`rounded-2xl border p-4 sm:p-5 transition-all ${
+                      isCritical
+                        ? 'border-blood/40 bg-surface/90 shadow-[0_0_20px_-8px_rgba(220,38,38,0.25)]'
+                        : 'border-line bg-surface/70'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex items-start gap-3.5">
+                        <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl border border-blood/30 bg-blood/10">
+                          <span className="font-mono text-lg font-bold text-blood">
+                            {bloodGroupLabels[req.bloodGroup] || req.bloodGroup}
+                          </span>
+                        </div>
 
-                      <div className={`${WORKLIST_COLS} px-4 py-4`}>
-                        <span className="font-mono text-xl font-medium leading-none tracking-[-0.01em] text-blood">
-                          {bloodGroupLabels[req.bloodGroup] || req.bloodGroup}
-                        </span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-bone">
+                              {req.units} Unit{req.units > 1 ? 's' : ''} Needed
+                            </span>
+                            <span
+                              className={`rounded-md px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
+                                isCritical
+                                  ? 'border border-blood bg-blood/20 text-blood'
+                                  : 'border border-line bg-raised text-mute'
+                              }`}
+                            >
+                              {req.urgency}
+                            </span>
+                            <span className="rounded-md border border-line bg-raised px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-bone font-medium">
+                              {req.status}
+                            </span>
+                          </div>
 
-                        <div className="mt-2 min-w-0 md:mt-0">
-                          <p className="text-sm text-bone">
-                            {req.units} unit{req.units > 1 ? 's' : ''}
-                          </p>
                           {req.notes && (
-                            <p className="mt-1 truncate border-l border-line pl-2.5 text-xs text-mute">
-                              {req.notes}
-                            </p>
+                            <p className="mt-1 text-xs text-mute italic">"{req.notes}"</p>
                           )}
+
+                          <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-faint">
+                            <span className={matched > 0 ? 'text-blood font-bold' : 'text-faint'}>
+                              {matched} Donor{matched !== 1 ? 's' : ''} Alerted
+                            </span>
+                            <span>•</span>
+                            <span>{dayjs(req.createdAt).fromNow()}</span>
+                          </div>
                         </div>
-
-                        <div className="mt-2.5 flex flex-wrap items-center gap-2 md:mt-0">
-                          <Chip tone={urgencyTone[req.urgency]}>{req.urgency}</Chip>
-                          <Chip tone={statusTone[req.status]}>{req.status}</Chip>
-                        </div>
-
-                        <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.12em] tabular-nums md:mt-0">
-                          <span className={matched > 0 ? 'text-bone' : 'text-warn'}>{matched}</span>
-                          <span className="text-faint"> donor{matched !== 1 ? 's' : ''}</span>
-                        </p>
-
-                        <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-faint md:mt-0 md:text-right">
-                          {dayjs(req.createdAt).fromNow()}
-                        </p>
                       </div>
-                    </li>
-                  )
-                })}
-              </ul>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Link
+                          href="/hospital/requests"
+                          className="rounded-xl border border-line bg-raised px-3.5 py-2 text-xs font-semibold text-bone hover:border-blood transition-colors"
+                        >
+                          Manage Matches
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
-        </section>
-
-        {/* ── 03 History ──────────────────────────────────────────────────
-            Closed lines, set tighter than the live queue. Nothing here needs
-            acting on, so it gets less vertical space and no accent. */}
-        {pastRequests.length > 0 && (
-          <section className="mt-16">
-            <SectionLabel heading index="03">Request History</SectionLabel>
-
-            <ul className="border-t border-line">
-              {pastRequests.map((req) => (
-                <li
-                  key={req.id}
-                  className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-line-soft py-3.5"
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="w-9 font-mono text-sm tabular-nums text-mute">
-                      {bloodGroupLabels[req.bloodGroup] || req.bloodGroup}
-                    </span>
-                    <span className="font-mono text-xs tabular-nums text-faint">
-                      {req.units} unit{req.units > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-line">
-                      {dayjs(req.createdAt).fromNow()}
-                    </span>
-                    <Chip tone={statusTone[req.status]}>{req.status}</Chip>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
+        </div>
       </div>
     </div>
   )

@@ -48,8 +48,8 @@ const BADGE_DATA: Record<string, Badge> = {
     name: 'Lifesaver',
     icon: Syringe,
     description: 'You have accepted 5 or more donation requests. You have saved lives.',
-    tone: 'border-life/25 bg-life/10 text-life',
-    text: 'text-life',
+    tone: 'border-blood/25 bg-blood/10 text-blood',
+    text: 'text-blood',
   },
   'Hero': {
     name: 'Hero',

@@ -7,12 +7,23 @@ import BadgePopup, { BadgeShelf } from '@/components/BadgePopup'
 import HeroCertificate from '@/components/HeroCertificate'
 import api from '@/lib/api'
 import Link from 'next/link'
-import { Award, Check, CircleAlert, X } from 'lucide-react'
+import {
+  Award,
+  Check,
+  CircleAlert,
+  X,
+  Droplet,
+  ShieldCheck,
+  MapPin,
+  Calendar,
+  Sparkles,
+  ArrowRight,
+  Clock,
+  Activity
+} from 'lucide-react'
 import {
   Chip,
   LiveDot,
-  SectionLabel,
-  SegmentMeter,
   Texture,
   affirmBtn,
   dangerBtn,
@@ -21,7 +32,6 @@ import {
   statusTone,
   urgencyTone
 } from '@/components/fk'
-
 
 interface DonorProfile {
   id: string
@@ -74,20 +84,19 @@ export default function DonorDashboard() {
   const [hydrated, setHydrated] = useState(false)
   const [certificate, setCertificate] = useState<any>(null)
   const [certificateOpen, setCertificateOpen] = useState(false)
-  // Blood-bag proof photo opened full size.
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
-    useEffect(() => {
-      setHydrated(true)
-    }, [])
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
 
-useEffect(() => {
-  if (!user) { router.push('/login'); return }
-  if (user.role === 'ADMIN') { router.push('/admin/dashboard'); return }
-  if (user.role === 'HOSPITAL') { router.push('/hospital/dashboard'); return }
-  if (user.role !== 'DONOR') { router.push('/'); return }
-  fetchData()
-}, [hydrated, user])
+  useEffect(() => {
+    if (!user) { router.push('/login'); return }
+    if (user.role === 'ADMIN') { router.push('/admin/dashboard'); return }
+    if (user.role === 'HOSPITAL') { router.push('/hospital/dashboard'); return }
+    if (user.role !== 'DONOR') { router.push('/'); return }
+    fetchData()
+  }, [hydrated, user])
 
   const fetchData = async () => {
     try {
@@ -96,8 +105,8 @@ useEffect(() => {
         api.get('/api/donor/matches')
       ])
       setDonor(profileRes.data.donor)
-      setMatches(matchesRes.data.matches)
-      setBadges(profileRes.data.badges)
+      setMatches(matchesRes.data.matches || [])
+      setBadges(profileRes.data.badges || [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -153,349 +162,310 @@ useEffect(() => {
   if (loading) {
     return (
       <div className="flex min-h-[80vh] items-center justify-center">
-        <div className="h-2 w-40 animate-pulse rounded-full bg-raised" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
+          <p className="font-mono text-xs uppercase tracking-widest text-faint">
+            Syncing donor record & nearby emergency matches...
+          </p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="relative overflow-hidden">
-      <Texture ember />
+    <div className="relative min-h-screen overflow-hidden bg-ink py-8 sm:py-12">
+      <Texture ember={true} grid={true} noise={true} />
 
-      <div className="relative mx-auto max-w-5xl px-6 pb-16 pt-12">
+      <div className="relative mx-auto max-w-5xl px-4 sm:px-6">
+        {/* Top Masthead & Live Status */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem] lg:gap-8 mb-8">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 rounded-full border border-blood/30 bg-blood/10 px-3.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-blood w-fit">
+              <LiveDot />
+              <span>On-Call Emergency Network</span>
+            </div>
 
-        {/* ── Masthead ──────────────────────────────────────────────────────
-            Asymmetric on purpose: the greeting and the donor's own record are
-            two different kinds of thing, so they get two different columns
-            rather than being flattened into one row of equal boxes. */}
-        <div className="grid gap-10 lg:grid-cols-[1fr_20rem] lg:gap-14">
-
-          <div className="min-w-0 self-end">
-            <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
-              <LiveDot className={donor?.isAvailable ? 'bg-life' : 'bg-faint'} />
-              Donor dashboard
-            </p>
-
-            <h1 className="mt-5 text-[2.75rem] font-semibold leading-[0.95] tracking-[-0.04em] text-bone">
-              Welcome,{' '}
-              <span className="font-serif text-[3.25rem] font-normal italic tracking-[-0.02em] text-blood">
-                {donor?.user.name?.split(' ')[0] || 'Donor'}
-              </span>
-            </h1>
-
-            <p className="mt-5 font-mono text-[11px] uppercase tracking-[0.16em] text-mute">
-              {donor?.user.city}
-              {donor?.area && <span className="text-faint"> · {donor.area}</span>}
-            </p>
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-bone sm:text-4xl md:text-5xl">
+                Welcome, {donor?.user.name?.split(' ')[0] || 'Donor'}
+              </h1>
+              <p className="mt-2 text-sm text-mute leading-relaxed">
+                Your on-call profile is synchronized with emergency centers in{' '}
+                <span className="text-bone font-semibold">{donor?.user.city}</span>
+                {donor?.area && <span> ({donor.area})</span>}.
+              </p>
+            </div>
 
             {!donor?.area && (
-              <Link
-                href="/donor/profile"
-                className="mt-3 inline-flex items-center gap-2 text-xs text-warn transition-colors hover:text-bone"
-              >
-                <CircleAlert className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                Add your area to get matched with nearby requests
-              </Link>
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 flex items-start gap-2.5">
+                <CircleAlert className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-200">
+                  <span>Add your specific area or GPS coordinates to receive high-priority 10km radius broadcasts. </span>
+                  <Link href="/donor/profile" className="font-semibold underline hover:text-white">
+                    Update Profile &rarr;
+                  </Link>
+                </div>
+              </div>
             )}
 
-            <div className="mt-8 flex flex-wrap items-center gap-2.5">
-              <Link href="/donor/matches" className={ghostBtn}>All my matches</Link>
-              <Link href="/donor/profile" className={quietBtn}>Edit profile</Link>
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <Link
+                href="/donor/matches"
+                className="rounded-xl border border-line bg-raised px-4 py-2 text-xs font-semibold text-bone hover:border-blood transition-colors"
+              >
+                All My Matches ({matches.length})
+              </Link>
+              <Link
+                href="/donor/profile"
+                className="rounded-xl border border-line bg-surface px-4 py-2 text-xs font-semibold text-mute hover:text-bone transition-colors"
+              >
+                Settings & Radius
+              </Link>
             </div>
           </div>
 
-          {/* ── Donor record ────────────────────────────────────────────────
-              Modelled on the tag stapled to a blood bag: a stack of
-              label/value rows divided by hairlines. That is the artifact this
-              screen is actually about, and it carries the three facts that
-              decide everything for a donor — group, availability, eligibility. */}
-          <div className="relative">
-            <div
-              aria-hidden
-              className="absolute -bottom-2.5 -right-2.5 left-2.5 top-2.5 rounded-lg border border-line-soft"
-            />
+          {/* Quick Tag Card */}
+          <div className="rounded-3xl border border-line bg-surface/90 p-5 backdrop-blur-xl shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
+                Donor Record #{donor?.id ? donor.id.slice(0, 8) : '—'}
+              </span>
+              <span className="rounded-md border border-line bg-raised px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-bone font-semibold">
+                Verified
+              </span>
+            </div>
 
-            <div className="relative overflow-hidden rounded-lg border border-line bg-surface">
-
-              <div className="flex items-center justify-between gap-3 border-b border-line-soft px-5 py-3">
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
-                  Donor record
-                </p>
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-line">
-                  {donor?.id ? donor.id.slice(0, 8) : '—'}
-                </p>
-              </div>
-
-              {/* Blood group. The single most consequential field, so it gets
-                  display size rather than another 12px row. */}
-              <div className="flex items-end justify-between gap-4 border-b border-line-soft px-5 py-5">
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
-                  Blood<br />Group
-                </p>
-                <p className="font-mono text-[3.5rem] font-medium leading-[0.85] tracking-[-0.02em] text-blood">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Blood Group</p>
+                <p className="mt-1 font-mono text-3xl font-extrabold text-blood">
                   {donor?.bloodGroup ? bloodGroupLabels[donor.bloodGroup] : '—'}
                 </p>
               </div>
 
-              {/* Availability */}
-              <div className="flex items-center justify-between gap-4 border-b border-line-soft px-5 py-4">
-                <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
-                    Availability
-                  </p>
-                  <p className={`mt-1.5 text-sm font-medium ${donor?.isAvailable ? 'text-life' : 'text-mute'}`}>
-                    {donor?.isAvailable ? 'Available' : 'Unavailable'}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={donor?.isAvailable ?? false}
-                  aria-label="Availability"
-                  onClick={toggleAvailability}
-                  disabled={toggling}
-                  className={`relative h-5 w-10 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-60 ${
-                    donor?.isAvailable ? 'bg-life' : 'bg-raised'
-                  }`}
-                >
-                  <span
-                    aria-hidden
-                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-bone transition-transform duration-200 ${
-                      donor?.isAvailable ? 'translate-x-5' : 'translate-x-0.5'
+              <div className="text-right">
+                <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Availability</p>
+                <div className="mt-1.5 flex items-center justify-end gap-2">
+                  <span className="font-mono text-xs font-semibold text-bone">
+                    {donor?.isAvailable ? 'Active' : 'Paused'}
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={donor?.isAvailable ?? false}
+                    aria-label="Toggle availability"
+                    onClick={toggleAvailability}
+                    disabled={toggling}
+                    className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 cursor-pointer disabled:opacity-50 border border-red-400 ${
+                      donor?.isAvailable ? 'bg-blood shadow-[0_0_12px_-2px_rgba(220,38,38,0.7)]' : 'bg-raised'
                     }`}
-                  />
-                </button>
+                  >
+                    <span
+                      className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform duration-200 ${
+                        donor?.isAvailable ? 'translate-x-1' : 'translate-x-[-15px]'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
+            </div>
 
-              {/* Eligibility */}
-              <div className="border-b border-line-soft px-5 py-4">
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
-                  Eligibility
+            <div className="grid grid-cols-2 gap-2 border-t border-line pt-3">
+              <div>
+                <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Eligibility</p>
+                <p className="mt-0.5 text-xs font-bold text-bone">
+                  {daysLeft === null || daysLeft === 0 ? 'Eligible to Donate' : `${daysLeft}d recovery remaining`}
                 </p>
-                {daysLeft === null ? (
-                  <p className="mt-1.5 text-sm font-medium text-life">Ready to donate</p>
-                ) : daysLeft === 0 ? (
-                  <p className="mt-1.5 text-sm font-medium text-life">Ready to donate</p>
-                ) : (
-                  <p className="mt-1.5 flex items-baseline gap-2">
-                    <span className="text-2xl font-semibold tracking-[-0.03em] tabular-nums text-bone">
-                      {daysLeft}
-                    </span>
-                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
-                      days until eligible
-                    </span>
-                  </p>
-                )}
               </div>
 
-              {/* Commitment */}
-              <div className="px-5 py-4">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
-                    Commitment
-                  </p>
-                  <p className="font-mono text-sm tabular-nums text-bone">
-                    {donor?.commitmentScore ?? 0}
-                    <span className="text-line">/100</span>
-                  </p>
-                </div>
-                <div className="mt-3">
-                  <SegmentMeter value={donor?.commitmentScore ?? 0} />
-                </div>
+              <div className="text-right">
+                <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Reliability Score</p>
+                <p className="mt-0.5 font-mono text-xs font-bold text-bone">
+                  {donor?.commitmentScore ?? 0} <span className="text-mute font-normal">/ 100</span>
+                </p>
               </div>
-
             </div>
           </div>
         </div>
 
-        {/* Badge popup is a modal; it renders nothing inline. */}
+        {/* Badge Popup Modal */}
         <BadgePopup badges={badges} donorId={donor?.id || ''} />
 
-        {/* ── Pending requests ─────────────────────────────────────────────
-            The one part of this page that asks the donor for something, so it
-            comes first and is set as a decision, not a table row. */}
-        <div className="mt-16">
-          <SectionLabel
-            heading
-            index="01"
-            aside={
-              pendingMatches.length > 0 && (
-                <span className="rounded-full border border-blood/25 bg-blood/10 px-2 py-0.5 font-mono text-[10px] tabular-nums text-blood">
-                  {pendingMatches.length}
+        {/* Section 1: Pending Emergency Broadcasts */}
+        <div className="mb-10">
+          <div className="flex items-center justify-between border-b border-line pb-3 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-bold text-blood">01</span>
+              <h2 className="text-lg font-bold tracking-tight text-bone">
+                Incoming Emergency Dispatches
+              </h2>
+              {pendingMatches.length > 0 && (
+                <span className="rounded-full bg-blood px-2 py-0.5 font-mono text-[10px] font-bold text-white shadow">
+                  {pendingMatches.length} New
                 </span>
-              )
-            }
-          >
-            Pending Requests
-          </SectionLabel>
+              )}
+            </div>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
+              15-Min Auto-Escalation
+            </span>
+          </div>
 
           {pendingMatches.length === 0 ? (
-            <div className="border-t border-line py-10">
-              <p className="text-sm text-mute">No pending requests right now.</p>
-              <p className="mt-1.5 text-xs text-faint">
-                Make sure your availability is turned on.
+            <div className="rounded-2xl border border-line bg-surface/60 p-6 text-center backdrop-blur-md">
+              <p className="text-sm font-semibold text-bone">No pending emergency matches</p>
+              <p className="mt-1 text-xs text-mute">
+                Keep your availability active. When a verified hospital posts an emergency matching your blood group, you will receive an alert.
               </p>
             </div>
           ) : (
-            <ul className="border-t border-line">
+            <div className="space-y-3">
               {pendingMatches.map((match) => (
-                <li
+                <div
                   key={match.id}
-                  className="relative border-b border-line-soft transition-colors duration-150 hover:bg-surface/60"
+                  className="rounded-2xl border border-blood/40 bg-surface/90 p-4 sm:p-5 shadow-[0_0_20px_-8px_rgba(220,38,38,0.25)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
                 >
-                  {match.request.urgency === 'CRITICAL' && (
-                    <span aria-hidden className="absolute inset-y-0 left-0 w-[2px] bg-blood" />
-                  )}
-
-                  <div className="flex flex-wrap items-center gap-x-6 gap-y-4 py-6 pl-5 pr-1">
-
-                    {/* Blood group gutter — a specimen label, mono and plain,
-                        no tinted tile. */}
-                    <div className="w-16 shrink-0">
-                      <p className="font-mono text-2xl font-medium leading-none tracking-[-0.01em] text-blood">
+                  <div className="flex items-start gap-3.5">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-blood/30 bg-blood/10">
+                      <span className="font-mono text-lg font-bold text-blood">
                         {bloodGroupLabels[match.request.bloodGroup] || match.request.bloodGroup}
-                      </p>
-                      <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.14em] tabular-nums text-faint">
-                        {match.request.units} unit{match.request.units > 1 ? 's' : ''}
-                      </p>
+                      </span>
                     </div>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        <span className="truncate text-base font-medium tracking-[-0.01em] text-bone">
-                          {match.request?.hospital.name}
-                        </span>
-                        <Chip tone={urgencyTone[match.request.urgency]}>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-bone">{match.request.hospital.name}</p>
+                        <span className="rounded-md border border-blood bg-blood/20 px-2 py-0.5 font-mono text-[9px] uppercase font-bold text-blood">
                           {match.request.urgency}
-                        </Chip>
+                        </span>
                       </div>
-                      <p className="mt-1.5 truncate text-xs text-mute">
-                        {match.request.hospital.address}
+                      <p className="mt-0.5 text-xs text-mute">{match.request.hospital.address}</p>
+                      <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-faint">
+                        {match.request.units} Unit{match.request.units > 1 ? 's' : ''} Needed • Phone revealed upon acceptance
                       </p>
                     </div>
-
-                    <div className="flex shrink-0 gap-2">
-                      <button onClick={() => respondToMatch(match.id, 'ACCEPTED')} className={affirmBtn}>
-                        <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-                        Accept
-                      </button>
-                      <button onClick={() => respondToMatch(match.id, 'DECLINED')} className={ghostBtn}>
-                        Decline
-                      </button>
-                    </div>
-
                   </div>
-                </li>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => respondToMatch(match.id, 'ACCEPTED')}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-blood py-2 px-4 text-xs font-semibold text-white shadow hover:bg-blood-dark transition-all active:scale-95 cursor-pointer"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      <span>Accept Match</span>
+                    </button>
+                    <button
+                      onClick={() => respondToMatch(match.id, 'DECLINED')}
+                      className="flex-1 sm:flex-none rounded-xl border border-line bg-raised py-2 px-3 text-xs font-medium text-mute hover:text-bone transition-colors active:scale-95 cursor-pointer"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </div>
 
-        {/* ── Badges ───────────────────────────────────────────────────────── */}
+        {/* Section 2: Badges */}
         {badges.length > 0 && (
-          <div className="mt-14">
-            <SectionLabel
-              heading
-              index="02"
-              aside={
-                <span className="font-mono text-[11px] tabular-nums text-faint">
-                  {badges.length} earned
-                </span>
-              }
-            >
-              Your Badges
-            </SectionLabel>
+          <div className="mb-10">
+            <div className="flex items-center justify-between border-b border-line pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold text-blood">02</span>
+                <h2 className="text-lg font-bold tracking-tight text-bone">
+                  Transfusion Achievements & Badges
+                </h2>
+              </div>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
+                {badges.length} Earned
+              </span>
+            </div>
             <BadgeShelf badges={badges} />
           </div>
         )}
 
-        {/* ── History ───────────────────────────────────────────────────────
-            A ledger, not cards: same columns every row, figures right-aligned
-            and tabular, so a donor can scan their own record down the page. */}
+        {/* Section 3: Donation History */}
         {pastMatches.length > 0 && (
-          <div className="mt-14">
-            <SectionLabel heading index={badges.length > 0 ? '03' : '02'}>
-              Match History
-            </SectionLabel>
+          <div>
+            <div className="flex items-center justify-between border-b border-line pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold text-blood">03</span>
+                <h2 className="text-lg font-bold tracking-tight text-bone">
+                  Transfusion History & Proofs
+                </h2>
+              </div>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
+                {pastMatches.length} Records
+              </span>
+            </div>
 
-            <ul className="border-t border-line">
+            <div className="rounded-2xl border border-line bg-surface/80 divide-y divide-line overflow-hidden">
               {pastMatches.map((match) => (
-                <li
+                <div
                   key={match.id}
-                  className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-line-soft py-4 pl-5 pr-1"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 gap-3 hover:bg-raised/40 transition-colors"
                 >
-                  <div className="w-16 shrink-0">
-                    <p className="font-mono text-sm font-medium leading-none text-blood">
-                      {bloodGroupLabels[match.request.bloodGroup]}
-                    </p>
-                    <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.14em] tabular-nums text-faint">
-                      {match.request.units} unit{match.request.units > 1 ? 's' : ''}
-                    </p>
-                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-raised font-mono text-xs font-bold text-blood">
+                      {bloodGroupLabels[match.request.bloodGroup] || match.request.bloodGroup}
+                    </div>
 
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
                     {match.status === 'COMPLETED' && match.photoUrl && (
                       <button
                         type="button"
                         onClick={() => setLightboxUrl(match.photoUrl!)}
-                        title="View proof of donation"
-                        className="group shrink-0"
+                        title="View photo proof of collection"
+                        className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-line cursor-pointer hover:border-blood"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={match.photoUrl}
-                          alt="Blood bag proof of donation"
-                          className="h-10 w-10 rounded-md border border-line object-cover transition-colors duration-150 group-hover:border-blood/40"
+                          alt="Blood bag proof"
+                          className="h-full w-full object-cover"
                         />
                       </button>
                     )}
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-bone">
-                        {match.request.hospital.name}
+
+                    <div>
+                      <p className="text-xs font-semibold text-bone">{match.request.hospital.name}</p>
+                      <p className="font-mono text-[10px] uppercase tracking-wider text-mute">
+                        {match.request.units} Unit{match.request.units > 1 ? 's' : ''} • Status: {match.status}
                       </p>
-                      {match.status === 'COMPLETED' && match.photoUrl && (
-                        <p className="mt-1 flex items-center gap-1.5 text-xs text-life/80">
-                          <Check className="h-3 w-3 shrink-0" strokeWidth={2.5} aria-hidden />
-                          Collection verified by photo
-                        </p>
-                      )}
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 items-center gap-3">
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
                     {match.status === 'COMPLETED' && (
-                      <button onClick={() => viewCertificate(match.id)} className={dangerBtn}>
-                        <Award className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                        View Certificate
+                      <button
+                        onClick={() => viewCertificate(match.id)}
+                        className="flex items-center gap-1.5 rounded-xl border border-blood/30 bg-blood/10 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-blood hover:bg-blood/20 transition-colors cursor-pointer"
+                      >
+                        <Award className="h-3.5 w-3.5" />
+                        <span>Hero Certificate</span>
                       </button>
                     )}
-                    <Chip tone={statusTone[match.status]}>{match.status}</Chip>
+                    <span className="rounded-md border border-line bg-raised px-2 py-1 font-mono text-[9px] uppercase tracking-wider text-mute font-semibold">
+                      {match.status}
+                    </span>
                   </div>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         )}
-
       </div>
 
+      {/* Hero Certificate Modal */}
       {certificateOpen && certificate && (
-        // The OVERLAY scrolls, not the panel. A flex child centred with `items-center`
-        // that grows taller than the viewport overflows in both directions at once, and
-        // the part above the top edge cannot be scrolled to — so once the photo opt-in
-        // row was added to the card, the Copy/Download buttons went off-screen with no
-        // way to reach them. `min-h-full` on the inner wrapper lets it grow past the
-        // viewport instead of being clipped by the centring, which keeps the card
-        // centred on tall screens and fully reachable on short ones.
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm">
           <div className="flex min-h-full items-center justify-center p-3 sm:p-4">
-            <div className="relative rounded-xl border border-line bg-surface p-4 sm:p-5">
+            <div className="relative rounded-3xl border border-line bg-surface p-5 sm:p-6 max-w-xl w-full shadow-2xl">
               <button
                 onClick={() => setCertificateOpen(false)}
                 aria-label="Close certificate"
-                className="absolute right-3 top-3 z-10 text-mute transition-colors hover:text-bone"
+                className="absolute right-4 top-4 z-10 rounded-full border border-line bg-raised p-1.5 text-mute hover:text-bone transition-colors cursor-pointer"
               >
-                <X className="h-4 w-4" strokeWidth={2} aria-hidden />
+                <X className="h-4 w-4" />
               </button>
               <HeroCertificate
                 donorName={certificate.donorName}
@@ -513,9 +483,10 @@ useEffect(() => {
         </div>
       )}
 
+      {/* Proof Lightbox */}
       {lightboxUrl && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
           onClick={() => setLightboxUrl(null)}
         >
           <div className="flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
@@ -523,23 +494,21 @@ useEffect(() => {
             <img
               src={lightboxUrl}
               alt="Blood bag proof of donation"
-              className="max-h-[75vh] max-w-full rounded-xl border border-line"
+              className="max-h-[75vh] max-w-full rounded-2xl border border-line shadow-2xl"
             />
-            <p className="max-w-sm text-center text-xs text-faint">
-              Photo uploaded by the hospital when your donation was collected. Only you and
-              that hospital can view it.
+            <p className="max-w-sm text-center text-xs text-mute">
+              Tamper-proof photo uploaded by the hospital upon physical donation collection.
             </p>
           </div>
           <button
             type="button"
             onClick={() => setLightboxUrl(null)}
-            className="absolute right-5 top-5 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-mute transition-colors hover:text-bone"
+            className="absolute right-5 top-5 rounded-xl border border-line bg-surface px-3.5 py-2 text-xs font-semibold text-bone hover:border-blood transition-colors cursor-pointer"
           >
             Close
           </button>
         </div>
       )}
-
     </div>
   )
 }

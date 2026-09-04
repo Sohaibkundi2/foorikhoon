@@ -6,17 +6,21 @@ import Link from 'next/link'
 import api from '@/lib/api'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { ArrowLeft, ArrowRight, Check, Link2, SearchX, ShieldCheck } from 'lucide-react'
 import {
-  Chip,
-  PageHead,
-  Stat,
-  Texture,
-  primaryBtnLg,
-  quietBtn,
-  statusTone,
-  urgencyTone
-} from '@/components/fk'
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Link2,
+  SearchX,
+  ShieldCheck,
+  Building2,
+  MapPin,
+  Clock,
+  Droplet,
+  Share2,
+  HeartHandshake
+} from 'lucide-react'
+import { Texture, LiveDot } from '@/components/fk'
 
 dayjs.extend(relativeTime)
 
@@ -39,153 +43,228 @@ export default function RequestDetailPage() {
   }, [id])
 
   const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  const handleWhatsAppShare = () => {
+    if (!request || typeof window === 'undefined') return
+    const bloodType = bloodGroupLabels[request.bloodGroup] || request.bloodGroup
+    const text = encodeURIComponent(
+      `🚨 EMERGENCY BLOOD NEEDED (${bloodType})\n` +
+      `Hospital: ${request.hospital?.name || 'Verified Hospital'}\n` +
+      `Units: ${request.units} Units\n` +
+      `City: ${request.hospital?.user?.city || 'Pakistan'}\n` +
+      `Respond here: ${window.location.href}`
+    )
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
   }
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-2xl space-y-4 px-6 py-12">
-        <div className="h-3 w-32 animate-pulse rounded bg-surface" />
-        <div className="h-7 w-56 animate-pulse rounded bg-surface" />
-        <div className="h-52 animate-pulse rounded-xl bg-surface" />
-        <div className="h-20 animate-pulse rounded-xl bg-surface" />
+      <div className="relative min-h-screen bg-ink flex items-center justify-center p-6">
+        <Texture ember={true} />
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
+          <p className="font-mono text-xs uppercase tracking-widest text-faint">
+            Retrieving emergency case details...
+          </p>
+        </div>
       </div>
     )
   }
 
   if (!request) {
     return (
-      <div className="relative flex min-h-[70vh] items-center justify-center overflow-hidden px-6">
-        <Texture />
-        <div className="relative max-w-sm text-center">
-          <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-raised">
-            <SearchX className="h-5 w-5 text-faint" strokeWidth={1.75} aria-hidden />
+      <div className="relative flex min-h-[80vh] items-center justify-center overflow-hidden px-6 bg-ink">
+        <Texture ember={true} />
+        <div className="relative max-w-sm text-center rounded-2xl border border-line bg-surface/80 p-8 backdrop-blur-md">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-line bg-raised">
+            <SearchX className="h-6 w-6 text-faint" />
           </div>
-          <h2 className="text-xl font-semibold tracking-[-0.02em] text-bone">Request not found</h2>
-          <p className="mt-2 text-sm leading-relaxed text-mute">
-            This request may have expired or been fulfilled.
+          <h2 className="text-xl font-bold tracking-tight text-bone">Request Not Found</h2>
+          <p className="mt-2 text-xs text-mute leading-relaxed">
+            This emergency transmission may have been fulfilled or expired.
           </p>
-          <Link href="/requests" className={`mt-7 ${primaryBtnLg}`}>
-            View all requests
-            <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
+          <Link
+            href="/requests"
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blood px-4 py-2.5 text-xs font-semibold text-white shadow hover:bg-blood-dark transition-colors"
+          >
+            <span>View Active Requests</span>
+            <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       </div>
     )
   }
 
+  const isCritical = request.urgency === 'CRITICAL'
+  const bloodType = bloodGroupLabels[request.bloodGroup] || request.bloodGroup
+
   return (
-    <div className="relative overflow-hidden">
-      <Texture ember />
+    <div className="relative min-h-screen overflow-hidden bg-ink py-8 sm:py-12">
+      <Texture ember={true} grid={true} noise={true} />
 
-      <div className="relative mx-auto max-w-2xl px-6 py-12">
-
-        {/* Back */}
+      <div className="relative mx-auto max-w-3xl px-4 sm:px-6">
+        {/* Navigation Back */}
         <Link
           href="/requests"
-          className="mb-7 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-faint transition-colors hover:text-bone"
+          className="group mb-6 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-mute hover:text-bone transition-colors"
         >
-          <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Back to requests
+          <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
+          <span>All Requests</span>
         </Link>
 
-        <PageHead
-          eyebrow="Blood request"
-          title={request.hospital?.name}
-          lede={<>{request.hospital?.user?.city} · {request.hospital?.address}</>}
-          actions={
-            <button onClick={handleShare} className={quietBtn}>
-              {copied ? (
-                <Check className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-              ) : (
-                <Link2 className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-              )}
-              {copied ? 'Copied' : 'Share'}
-            </button>
-          }
-        />
+        {/* Main Emergency Detail Card */}
+        <div className="overflow-hidden rounded-3xl border border-line bg-surface/90 shadow-2xl backdrop-blur-xl">
+          {/* Header Banner */}
+          <div className="border-b border-line bg-raised/50 p-5 sm:p-7">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`rounded-lg px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider ${
+                    isCritical
+                      ? 'border border-blood bg-blood/20 text-blood shadow-[0_0_12px_-2px_rgba(220,38,38,0.5)]'
+                      : request.urgency === 'URGENT'
+                      ? 'border border-amber-500/30 bg-amber-500/10 text-amber-300'
+                      : 'border border-line bg-raised text-mute'
+                  }`}
+                >
+                  {request.urgency} Emergency
+                </span>
 
-        {/* What is needed */}
-        <div className="mb-4 overflow-hidden rounded-xl border border-line bg-surface">
-          <div className="flex flex-wrap items-center gap-5 px-6 py-6">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-blood/25 bg-blood/10">
-              <span className="font-mono text-2xl font-medium tracking-[0.02em] text-blood">
-                {bloodGroupLabels[request.bloodGroup] || request.bloodGroup}
+                <span className="rounded-lg border border-line bg-surface px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-bone">
+                  Status: {request.status}
+                </span>
+              </div>
+
+              <span className="font-mono text-xs text-faint">
+                {dayjs(request.createdAt).fromNow()}
               </span>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Chip tone={urgencyTone[request.urgency]}>{request.urgency}</Chip>
-              <Chip tone={statusTone[request.status]}>{request.status}</Chip>
+
+            <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="space-y-1">
+                <h1 className="text-2xl font-extrabold tracking-tight text-bone sm:text-3xl">
+                  {request.hospital?.name}
+                </h1>
+                <p className="flex items-center gap-1.5 text-xs text-mute sm:text-sm">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-blood" />
+                  <span>{request.hospital?.user?.city ? `${request.hospital.user.city} • ` : ''}{request.hospital?.address}</span>
+                </p>
+              </div>
+
               {request.hospital?.verified && (
-                <Chip tone="text-life bg-life/10 border-life/25" icon={ShieldCheck}>
-                  Verified hospital
-                </Chip>
+                <div className="flex items-center gap-1.5 rounded-xl border border-line bg-surface/80 px-3 py-1.5 self-start sm:self-auto">
+                  <ShieldCheck className="h-4 w-4 text-blood" />
+                  <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-bone">
+                    Verified Medical Center
+                  </span>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Two figures, divided by the same hairline that closes the panel
-              header — inline rather than via <Lattice> because this grid has to
-              lose its own border and radius to sit inside the card. */}
-          <div className="grid grid-cols-2 gap-px border-t border-line-soft bg-line-soft">
-            <Stat label="Units needed" value={request.units} />
-            <Stat label="Donors notified" value={request.matches?.length || 0} />
+          {/* Blood Specs Grid */}
+          <div className="grid grid-cols-1 divide-y divide-line sm:grid-cols-3 sm:divide-y-0 sm:divide-x">
+            <div className="flex items-center gap-4 p-5 sm:p-6">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-blood/30 bg-blood/10 shadow-inner">
+                <span className="font-mono text-2xl font-bold tracking-tight text-blood">
+                  {bloodType}
+                </span>
+              </div>
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Blood Group</p>
+                <p className="text-base font-bold text-bone mt-0.5">{bloodType} Universal Need</p>
+              </div>
+            </div>
+
+            <div className="p-5 sm:p-6 flex flex-col justify-center">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Volume Needed</p>
+              <p className="mt-0.5 font-mono text-2xl font-bold text-bone">
+                {request.units} <span className="text-xs font-normal text-mute">Bags / Units</span>
+              </p>
+            </div>
+
+            <div className="p-5 sm:p-6 flex flex-col justify-center">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Geo-Matched Pool</p>
+              <p className="mt-0.5 font-mono text-2xl font-bold text-bone">
+                {request.matches?.length || 0} <span className="text-xs font-normal text-mute">Donors Alerted</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Clinical Notes */}
+          {request.notes && (
+            <div className="border-t border-line p-5 sm:p-6 bg-surface/40">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">
+                Clinical Notes / Patient Details
+              </p>
+              <p className="mt-2 text-sm text-bone/90 leading-relaxed italic border-l-2 border-blood pl-3">
+                "{request.notes}"
+              </p>
+            </div>
+          )}
+
+          {/* Action Footer */}
+          <div className="border-t border-line bg-raised/40 p-5 sm:p-7 space-y-4">
+            {request.status === 'PENDING' ? (
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <Link
+                  href="/register"
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blood py-3 px-5 text-center text-sm font-semibold text-white shadow-[0_0_20px_-4px_rgba(220,38,38,0.5)] transition-all hover:bg-blood-dark active:scale-98"
+                >
+                  <HeartHandshake className="h-4 w-4" />
+                  <span>I Can Donate — Register Now</span>
+                </Link>
+
+                <button
+                  onClick={handleWhatsAppShare}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-line bg-surface py-3 px-4 text-xs font-semibold text-bone hover:bg-raised transition-colors active:scale-98 cursor-pointer"
+                >
+                  <Share2 className="h-4 w-4 text-blood" />
+                  <span>WhatsApp Alert</span>
+                </button>
+
+                <button
+                  onClick={handleShare}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-line bg-surface py-3 px-4 text-xs font-semibold text-bone hover:bg-raised transition-colors active:scale-98 cursor-pointer"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4 text-blood" />
+                      <span>Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Link2 className="h-4 w-4" />
+                      <span>Copy Link</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-line bg-surface p-4 text-center">
+                <p className="text-sm font-semibold text-bone">This request is marked as {request.status.toLowerCase()}.</p>
+                <p className="text-xs text-mute mt-1">Thank you to all community donors who responded.</p>
+                <Link
+                  href="/requests"
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-blood hover:underline"
+                >
+                  <span>Browse active emergencies</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            )}
+
+            <p className="text-center font-mono text-[9px] uppercase tracking-wider text-faint">
+              Direct Contact Details Disclosed Exclusively Upon Donor Match Acceptance
+            </p>
           </div>
         </div>
-
-        {/* Notes — the hospital's own words, and the one line on this page that
-            gets the serif. Everything else here is a figure or an enum. */}
-        {request.notes && (
-          <div className="relative mb-4 border-t border-line pt-6">
-            <span aria-hidden className="absolute -top-px left-0 h-px w-10 bg-blood" />
-            <p className="mb-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
-              Notes from the hospital
-            </p>
-            <p className="font-serif text-xl italic leading-snug text-bone">
-              {request.notes}
-            </p>
-          </div>
-        )}
-
-        {/* Timing */}
-        <div className="mb-8 flex flex-wrap justify-between gap-6 border-t border-line-soft pt-5">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">Posted</p>
-            <p className="mt-1.5 text-sm text-bone">{dayjs(request.createdAt).fromNow()}</p>
-          </div>
-          <div className="text-right">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">Expires</p>
-            <p className="mt-1.5 text-sm text-bone">
-              {request.expiresAt ? dayjs(request.expiresAt).fromNow() : 'No expiry set'}
-            </p>
-          </div>
-        </div>
-
-        {/* CTA */}
-        {request.status === 'PENDING' && (
-          <Link href="/register" className={`w-full ${primaryBtnLg}`}>
-            I can help — Register as donor
-            <ArrowRight className="h-4 w-4" strokeWidth={2} aria-hidden />
-          </Link>
-        )}
-
-        {request.status !== 'PENDING' && (
-          <div className="text-center">
-            <p className="text-sm text-mute">
-              This request has been {request.status.toLowerCase()}.
-            </p>
-            <Link
-              href="/requests"
-              className="mt-2 inline-flex items-center gap-1.5 text-sm text-bone underline decoration-line underline-offset-4 transition-colors hover:decoration-blood"
-            >
-              View other requests
-              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-            </Link>
-          </div>
-        )}
-
       </div>
     </div>
   )

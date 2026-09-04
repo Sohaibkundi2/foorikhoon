@@ -374,7 +374,7 @@ export const dangerBtn =
   'inline-flex items-center justify-center gap-2 rounded-md border border-blood/25 bg-blood/10 px-4 py-2 text-sm font-medium text-blood transition-colors duration-150 hover:bg-blood/20 disabled:cursor-not-allowed disabled:opacity-50'
 
 export const affirmBtn =
-  'inline-flex items-center justify-center gap-2 rounded-md border border-life/25 bg-life/10 px-4 py-2 text-sm font-medium text-life transition-colors duration-150 hover:bg-life/20 disabled:cursor-not-allowed disabled:opacity-50'
+  'inline-flex items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 py-2 text-sm font-medium text-bone transition-colors duration-150 hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50'
 
 /**
  * Neutral sibling of `dangerBtn` / `affirmBtn`, for the third action in a row.
@@ -391,26 +391,25 @@ export const noticeClass =
 /* ------------------------------------------------------------------ tone --- */
 
 /**
- * Enum → class. Four families only: blood for danger, warn for the middle tier,
- * life for good news, and neutral bone/faint for states that are neither. A fifth
- * hue would mean the colour is decorative rather than meaning something.
+ * Enum → class. Clean obsidian and crimson palette: blood for danger/action,
+ * warn for middle tier, bone/raised for standard status. No green or purple tones.
  */
 export const urgencyTone: Record<string, string> = {
   CRITICAL: 'text-blood bg-blood/10 border-blood/25',
   URGENT: 'text-warn bg-warn/10 border-warn/25',
-  NORMAL: 'text-life bg-life/10 border-life/25',
+  NORMAL: 'text-bone bg-raised border-line',
 }
 
 export const statusTone: Record<string, string> = {
   // BloodRequest.status
   PENDING: 'text-warn bg-warn/10 border-warn/25',
   MATCHED: 'text-bone bg-raised border-line',
-  FULFILLED: 'text-life bg-life/10 border-life/25',
+  FULFILLED: 'text-bone bg-surface border-line-soft',
   EXPIRED: 'text-faint bg-faint/10 border-faint/20',
   // Match.status adds these three; PENDING and NO_SHOW are shared.
-  ACCEPTED: 'text-life bg-life/10 border-life/25',
+  ACCEPTED: 'text-bone bg-raised border-line',
   DECLINED: 'text-faint bg-faint/10 border-faint/20',
-  COMPLETED: 'text-life bg-life/10 border-life/25',
+  COMPLETED: 'text-bone bg-surface border-line-soft',
   NO_SHOW: 'text-blood-lite bg-blood-deep/40 border-blood/25',
 }
 
@@ -419,7 +418,7 @@ export const riskTone: Record<string, string> = {
   CRITICAL: 'text-blood bg-blood/10 border-blood/25',
   HIGH: 'text-warn bg-warn/10 border-warn/25',
   MODERATE: 'text-bone bg-raised border-line',
-  LOW: 'text-life bg-life/10 border-life/25',
+  LOW: 'text-bone bg-surface border-line-soft',
 }
 
 /**

@@ -5,8 +5,21 @@ import { useAuthStore } from '@/store/authStore'
 import { useRouter } from 'next/navigation'
 import api from '@/lib/api'
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight, Boxes, TriangleAlert } from 'lucide-react'
-import { Chip, EmptyState, SectionLabel, Texture, quietBtn, urgencyTone } from '@/components/fk'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Boxes,
+  TriangleAlert,
+  Activity,
+  BarChart3,
+  TrendingUp,
+  Percent,
+  Calendar,
+  Layers,
+  ShieldCheck,
+  Plus
+} from 'lucide-react'
+import { Texture } from '@/components/fk'
 
 interface Inventory {
   id: string
@@ -25,23 +38,18 @@ interface Analytics {
 }
 
 const bloodGroupLabels: Record<string, string> = {
-  A_POS: 'A+', A_NEG: 'A−', B_POS: 'B+', B_NEG: 'B−',
-  AB_POS: 'AB+', AB_NEG: 'AB−', O_POS: 'O+', O_NEG: 'O−'
+  A_POS: 'A+',
+  A_NEG: 'A−',
+  B_POS: 'B+',
+  B_NEG: 'B−',
+  AB_POS: 'AB+',
+  AB_NEG: 'AB−',
+  O_POS: 'O+',
+  O_NEG: 'O−'
 }
 
-const TOTAL_GROUPS = Object.keys(bloodGroupLabels).length
-
-/**
- * The one threshold in this file that isn't invented for the UI: it is the same
- * `units < 5` the analytics controller uses to build `lowStock`, so the figure,
- * the chips and the rule on the chart all agree with the payload.
- *
- * The previous version of this page also drew "Critical" under 5 and "Good" at
- * 10 or more. Ten is not a number the backend knows anything about, so a group
- * sitting at 9 was being called merely adequate on no evidence. Both invented
- * tiers are gone; a group is low or it isn't, and the exact count is printed.
- */
 const LOW_STOCK_UNITS = 5
+const TOTAL_GROUPS = Object.keys(bloodGroupLabels).length
 
 export default function HospitalAnalyticsPage() {
   const { user } = useAuthStore()
@@ -50,11 +58,18 @@ export default function HospitalAnalyticsPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user) { router.push('/login'); return }
-    if (user.role !== 'HOSPITAL') { router.push('/'); return }
+    if (!user) {
+      router.push('/login')
+      return
+    }
+    if (user.role !== 'HOSPITAL') {
+      router.push('/')
+      return
+    }
 
-    api.get('/api/hospital/analytics')
-      .then(res => setAnalytics(res.data.analytics))
+    api
+      .get('/api/hospital/analytics')
+      .then((res) => setAnalytics(res.data.analytics))
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [user])
@@ -62,7 +77,12 @@ export default function HospitalAnalyticsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[80vh] items-center justify-center">
-        <div className="h-2 w-40 animate-pulse rounded-full bg-raised" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
+          <p className="font-mono text-xs uppercase tracking-widest text-faint">
+            Aggregating clinical analytics & demand telemetry...
+          </p>
+        </div>
       </div>
     )
   }
@@ -72,250 +92,300 @@ export default function HospitalAnalyticsPage() {
   const { inventory, lowStock, totalRequests, fulfilled, fulfillmentRate } = analytics
   const unfulfilled = Math.max(0, totalRequests - fulfilled)
 
-  // Chart scale. Held at one above the threshold so the low-stock rule is always
-  // drawn inside the plot rather than clipped off the top of a hospital whose
-  // largest holding is two units.
-  const peak = Math.max(...inventory.map(i => i.units), 0)
-  const chartMax = Math.max(peak, LOW_STOCK_UNITS + 1)
+  const peak = Math.max(...inventory.map((i) => i.units), 0)
+  const chartMax = Math.max(peak, LOW_STOCK_UNITS + 2)
   const thresholdPct = (LOW_STOCK_UNITS / chartMax) * 100
 
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative min-h-screen overflow-hidden pb-28">
       <Texture />
 
-      <div className="relative mx-auto max-w-4xl px-6 pb-20 pt-12">
-
+      <div className="relative mx-auto max-w-5xl px-4 pt-10 sm:px-6 sm:pt-14">
+        {/* Navigation Breadcrumb */}
         <Link
           href="/hospital/dashboard"
-          className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-faint transition-colors hover:text-bone"
+          className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-faint transition-colors hover:text-bone"
         >
-          <ArrowLeft className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
-          Back to dashboard
+          <ArrowLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+          Back to Command Center
         </Link>
 
-        {/* Masthead. The fulfilment figure is set alongside the title rather than
-            in a card below it — it is the one number that summarises the whole
-            report, and dropping it into a grid of four equal tiles was the old
-            page's way of saying it mattered no more than the others. */}
-        <div className="mt-7 grid items-end gap-8 border-b border-line pb-8 md:grid-cols-[1fr_auto] md:gap-14">
+        {/* Masthead */}
+        <div className="relative mt-7 flex flex-wrap items-end justify-between gap-6 border-b border-line pb-8">
+          <span aria-hidden className="absolute -bottom-px left-0 h-px w-14 bg-blood" />
           <div className="min-w-0">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-blood">Hospital</p>
-            <h1 className="mt-4 text-4xl font-semibold leading-none tracking-[-0.04em] text-bone">
-              Analytics
+            <div className="flex items-center gap-3">
+              <span className="flex h-2 w-2 rounded-full bg-blood" />
+              <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-blood">
+                Clinical Intelligence
+              </p>
+            </div>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-bone sm:text-4xl">
+              Demand & Reserve Telemetry
             </h1>
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-mute">
-              Your request activity and current stock, counted from every request you have filed.
+            <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-mute">
+              Real-time audit of hospital emergency dispatches, fulfillment ratios, and regional
+              antigen supply levels.
             </p>
           </div>
 
-          <div className="md:text-right">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
-              Fulfilment rate
+          {/* Large Hero Metric */}
+          <div className="rounded-xl border border-line bg-surface p-5 sm:text-right">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-faint">
+              Fulfillment Efficacy
             </p>
-            <p className="mt-2 font-mono text-[4rem] font-medium leading-[0.8] tabular-nums text-bone">
+            <p className="mt-1 font-mono text-4xl font-bold tracking-tight text-bone sm:text-5xl">
               {fulfillmentRate}
-              <span className="ml-1 align-top text-xl text-blood">%</span>
+              <span className="ml-1 text-2xl font-normal text-blood">%</span>
+            </p>
+            <p className="mt-1 font-mono text-[11px] text-faint">
+              {fulfilled} of {totalRequests} emergency calls met
             </p>
           </div>
         </div>
 
-        {/* Fulfilment split. One rule divided in proportion, which is the whole of
-            what a percentage means, and the two counts underneath so the ratio is
-            never read off pixel widths alone. */}
-        <section className="pt-9">
-          <div
-            className="flex h-1.5 overflow-hidden rounded-full bg-raised"
-            role="img"
-            aria-label={`${fulfilled} of ${totalRequests} requests fulfilled`}
-          >
-            {totalRequests > 0 && (
+        {/* Fulfillment Ratio Visualizer */}
+        <div className="mt-8 rounded-xl border border-line bg-surface p-5 sm:p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Percent className="h-4 w-4 text-blood" />
+              <span className="font-mono text-xs uppercase tracking-wider text-bone">
+                Fulfillment Distribution (All Time)
+              </span>
+            </div>
+            <span className="font-mono text-xs tabular-nums text-faint">
+              {totalRequests} Total Cases
+            </span>
+          </div>
+
+          {/* Bar track */}
+          <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-raised">
+            {totalRequests > 0 ? (
               <>
-                <span className="bg-life" style={{ width: `${fulfillmentRate}%` }} />
-                <span className="flex-1 bg-line" />
+                <div
+                  className="bg-blood transition-all duration-500"
+                  style={{ width: `${fulfillmentRate}%` }}
+                />
+                <div className="flex-1 bg-line" />
               </>
+            ) : (
+              <div className="w-full bg-line-soft" />
             )}
           </div>
 
-          <div className="mt-3.5 flex flex-wrap items-baseline gap-x-8 gap-y-2 font-mono text-[10px] uppercase tracking-[0.14em]">
-            <span className="flex items-center gap-2 text-mute">
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-life" />
-              <span className="tabular-nums text-bone">{fulfilled}</span> fulfilled
-            </span>
-            <span className="flex items-center gap-2 text-mute">
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-line" />
-              <span className="tabular-nums text-bone">{unfulfilled}</span> not fulfilled
-            </span>
-            <span className="text-faint">All time</span>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-4 font-mono text-[11px]">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-blood" />
+                <span className="text-mute">
+                  Fulfilled Cases: <strong className="text-bone">{fulfilled}</strong> (
+                  {totalRequests > 0 ? fulfillmentRate : 0}%)
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-line" />
+                <span className="text-mute">
+                  Unfulfilled / Active: <strong className="text-bone">{unfulfilled}</strong>
+                </span>
+              </div>
+            </div>
+            <span className="text-faint">Source: ForiKhoon Dispatch Core</span>
           </div>
-        </section>
+        </div>
 
-        {/* ── 01 Activity ──────────────────────────────────────────────────── */}
-        <section className="pt-12">
-          <SectionLabel heading index="01">Request Activity</SectionLabel>
+        {/* Section 01: Core Activity Counters */}
+        <div className="mt-10">
+          <div className="flex items-center justify-between border-b border-line pb-4">
+            <div className="flex items-center gap-2.5">
+              <Activity className="h-4 w-4 text-blood" />
+              <h2 className="font-mono text-xs uppercase tracking-wider text-bone">
+                01. Requisition Activity
+              </h2>
+            </div>
+            <span className="font-mono text-[11px] text-faint">Trailing 30 Days vs All-Time</span>
+          </div>
 
-          {/* Three counts on one baseline with hairlines between them. A card each
-              would put three borders around three integers. */}
-          <dl className="grid gap-px overflow-hidden border-y border-line bg-line-soft sm:grid-cols-3">
-            <div className="bg-ink px-1 py-5 sm:px-5">
-              <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-faint">
-                This month
-              </dt>
-              <dd className="mt-2.5 font-mono text-3xl font-medium leading-none tabular-nums text-bone">
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-line bg-surface p-5">
+              <div className="flex items-center justify-between text-faint">
+                <span className="font-mono text-[10px] uppercase tracking-widest">This Month</span>
+                <Calendar className="h-4 w-4" />
+              </div>
+              <p className="mt-3 font-mono text-3xl font-bold tracking-tight text-bone">
                 {analytics.totalRequestsThisMonth}
-              </dd>
-              <dd className="mt-2 text-xs text-faint">requests filed since the 1st</dd>
+              </p>
+              <p className="mt-1.5 text-xs text-mute">Cases initiated since 1st of this month</p>
             </div>
 
-            <div className="bg-ink px-1 py-5 sm:px-5">
-              <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-faint">
-                All time
-              </dt>
-              <dd className="mt-2.5 font-mono text-3xl font-medium leading-none tabular-nums text-bone">
+            <div className="rounded-xl border border-line bg-surface p-5">
+              <div className="flex items-center justify-between text-faint">
+                <span className="font-mono text-[10px] uppercase tracking-widest">
+                  Total Dispatches
+                </span>
+                <TrendingUp className="h-4 w-4" />
+              </div>
+              <p className="mt-3 font-mono text-3xl font-bold tracking-tight text-bone">
                 {totalRequests}
-              </dd>
-              <dd className="mt-2 text-xs text-faint">requests filed in total</dd>
+              </p>
+              <p className="mt-1.5 text-xs text-mute">Cumulative requests broadcast by facility</p>
             </div>
 
-            <div className="bg-ink px-1 py-5 sm:px-5">
-              <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-faint">
-                Most requested
-              </dt>
-              <dd
-                className={`mt-2.5 font-mono text-3xl font-medium leading-none ${
-                  analytics.mostRequested ? 'text-blood' : 'text-line'
-                }`}
-              >
+            <div className="rounded-xl border border-line bg-surface p-5">
+              <div className="flex items-center justify-between text-faint">
+                <span className="font-mono text-[10px] uppercase tracking-widest">
+                  Peak Deficit Group
+                </span>
+                <BarChart3 className="h-4 w-4 text-blood" />
+              </div>
+              <p className="mt-3 font-mono text-3xl font-bold tracking-tight text-blood">
                 {analytics.mostRequested
                   ? bloodGroupLabels[analytics.mostRequested] ?? analytics.mostRequested
                   : '—'}
-              </dd>
-              <dd className="mt-2 text-xs text-faint">
+              </p>
+              <p className="mt-1.5 text-xs text-mute">
                 {analytics.mostRequested
-                  ? 'the group you have filed for most often'
-                  : 'no requests filed yet'}
-              </dd>
+                  ? 'Most requested antigen profile by your doctors'
+                  : 'No hospital requests recorded yet'}
+              </p>
             </div>
-          </dl>
-        </section>
+          </div>
+        </div>
 
-        {/* ── 02 Stock profile ─────────────────────────────────────────────── */}
-        <section className="pt-12">
-          {/* The manage link goes through `aside` rather than sitting beside the
-              label in a justify-between row — SectionLabel's hairline is a
-              `flex-1` child, and it collapses to nothing the moment the label
-              itself is shrunk to its content width. */}
-          <SectionLabel
-            heading
-            index="02"
-            aside={
-              <Link href="/hospital/inventory" className={quietBtn}>
-                Manage inventory
-                <ArrowRight className="h-3 w-3" strokeWidth={2} aria-hidden />
-              </Link>
-            }
-          >
-            Stock Profile
-          </SectionLabel>
+        {/* Section 02: Stock Profile Distribution Chart */}
+        <div className="mt-12">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
+            <div className="flex items-center gap-2.5">
+              <Boxes className="h-4 w-4 text-blood" />
+              <h2 className="font-mono text-xs uppercase tracking-wider text-bone">
+                02. Reserve Distribution By Antigen Group
+              </h2>
+            </div>
+            <Link
+              href="/hospital/inventory"
+              className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-mute transition hover:text-bone"
+            >
+              Update Shelf Quantities
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
 
           {inventory.length === 0 ? (
-            <EmptyState
-              icon={Boxes}
-              title="No stock recorded yet."
-              hint="Set your unit counts on the inventory page and they will be charted here."
-            />
+            <div className="mt-6 rounded-xl border border-line bg-surface p-12 text-center">
+              <Boxes className="mx-auto h-8 w-8 text-faint" />
+              <p className="mt-4 text-sm font-medium text-bone">No inventory levels recorded</p>
+              <p className="mt-1 text-xs text-mute">
+                Initialize stock values on the inventory page to activate distribution telemetry.
+              </p>
+              <Link
+                href="/hospital/inventory"
+                className="mt-6 inline-flex items-center gap-2 rounded-md bg-blood px-4 py-2 font-mono text-xs uppercase tracking-wider text-white"
+              >
+                Go to Inventory
+              </Link>
+            </div>
           ) : (
-            <>
-              {/* Columns rather than the horizontal meters used on the inventory
-                  page: this is the same eight numbers read as a profile — which
-                  groups are thin relative to the rest — and the low-stock rule
-                  cutting across them is the point of drawing it at all. */}
-              <div className="relative h-44 border-b border-line">
+            <div className="mt-6 rounded-xl border border-line bg-surface p-6">
+              {/* Chart Plot Area */}
+              <div className="relative h-56 border-b border-line pb-2">
+                {/* Low Stock Threshold Guideline */}
                 <div
                   aria-hidden
-                  className="absolute inset-x-0 border-t border-dashed border-warn/45"
+                  className="absolute inset-x-0 border-t border-dashed border-warn/50"
                   style={{ bottom: `${thresholdPct}%` }}
                 >
-                  <span className="absolute -top-4 right-0 font-mono text-[9px] uppercase tracking-[0.14em] text-warn/80">
-                    Low below {LOW_STOCK_UNITS}
+                  <span className="absolute -top-4 right-0 font-mono text-[10px] uppercase tracking-wider text-warn">
+                    Depletion Alert (&lt; {LOW_STOCK_UNITS} Units)
                   </span>
                 </div>
 
-                <ul className="flex h-full items-end gap-2 sm:gap-3">
-                  {inventory.map(item => {
+                {/* Vertical Bars */}
+                <div className="flex h-full items-end gap-2 sm:gap-4">
+                  {inventory.map((item) => {
                     const isLow = item.units < LOW_STOCK_UNITS
                     const pct = (item.units / chartMax) * 100
 
                     return (
-                      <li key={item.id} className="flex h-full flex-1 flex-col justify-end">
-                        <span className="mb-1.5 text-center font-mono text-[11px] tabular-nums text-bone">
+                      <div key={item.id} className="flex h-full flex-1 flex-col justify-end">
+                        <span className="mb-2 text-center font-mono text-xs font-semibold tabular-nums text-bone">
                           {item.units}
                         </span>
-                        <span
-                          className={`w-full rounded-t-[2px] transition-[height] duration-500 ${
-                            isLow ? 'bg-warn/70' : 'bg-blood'
+                        <div
+                          className={`w-full rounded-t-sm transition-all duration-500 ${
+                            isLow ? 'bg-warn' : 'bg-blood'
                           }`}
-                          // A group at zero still gets a visible stub, otherwise
-                          // its column vanishes and the group reads as missing
-                          // from the chart rather than empty on the shelf.
-                          style={{ height: `${Math.max(pct, 1.5)}%` }}
+                          style={{ height: `${Math.max(pct, 2.5)}%` }}
                         />
-                      </li>
+                      </div>
                     )
                   })}
-                </ul>
+                </div>
               </div>
 
-              <ul className="mt-2.5 flex gap-2 sm:gap-3" aria-hidden>
-                {inventory.map(item => (
-                  <li
+              {/* X-axis Labels */}
+              <div className="mt-3 flex gap-2 sm:gap-4">
+                {inventory.map((item) => (
+                  <div
                     key={item.id}
-                    className="flex-1 text-center font-mono text-[11px] font-medium text-mute"
+                    className="flex-1 text-center font-mono text-xs font-semibold uppercase text-mute"
                   >
                     {bloodGroupLabels[item.bloodGroup] ?? item.bloodGroup}
-                  </li>
-                ))}
-              </ul>
-
-              <p className="mt-5 text-xs leading-relaxed text-faint">
-                {inventory.length} of {TOTAL_GROUPS} blood groups are on record
-                {inventory.length < TOTAL_GROUPS
-                  ? ' — the rest have never had a unit count set, so they are not charted.'
-                  : '.'}{' '}
-                Columns are scaled to your largest holding, so they compare groups against each
-                other rather than against a target.
-              </p>
-            </>
-          )}
-        </section>
-
-        {/* ── 03 Low stock ─────────────────────────────────────────────────── */}
-        {lowStock.length > 0 && (
-          <section className="pt-12">
-            <SectionLabel heading index="03">Running Low</SectionLabel>
-
-            <div className="relative border-t border-line pt-6">
-              <span aria-hidden className="absolute -top-px left-0 h-px w-10 bg-warn" />
-              <div className="flex items-start gap-3">
-                <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-warn" strokeWidth={2} aria-hidden />
-                <div className="min-w-0">
-                  <p className="text-sm text-bone">
-                    {lowStock.length} blood group{lowStock.length !== 1 ? 's' : ''} below{' '}
-                    {LOW_STOCK_UNITS} units.
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {lowStock.map(item => (
-                      <Chip key={item.id} tone={urgencyTone.URGENT}>
-                        {bloodGroupLabels[item.bloodGroup] ?? item.bloodGroup} — {item.units}{' '}
-                        unit{item.units !== 1 ? 's' : ''}
-                      </Chip>
-                    ))}
                   </div>
+                ))}
+              </div>
+
+              <p className="mt-6 font-mono text-[11px] text-faint">
+                {inventory.length} of {TOTAL_GROUPS} antigen profiles mapped. Bars scale relative to
+                maximum active stock ({peak} units).
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Section 03: Critical Depletion Alerts */}
+        {lowStock.length > 0 && (
+          <div className="mt-12 rounded-xl border border-warn/30 bg-warn/5 p-6">
+            <div className="flex items-start gap-4">
+              <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-warn" />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-warn">
+                      Critical Shortage Detected
+                    </h3>
+                    <p className="mt-1 text-xs text-mute">
+                      {lowStock.length} blood group{lowStock.length > 1 ? 's' : ''} currently hold
+                      fewer than {LOW_STOCK_UNITS} emergency units.
+                    </p>
+                  </div>
+                  <Link
+                    href="/hospital/request/new"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-blood px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wider text-white shadow transition hover:bg-blood-dark"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Broadcast Emergency Request
+                  </Link>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2.5">
+                  {lowStock.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-2 rounded-md border border-warn/30 bg-surface px-3 py-1.5 font-mono text-xs"
+                    >
+                      <span className="font-bold text-warn">
+                        {bloodGroupLabels[item.bloodGroup] ?? item.bloodGroup}
+                      </span>
+                      <span className="text-faint">|</span>
+                      <span className="text-bone">
+                        {item.units} unit{item.units !== 1 ? 's' : ''} remaining
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-          </section>
+          </div>
         )}
-
       </div>
     </div>
   )

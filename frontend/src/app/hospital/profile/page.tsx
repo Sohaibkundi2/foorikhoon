@@ -5,16 +5,21 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import api from '@/lib/api'
 import Link from 'next/link'
-import { ArrowLeft, BadgeCheck, Check, CircleAlert, Clock, MapPin } from 'lucide-react'
 import {
-  Field,
-  SectionLabel,
-  Texture,
-  inputClass,
-  noticeClass,
-  primaryBtn,
-  quietBtn
-} from '@/components/fk'
+  ArrowLeft,
+  BadgeCheck,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  MapPin,
+  Building2,
+  Compass,
+  Phone,
+  ShieldCheck,
+  FileBadge,
+  Save
+} from 'lucide-react'
+import { Texture } from '@/components/fk'
 
 export default function HospitalProfilePage() {
   const { user } = useAuthStore()
@@ -40,7 +45,7 @@ export default function HospitalProfilePage() {
     setLocationError('')
 
     if (!navigator.geolocation) {
-      setLocationError('unavailable')
+      setLocationError('Geolocation services are unavailable in your browser.')
       return
     }
 
@@ -56,7 +61,11 @@ export default function HospitalProfilePage() {
       },
       (err) => {
         console.error('Geolocation error:', err)
-        setLocationError(err.code === err.PERMISSION_DENIED ? 'permission_denied' : 'unavailable')
+        setLocationError(
+          err.code === err.PERMISSION_DENIED
+            ? 'Location access was denied. You can manually enter your hospital address below.'
+            : 'Unable to acquire precise GPS signal. Please enter your address manually.'
+        )
         setLocatingInProgress(false)
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -64,8 +73,14 @@ export default function HospitalProfilePage() {
   }
 
   useEffect(() => {
-    if (!user) { router.push('/login'); return }
-    if (user.role !== 'HOSPITAL') { router.push('/'); return }
+    if (!user) {
+      router.push('/login')
+      return
+    }
+    if (user.role !== 'HOSPITAL') {
+      router.push('/')
+      return
+    }
     fetchProfile()
   }, [user])
 
@@ -77,10 +92,10 @@ export default function HospitalProfilePage() {
       setAddress(hospitalProfile.address || '')
       setLicenseNo(hospitalProfile.licenseNo || '')
       setVerified(hospitalProfile.verified || false)
-      setPhone(hospitalProfile.user.phone || '')
-      setCity(hospitalProfile.user.city || '')
+      setPhone(hospitalProfile.user?.phone || '')
+      setCity(hospitalProfile.user?.city || '')
     } catch (err) {
-      console.error(err)
+      console.error('Failed to fetch hospital profile:', err)
     } finally {
       setLoading(false)
     }
@@ -91,23 +106,25 @@ export default function HospitalProfilePage() {
     setError('')
     setSuccess(false)
 
-    if (!name || !city || (!address && !(locationMethod === 'gps' && coords))) {
-      setError('Please fill in all required fields')
+    if (!name.trim() || !city.trim() || (!address.trim() && !(locationMethod === 'gps' && coords))) {
+      setError('Please provide hospital name, city, and a valid location or address.')
       return
     }
 
     try {
       setSaving(true)
       await api.put('/api/hospital/profile', {
-        name, phone, city,
+        name,
+        phone,
+        city,
         ...(locationMethod === 'gps' && coords
           ? { latitude: coords.latitude, longitude: coords.longitude }
           : { address }),
       })
       setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
+      setTimeout(() => setSuccess(false), 3500)
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to save changes.')
+      setError(err?.response?.data?.message || 'Failed to save hospital credentials.')
     } finally {
       setSaving(false)
     }
@@ -116,254 +133,341 @@ export default function HospitalProfilePage() {
   if (loading) {
     return (
       <div className="flex min-h-[80vh] items-center justify-center">
-        <div className="h-2 w-40 animate-pulse rounded-full bg-raised" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
+          <p className="font-mono text-xs uppercase tracking-widest text-faint">
+            Loading hospital credentials & registry status...
+          </p>
+        </div>
       </div>
     )
   }
 
-  const requiredAside = (
-    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-blood/70">
-      Required
-    </span>
-  )
-
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative min-h-screen overflow-hidden pb-36">
       <Texture />
 
-      <div className="relative mx-auto max-w-4xl px-6 pb-32 pt-12">
-
+      <div className="relative mx-auto max-w-4xl px-4 pt-10 sm:px-6 sm:pt-14">
+        {/* Navigation Breadcrumb */}
         <Link
           href="/hospital/dashboard"
-          className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-faint transition-colors hover:text-bone"
+          className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-faint transition-colors hover:text-bone"
         >
-          <ArrowLeft className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
-          Back to dashboard
+          <ArrowLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+          Back to Command Center
         </Link>
 
-        {/* Masthead. The registration plate on the right is this page's organising
-            idea: a hospital's license number and verification state are the two
-            things about it that are not editable, so they are set apart from the
-            form rather than sitting inside it as a disabled input. */}
-        <div className="mt-7 grid gap-10 border-b border-line pb-8 lg:grid-cols-[1fr_16rem] lg:gap-14">
-          <div className="relative min-w-0">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-blood">Hospital</p>
-            <h1 className="mt-4 text-4xl font-semibold leading-none tracking-[-0.04em] text-bone">
-              Edit Profile
+        {/* Masthead */}
+        <div className="relative mt-7 flex flex-wrap items-end justify-between gap-6 border-b border-line pb-8">
+          <span aria-hidden className="absolute -bottom-px left-0 h-px w-14 bg-blood" />
+          <div className="min-w-0">
+            <div className="flex items-center gap-3">
+              <span className="flex h-2 w-2 rounded-full bg-blood" />
+              <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-blood">
+                Registry Credentials
+              </p>
+            </div>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-bone sm:text-4xl">
+              Hospital Profile & Verification
             </h1>
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-mute">
-              Update your hospital information.
+            <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-mute">
+              Official institutional parameters used to authenticate clinical blood requisitions
+              and compute donor proximity dispatches.
             </p>
           </div>
+        </div>
 
-          <div className="relative">
-            <div
-              aria-hidden
-              className="absolute -bottom-2.5 -right-2.5 left-3 top-3 rounded-lg border border-line-soft"
-            />
-            <div className="relative rounded-lg border border-line bg-surface">
-              <div className="flex items-center gap-3 border-b border-line-soft px-5 py-3.5">
-                <p className="whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
-                  Registration
-                </p>
-                <span aria-hidden className="h-px flex-1 bg-line-soft" />
+        {/* Registration & License Status Banner */}
+        <div className="mt-8 rounded-xl border border-line bg-surface p-5 sm:p-6">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-line bg-raised text-bone">
+                <FileBadge className="h-6 w-6 text-blood" />
               </div>
-
-              <div className="px-5 py-4">
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-faint">
-                  License number
+              <div>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="font-mono text-xs uppercase tracking-wider text-faint">
+                    Institutional License
+                  </span>
+                  {verified ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-raised px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-bone">
+                      <BadgeCheck className="h-3.5 w-3.5 text-bone" />
+                      Verified Institution
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-warn/30 bg-warn/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-warn">
+                      <Clock className="h-3.5 w-3.5 text-warn" />
+                      Verification Pending Review
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1.5 font-mono text-xl font-bold tracking-tight text-bone">
+                  {licenseNo || 'UNLICENSED / TEST RECORD'}
                 </p>
-                <p className="mt-2 break-all font-mono text-lg tabular-nums text-bone">
-                  {licenseNo || '—'}
-                </p>
-                <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-line">
-                  Cannot be changed
-                </p>
-              </div>
-
-              <div
-                className={`flex items-start gap-2.5 border-t px-5 py-4 ${
-                  verified
-                    ? 'border-life/20 bg-life/[0.06]'
-                    : 'border-warn/20 bg-warn/[0.06]'
-                }`}
-              >
-                {verified ? (
-                  <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-life" strokeWidth={2} aria-hidden />
-                ) : (
-                  <Clock className="mt-0.5 h-4 w-4 shrink-0 text-warn" strokeWidth={2} aria-hidden />
-                )}
-                <p className={`text-xs leading-relaxed ${verified ? 'text-life-lite' : 'text-warn'}`}>
+                <p className="mt-1 text-xs text-mute">
                   {verified
-                    ? 'Your hospital is verified by ForiKhoon admin.'
-                    : 'Your hospital is pending verification. An admin will review your details soon.'}
+                    ? 'PMDC / Healthcare Commission record confirmed by ForiKhoon National Network.'
+                    : 'Your hospital registration is currently under review by system administrators.'}
                 </p>
               </div>
+            </div>
+
+            <div className="rounded-lg border border-line-soft bg-raised/50 p-3 text-right">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
+                Account Authority
+              </span>
+              <p className="mt-1 font-mono text-xs font-medium text-bone">
+                {user?.email || 'N/A'}
+              </p>
+              <p className="mt-0.5 font-mono text-[10px] text-faint">Role: CLINICAL_HOSPITAL</p>
             </div>
           </div>
         </div>
 
+        {/* Feedback Alerts */}
         {error && (
-          <div className={`mt-7 ${noticeClass}`}>
-            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+          <div className="mt-6 flex items-start gap-3 rounded-xl border border-blood/30 bg-blood/10 p-4 text-xs text-blood-lite">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-blood" />
             <span>{error}</span>
           </div>
         )}
 
         {success && (
-          <div className="mt-7 flex items-start gap-2.5 rounded-md border border-life/25 bg-life/10 px-3.5 py-3 text-sm text-life-lite">
-            <Check className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
-            <span>Profile updated successfully.</span>
+          <div className="mt-6 flex items-start gap-3 rounded-xl border border-line bg-surface p-4 text-xs text-bone shadow-lg">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-bone" />
+            <span>Hospital profile credentials and coordinates successfully updated.</span>
           </div>
         )}
 
-        <form onSubmit={handleSave} className="max-w-2xl">
+        {/* Edit Form */}
+        <form onSubmit={handleSave} className="mt-8 space-y-8">
+          {/* Section 01: Hospital Identity */}
+          <div className="rounded-xl border border-line bg-surface p-6">
+            <div className="flex items-center gap-3 border-b border-line pb-4">
+              <Building2 className="h-4 w-4 text-blood" />
+              <h2 className="font-mono text-xs uppercase tracking-wider text-bone">
+                01. Facility Identity
+              </h2>
+            </div>
 
-          {/* ── 01 Hospital ─────────────────────────────────────────────── */}
-          <section className="pt-11">
-            <SectionLabel heading index="01">Hospital Information</SectionLabel>
+            <div className="mt-6 grid gap-6">
+              <div>
+                <label
+                  htmlFor="hospital-name"
+                  className="block font-mono text-[11px] uppercase tracking-wider text-faint"
+                >
+                  Hospital / Clinical Facility Name <span className="text-blood">*</span>
+                </label>
+                <input
+                  id="hospital-name"
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Shaukat Khanum Memorial Hospital"
+                  className="mt-2 w-full rounded-md border border-line bg-raised px-4 py-3 text-sm text-bone placeholder:text-faint outline-none transition focus:border-blood focus:ring-1 focus:ring-blood/25"
+                />
+              </div>
 
-            <Field label="Hospital name" htmlFor="hospital-name" aside={requiredAside}>
-              <input
-                id="hospital-name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className={inputClass}
-              />
-            </Field>
-          </section>
+              <div>
+                <label
+                  htmlFor="hospital-license-display"
+                  className="block font-mono text-[11px] uppercase tracking-wider text-faint"
+                >
+                  Medical Registration / PMDC License No. (Locked)
+                </label>
+                <input
+                  id="hospital-license-display"
+                  type="text"
+                  disabled
+                  value={licenseNo || 'Contact admin to update registration license'}
+                  className="mt-2 w-full cursor-not-allowed rounded-md border border-line-soft bg-raised/50 px-4 py-3 font-mono text-xs text-faint outline-none"
+                />
+                <p className="mt-1.5 text-[11px] text-faint">
+                  License numbers are cryptographic identifiers and require manual admin re-audit
+                  to change.
+                </p>
+              </div>
+            </div>
+          </div>
 
-          {/* ── 02 Location ─────────────────────────────────────────────── */}
-          <section className="pt-11">
-            <SectionLabel heading index="02">Location</SectionLabel>
+          {/* Section 02: Geolocation & Distance Engine */}
+          <div className="rounded-xl border border-line bg-surface p-6">
+            <div className="flex items-center gap-3 border-b border-line pb-4">
+              <Compass className="h-4 w-4 text-blood" />
+              <h2 className="font-mono text-xs uppercase tracking-wider text-bone">
+                02. Geolocation & Dispatch Proximity
+              </h2>
+            </div>
 
-            {locationMethod === 'gps' && coords ? (
-              <div className="flex items-start gap-2.5 rounded-md border border-life/25 bg-life/10 px-3.5 py-3">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-life" strokeWidth={2.5} aria-hidden />
-                <div>
-                  <p className="text-sm text-life-lite">Location captured for your hospital</p>
+            <p className="mt-4 text-xs leading-relaxed text-mute">
+              ForiKhoon utilizes high-precision coordinates to match donor proximity distances (25%
+              score weight). Ensure your facility's physical emergency gate location is accurate.
+            </p>
+
+            <div className="mt-6">
+              {locationMethod === 'gps' && coords ? (
+                <div className="rounded-lg border border-line bg-raised p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded border border-line bg-surface text-bone">
+                        <MapPin className="h-4 w-4 text-blood" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-bone">
+                          Active Coordinates Captured
+                        </p>
+                        <p className="mt-1 font-mono text-xs text-mute">
+                          LAT: {coords.latitude.toFixed(6)} | LNG: {coords.longitude.toFixed(6)}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLocationMethod(null)
+                        setCoords(null)
+                      }}
+                      className="font-mono text-xs text-faint underline transition hover:text-bone"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </div>
+              ) : locationMethod === 'manual' ? (
+                <div className="space-y-4">
+                  <div>
+                    <label
+                      htmlFor="hospital-address"
+                      className="block font-mono text-[11px] uppercase tracking-wider text-faint"
+                    >
+                      Street Address & Landmark <span className="text-blood">*</span>
+                    </label>
+                    <textarea
+                      id="hospital-address"
+                      rows={3}
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="e.g. 7A Block R-3, Johar Town, Lahore"
+                      className="mt-2 w-full rounded-md border border-line bg-raised px-4 py-3 text-sm text-bone placeholder:text-faint outline-none transition focus:border-blood focus:ring-1 focus:ring-blood/25"
+                    />
+                  </div>
                   <button
                     type="button"
-                    onClick={() => { setLocationMethod(null); setCoords(null) }}
-                    className="mt-1.5 text-xs text-mute underline decoration-line underline-offset-4 transition-colors hover:text-bone"
+                    onClick={() => setLocationMethod(null)}
+                    className="font-mono text-xs text-faint underline transition hover:text-bone"
                   >
-                    Use a different method
+                    Switch to GPS auto-detection
                   </button>
                 </div>
-              </div>
-            ) : locationMethod === 'manual' ? (
-              <div>
-                <Field label="Address" htmlFor="hospital-address" aside={requiredAside}>
-                  <input
-                    id="hospital-address"
-                    type="text"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    className={inputClass}
-                  />
-                </Field>
-                <button
-                  type="button"
-                  onClick={() => setLocationMethod(null)}
-                  className="mt-3 text-xs text-mute underline decoration-line underline-offset-4 transition-colors hover:text-bone"
-                >
-                  Use current location instead
-                </button>
-              </div>
-            ) : (
-              <div className="relative border-t border-line pt-6">
-                <span aria-hidden className="absolute -top-px left-0 h-px w-10 bg-blood" />
-                <div className="flex items-start gap-3">
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blood" strokeWidth={2} aria-hidden />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-bone">Update hospital location</p>
-                    <p className="mt-1.5 max-w-md text-xs leading-relaxed text-mute">
-                      Sharing your exact location helps donors and patients find you accurately.
-                      It is also what donor matching measures distance from.
-                    </p>
-
-                    <div className="mt-5 flex flex-wrap items-center gap-4">
+              ) : (
+                <div className="rounded-lg border border-line-soft bg-raised/40 p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-bone">
+                        Acquire Emergency Coordinates
+                      </p>
+                      <p className="mt-1 text-xs text-mute">
+                        Auto-detect latitude and longitude via device hardware GPS.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
                       <button
                         type="button"
                         onClick={requestLocation}
                         disabled={locatingInProgress}
-                        className={primaryBtn}
+                        className="inline-flex items-center gap-2 rounded-md bg-blood px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wider text-white transition hover:bg-blood-dark disabled:opacity-50"
                       >
-                        {locatingInProgress ? 'Getting location...' : 'Use Current Location'}
+                        <Compass className="h-3.5 w-3.5" />
+                        {locatingInProgress ? 'Acquiring GPS...' : 'Detect GPS Coordinates'}
                       </button>
                       <button
                         type="button"
                         onClick={() => setLocationMethod('manual')}
-                        className="text-xs text-mute underline decoration-line underline-offset-4 transition-colors hover:text-bone"
+                        className="rounded-md border border-line bg-surface px-4 py-2.5 font-mono text-xs uppercase tracking-wider text-mute transition hover:bg-raised hover:text-bone"
                       >
-                        Enter address instead
+                        Manual Address
                       </button>
                     </div>
-
-                    {locationError && (
-                      <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-warn">
-                        <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                        {locationError === 'permission_denied'
-                          ? "We couldn't access your location. You can try again or enter your address manually."
-                          : 'Something went wrong. Please enter your address instead.'}
-                      </p>
-                    )}
                   </div>
+
+                  {locationError && (
+                    <div className="mt-4 flex items-start gap-2.5 rounded border border-warn/30 bg-warn/10 p-3 text-xs text-warn">
+                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <span>{locationError}</span>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
-          </section>
-
-          {/* ── 03 Contact ──────────────────────────────────────────────── */}
-          <section className="pt-11">
-            <SectionLabel heading index="03">Contact Information</SectionLabel>
-
-            <div className="grid gap-5 md:grid-cols-2">
-              <Field label="City" htmlFor="hospital-city" aside={requiredAside}>
-                <input
-                  id="hospital-city"
-                  type="text"
-                  autoComplete="address-level2"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className={inputClass}
-                />
-              </Field>
-
-              <Field
-                label="Phone"
-                htmlFor="hospital-phone"
-                aside={
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-line">
-                    Optional
-                  </span>
-                }
-              >
-                <input
-                  id="hospital-phone"
-                  type="text"
-                  autoComplete="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="03001234567"
-                  className={inputClass}
-                />
-              </Field>
-            </div>
-          </section>
-
-          {/* Save bar, pinned for the same reason as the donor sheet: the form is
-              taller than the viewport once the location block is expanded. */}
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-ink">
-            <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-6 py-4">
-              <Link href="/hospital/dashboard" className={quietBtn}>Cancel</Link>
-              <button type="submit" disabled={saving} className={primaryBtn}>
-                {saving ? 'Saving...' : 'Save Changes'}
-              </button>
+              )}
             </div>
           </div>
 
+          {/* Section 03: Contact & City Operations */}
+          <div className="rounded-xl border border-line bg-surface p-6">
+            <div className="flex items-center gap-3 border-b border-line pb-4">
+              <Phone className="h-4 w-4 text-blood" />
+              <h2 className="font-mono text-xs uppercase tracking-wider text-bone">
+                03. Dispatch Line & City Center
+              </h2>
+            </div>
+
+            <div className="mt-6 grid gap-6 sm:grid-cols-2">
+              <div>
+                <label
+                  htmlFor="hospital-city"
+                  className="block font-mono text-[11px] uppercase tracking-wider text-faint"
+                >
+                  Operating City <span className="text-blood">*</span>
+                </label>
+                <input
+                  id="hospital-city"
+                  type="text"
+                  required
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="e.g. Lahore, Karachi, Islamabad"
+                  className="mt-2 w-full rounded-md border border-line bg-raised px-4 py-3 text-sm text-bone placeholder:text-faint outline-none transition focus:border-blood focus:ring-1 focus:ring-blood/25"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="hospital-phone"
+                  className="block font-mono text-[11px] uppercase tracking-wider text-faint"
+                >
+                  Blood Bank Direct Hotline
+                </label>
+                <input
+                  id="hospital-phone"
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. 042-35905000 or 03001234567"
+                  className="mt-2 w-full rounded-md border border-line bg-raised px-4 py-3 text-sm text-bone placeholder:text-faint outline-none transition focus:border-blood focus:ring-1 focus:ring-blood/25"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Sticky Action Bar */}
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-ink/95 backdrop-blur-md">
+            <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+              <Link
+                href="/hospital/dashboard"
+                className="font-mono text-xs uppercase tracking-wider text-faint transition hover:text-bone"
+              >
+                Discard Changes
+              </Link>
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-md bg-blood px-6 py-3 font-mono text-xs font-semibold uppercase tracking-wider text-white shadow-[0_0_24px_rgba(220,38,38,0.4)] transition hover:bg-blood-dark disabled:opacity-50"
+              >
+                <Save className="h-4 w-4" />
+                {saving ? 'Updating Credentials...' : 'Save Profile Changes'}
+              </button>
+            </div>
+          </div>
         </form>
       </div>
     </div>
