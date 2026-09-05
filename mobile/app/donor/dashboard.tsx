@@ -19,7 +19,7 @@ import HeroCertificate from '../../src/components/Herocertificate'
 
 import {
   Screen, PageHead, Label, SectionLabel, Rule, Chip, Button, Skeleton,
-  EmptyState, LiveDot, SegmentMeter, TextAction, Notice,
+  EmptyState, LiveDot, SegmentMeter, TextAction, Notice, ContextualLoading,
 } from '../../src/components/fk'
 import {
   color, wash, font, radius, urgencyTone, statusTone, toneFor, bloodLabel,
@@ -173,26 +173,13 @@ const fetchData = async () => {
   // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <Screen grid>
-        <View style={styles.gutter}>
-          <Rule tick />
-          <View style={{ marginTop: 22, gap: 12 }}>
-            <Skeleton width="42%" height={11} />
-            <Skeleton width="72%" height={26} />
-          </View>
-          <View style={styles.loadBand}>
-            <Skeleton width={86} height={44} />
-            <View style={{ flex: 1, gap: 10 }}>
-              <Skeleton width="60%" height={13} />
-              <Skeleton height={4} />
-            </View>
-          </View>
-          <View style={{ gap: 10, marginTop: 26 }}>
-            <Skeleton width="34%" height={10} />
-            <Skeleton height={92} />
-            <Skeleton height={92} />
-          </View>
-        </View>
+      <Screen ember>
+        <ContextualLoading
+          eyebrow="Donor · Command Center"
+          message="Syncing donor record & nearby emergency matches…"
+          subtext="Checking active blood requisitions and regional hospital needs"
+          variant="metrics"
+        />
       </Screen>
     )
   }

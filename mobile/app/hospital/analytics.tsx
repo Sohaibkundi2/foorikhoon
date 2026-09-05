@@ -8,7 +8,7 @@ import api from '../../src/lib/api'
 
 import {
   Screen, PageHead, Label, SectionLabel, Rule, Skeleton, SegmentMeter,
-  EmptyState, LiveDot,
+  EmptyState, LiveDot, ContextualLoading,
 } from '../../src/components/fk'
 import { color, font, bloodLabel } from '../../src/theme'
 
@@ -62,26 +62,13 @@ export default function HospitalAnalyticsScreen() {
 
   if (loading) {
     return (
-      <Screen>
-        <View style={styles.gutter}>
-          <Rule tick />
-          <View style={{ marginTop: 22, gap: 12 }}>
-            <Skeleton width="30%" height={11} />
-            <Skeleton width="72%" height={26} />
-          </View>
-          <View style={{ marginTop: 36, gap: 14 }}>
-            <Skeleton width="42%" height={44} />
-            <Skeleton height={5} />
-          </View>
-          <View style={{ marginTop: 34, gap: 1 }}>
-            {[0, 1, 2, 3].map(i => (
-              <View key={i} style={styles.loadRow}>
-                <Skeleton width="40%" height={11} />
-                <Skeleton width={30} height={16} />
-              </View>
-            ))}
-          </View>
-        </View>
+      <Screen ember>
+        <ContextualLoading
+          eyebrow="Hospital · Analytics"
+          message="Aggregating clinical analytics & demand telemetry…"
+          subtext="Compiling regional blood fulfillment and inventory metrics"
+          variant="metrics"
+        />
       </Screen>
     )
   }

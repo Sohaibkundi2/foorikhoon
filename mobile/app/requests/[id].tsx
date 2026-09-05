@@ -11,7 +11,7 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 
 import {
   Screen, Label, SectionLabel, Rule, Chip, Button, Skeleton, EmptyState,
-  TextAction,
+  TextAction, ContextualLoading,
 } from '../../src/components/fk'
 import {
   color, font, radius, urgencyTone, statusTone, toneFor, bloodLabel,
@@ -43,30 +43,14 @@ export default function RequestDetailScreen() {
   }
 
   if (loading) {
-    /* Skeletons in the shape of the page that is coming, rather than a
-       centred spinner on an otherwise empty screen. */
     return (
-      <Screen>
-        <View style={styles.gutter}>
-          <Rule tick />
-          <View style={{ marginTop: 22, gap: 12 }}>
-            <Skeleton width="32%" height={11} />
-            <Skeleton width="76%" height={26} />
-            <Skeleton width="52%" height={12} />
-          </View>
-          <View style={{ marginTop: 36, gap: 16 }}>
-            <Skeleton width="40%" height={62} />
-            <Skeleton width="64%" height={12} />
-          </View>
-          <View style={{ marginTop: 36, gap: 1 }}>
-            {[0, 1, 2, 3].map(i => (
-              <View key={i} style={styles.loadRow}>
-                <Skeleton width="38%" height={11} />
-                <Skeleton width={40} height={15} />
-              </View>
-            ))}
-          </View>
-        </View>
+      <Screen ember>
+        <ContextualLoading
+          eyebrow="Emergency Requisition"
+          message="Retrieving emergency case details…"
+          subtext="Fetching clinical requirements, hospital location, and donor dispatch status"
+          variant="default"
+        />
       </Screen>
     )
   }

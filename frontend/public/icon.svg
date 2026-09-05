@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="8" fill="#0A0A0A" />
+  <!-- Outer radar arc -->
+  <circle
+    cx="16"
+    cy="16"
+    r="11"
+    stroke="#F4F1EC"
+    stroke-width="1.5"
+    stroke-dasharray="32 10 3 24"
+    stroke-linecap="round"
+    stroke-opacity="0.4"
+  />
+  <!-- Inner search tier -->
+  <circle
+    cx="16"
+    cy="16"
+    r="7"
+    stroke="#F4F1EC"
+    stroke-width="1.5"
+    stroke-opacity="0.65"
+  />
+  <!-- Core blood request dot -->
+  <circle
+    cx="16"
+    cy="16"
+    r="3.5"
+    fill="#DC2626"
+  />
+</svg>

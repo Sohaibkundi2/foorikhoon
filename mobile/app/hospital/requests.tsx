@@ -14,7 +14,7 @@ import ConfirmDonationModal from '../../src/components/ConfirmDonationModal'
 
 import {
   Screen, PageHead, Label, Chip, Button, Skeleton, EmptyState, Rule,
-  useTabBarInset,
+  useTabBarInset, ContextualLoading,
 } from '../../src/components/fk'
 import {
   color, wash, font, radius, urgencyTone, statusTone, toneFor, bloodLabel,
@@ -130,22 +130,13 @@ const getCompletedMatch = (req: BloodRequest) =>
 
   if (loading) {
     return (
-      <Screen>
-        <View style={styles.gutter}>
-          <Rule tick />
-          <View style={{ marginTop: 22, gap: 12 }}>
-            <Skeleton width="28%" height={11} />
-            <Skeleton width="70%" height={26} />
-          </View>
-          <View style={{ marginTop: 34, gap: 1 }}>
-            {[0, 1, 2, 3].map(i => (
-              <View key={i} style={styles.loadRow}>
-                <Skeleton width={40} height={20} />
-                <Skeleton width="38%" height={11} />
-              </View>
-            ))}
-          </View>
-        </View>
+      <Screen ember>
+        <ContextualLoading
+          eyebrow="Hospital · Requisitions"
+          message="Retrieving hospital requisitions & donor responses…"
+          subtext="Querying matched donor dispatches and blood unit deliveries"
+          variant="cards"
+        />
       </Screen>
     )
   }

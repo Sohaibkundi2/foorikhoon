@@ -18,6 +18,7 @@ import OfflineBanner from '../../src/components/OfflineBanner'
 
 import {
   Screen, PageHead, Chip, Button, Skeleton, EmptyState, Rule, useTabBarInset,
+  ContextualLoading,
 } from '../../src/components/fk'
 import {
   color, wash, font, radius, urgencyTone, statusTone, toneFor, bloodLabel,
@@ -129,22 +130,13 @@ export default function DonorMatchesScreen() {
 
   if (loading) {
     return (
-      <Screen>
-        <View style={styles.gutter}>
-          <Rule tick />
-          <View style={{ marginTop: 22, gap: 12 }}>
-            <Skeleton width="30%" height={11} />
-            <Skeleton width="66%" height={26} />
-          </View>
-          <View style={{ gap: 1, marginTop: 30 }}>
-            {[0, 1, 2, 3].map((i) => (
-              <View key={i} style={styles.loadRow}>
-                <Skeleton width="52%" height={14} />
-                <Skeleton width="34%" height={11} />
-              </View>
-            ))}
-          </View>
-        </View>
+      <Screen ember>
+        <ContextualLoading
+          eyebrow="Donor · Dispatches"
+          message="Loading incoming emergency dispatches…"
+          subtext="Searching compatible patient transfusions assigned to you"
+          variant="cards"
+        />
       </Screen>
     )
   }

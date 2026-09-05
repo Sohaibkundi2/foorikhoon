@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { AlertCircle, ArrowRight, ShieldCheck, Droplet, Building2, Lock, Mail } from 'lucide-react'
+import { AlertCircle, ArrowRight, ShieldCheck, Droplet, Building2, Lock, Mail, Eye, EyeOff } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import api from '@/lib/api'
 import { Texture } from '@/components/fk'
@@ -11,6 +11,7 @@ import { Texture } from '@/components/fk'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -117,14 +118,26 @@ export default function LoginPage() {
                   </div>
                   <input
                     id="login-password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="w-full rounded-xl border border-line bg-raised/60 py-2.5 pl-10 pr-4 text-sm text-bone placeholder-faint transition-all focus:border-blood focus:bg-surface focus:outline-none focus:ring-1 focus:ring-blood/50"
+                    className="w-full rounded-xl border border-line bg-raised/60 py-2.5 pl-10 pr-10 text-sm text-bone placeholder-faint transition-all focus:border-blood focus:bg-surface focus:outline-none focus:ring-1 focus:ring-blood/50"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-faint hover:text-bone transition-colors cursor-pointer"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
               </div>
 

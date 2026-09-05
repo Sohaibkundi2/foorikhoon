@@ -10,7 +10,7 @@ import api from '../../src/lib/api'
 
 import {
   Screen, PageHead, Label, SectionLabel, Rule, Chip, Button, Skeleton,
-  EmptyState, Notice, useTabBarInset,
+  EmptyState, Notice, useTabBarInset, ContextualLoading,
 } from '../../src/components/fk'
 import {
   color, wash, font, radius, urgencyTone, statusTone, riskTone, toneFor,
@@ -152,22 +152,13 @@ export default function AdminDashboard() {
   // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <Screen>
-        <View style={styles.gutter}>
-          <Rule tick />
-          <View style={{ marginTop: 22, gap: 12 }}>
-            <Skeleton width="26%" height={11} />
-            <Skeleton width="58%" height={26} />
-          </View>
-          <View style={{ marginTop: 34, gap: 1 }}>
-            {[0, 1, 2, 3, 4, 5].map(i => (
-              <View key={i} style={styles.loadRow}>
-                <Skeleton width="44%" height={12} />
-                <Skeleton width={38} height={20} />
-              </View>
-            ))}
-          </View>
-        </View>
+      <Screen ember>
+        <ContextualLoading
+          eyebrow="National Command · Admin"
+          message="Initializing national admin console & registries…"
+          subtext="Compiling systemwide hospital certifications, requests and shortage predictions"
+          variant="metrics"
+        />
       </Screen>
     )
   }

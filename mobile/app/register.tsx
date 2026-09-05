@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Link, router, useLocalSearchParams } from 'expo-router'
 import {
   ArrowRight, Check, ChevronRight, Droplet, Hospital, MapPin, TriangleAlert,
+  Eye, EyeOff,
 } from 'lucide-react-native'
 import { useAuthStore } from '../src/store/authStore'
 import api from '../src/lib/api'
@@ -37,6 +38,7 @@ export default function Register() {
   const [error, setError] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [reveal, setReveal] = useState(false)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [city, setCity] = useState('')
@@ -60,8 +62,8 @@ export default function Register() {
     }
     /* This check appeared twice, identically, in the previous version. One copy
        kept — the second could never change the outcome. */
-    if (role === 'HOSPITAL' && (!hospitalName || !address || !licenseNo)) {
-      setError('Please fill in all hospital details')
+    if (role === 'HOSPITAL' && (!hospitalName || !licenseNo || (!address && !(locationMethod === 'gps' && coords)))) {
+      setError('Please fill in hospital name, licence number, and address or GPS location')
       return
     }
     if (role === 'DONOR' && !area && !(locationMethod === 'gps' && coords)) {
@@ -85,7 +87,14 @@ export default function Register() {
           })
         router.push('/donor/dashboard')
       } else if (role === 'HOSPITAL') {
-        await api.post('/api/hospital/profile', { name: hospitalName, address, licenseNo })
+        await api.post('/api/hospital/profile', {
+          name: hospitalName,
+          licenseNo,
+          address: address.trim() || 'Shared location',
+          ...(locationMethod === 'gps' && coords
+            ? { latitude: coords.latitude, longitude: coords.longitude }
+            : {}),
+        })
         router.push('/hospital/dashboard')
       }
     } catch (err: any) {
@@ -217,10 +226,26 @@ export default function Register() {
         </Field>
 
         <Field label="Password">
-          <Input
-            placeholder="At least 8 characters" value={password} onChangeText={setPassword}
-            secureTextEntry autoCapitalize="none"
-          />
+          <View style={styles.passwordWrap}>
+            <Input
+              placeholder="At least 8 characters"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!reveal}
+              autoCapitalize="none"
+              style={styles.passwordInput}
+            />
+            <Button
+              tone="quiet"
+              size="sm"
+              icon={reveal ? EyeOff : Eye}
+              onPress={() => setReveal((v) => !v)}
+              haptic={false}
+              style={styles.revealBtn}
+            >
+              {reveal ? 'Hide' : 'Show'}
+            </Button>
+          </View>
         </Field>
 
         <View style={styles.row}>
@@ -243,7 +268,7 @@ export default function Register() {
         {/* ---- Donor: group + location ---- */}
         {isDonor && (
           <>
-            <SectionLabel index="03" style={{ marginTop: 14 }}>Blood group</SectionLabel>
+            <SectionLabel index="03" style={{ marginTop: 14 }}>Blood group · Optional</SectionLabel>
 
             <View style={styles.lattice}>
               {BLOOD_GROUPS.map((bg) => {
@@ -270,13 +295,12 @@ export default function Register() {
                 {bloodGroup === '' && <Check size={10} color={color.bloodLite} strokeWidth={3} />}
               </View>
               <Text style={[styles.unknownText, bloodGroup === '' && styles.unknownTextOn]}>
-                I don&apos;t know my blood group
+                I don&apos;t know my blood group (optional)
               </Text>
             </Pressable>
 
             <Text style={styles.groupNote}>
-              You can add it later from your profile. Without a group you will not appear in
-              matching, since compatibility is what the matcher searches on.
+              You can select your blood type now or add it later from your profile. Without a blood group, you will not appear in emergency matching until verified.
             </Text>
 
             <SectionLabel index="04" style={{ marginTop: 30 }}>Location</SectionLabel>
@@ -351,12 +375,7 @@ export default function Register() {
                 onChangeText={setHospitalName}
               />
             </Field>
-            <Field label="Address">
-              <Input
-                placeholder="Hospital Road, DI Khan" value={address}
-                onChangeText={setAddress}
-              />
-            </Field>
+
             <Field
               label="Licence number"
               hint="Verified by an administrator. Until then your hospital shows as unverified on requests."
@@ -366,6 +385,74 @@ export default function Register() {
                 onChangeText={setLicenseNo}
               />
             </Field>
+
+            <SectionLabel index="04" style={{ marginTop: 24 }}>Location</SectionLabel>
+
+            {locationMethod === 'gps' && coords ? (
+              <Panel tone={toneFor(statusTone, 'FULFILLED')}>
+                <View style={styles.confirmRow}>
+                  <Check size={14} color={color.lifeLite} strokeWidth={2.5} />
+                  <Text style={styles.confirmText}>GPS Coordinates saved for matching</Text>
+                </View>
+                <Text style={styles.confirmSub}>
+                  Emergency requisitions match donors outward by distance from these coordinates.
+                </Text>
+
+                <View style={{ marginTop: 14 }}>
+                  <Field label="Street address or emergency gate · optional" hint="Helps dispatched donors find the exact clinical entrance.">
+                    <Input
+                      placeholder="e.g. Emergency Ward, Hospital Road"
+                      value={address}
+                      onChangeText={setAddress}
+                    />
+                  </Field>
+                </View>
+
+                <Pressable onPress={() => { setLocationMethod('manual'); setCoords(null) }} hitSlop={8} style={{ marginTop: 6 }}>
+                  <Text style={styles.switchText}>Enter address manually instead</Text>
+                </Pressable>
+              </Panel>
+            ) : locationMethod === 'manual' ? (
+              <View>
+                <Field label="Hospital street address">
+                  <Input
+                    placeholder="Hospital Road, DI Khan"
+                    value={address}
+                    onChangeText={setAddress}
+                  />
+                </Field>
+                <Text style={styles.helperText}>
+                  Used to geocode your facility and determine donor dispatch proximity.
+                </Text>
+                <Pressable onPress={() => setLocationMethod(null)} hitSlop={8} style={{ marginTop: 10 }}>
+                  <Text style={styles.switchText}>Use GPS location instead</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Panel>
+                <View style={styles.promptHead}>
+                  <MapPin size={15} color={color.bloodLite} strokeWidth={2} />
+                  <Text style={styles.promptTitle}>Capture hospital location</Text>
+                </View>
+                <Text style={styles.promptDesc}>
+                  Emergency matching searches outward from your facility. Accurate GPS coordinates ensure nearest eligible donors are contacted first.
+                </Text>
+                <Button tone="primary" full onPress={requestLocation} style={{ marginTop: 16 }}>
+                  Use GPS location
+                </Button>
+                <Pressable onPress={() => setLocationMethod('manual')} hitSlop={8} style={{ marginTop: 14 }}>
+                  <Text style={styles.switchText}>Enter address manually instead</Text>
+                </Pressable>
+
+                {locationError ? (
+                  <Notice tone={errorTone} icon={TriangleAlert} style={{ marginTop: 16 }}>
+                    {locationError === 'permission_denied'
+                      ? "Couldn't access GPS location. You can enter the hospital address manually."
+                      : 'Unable to retrieve location coordinates. Please enter the hospital address instead.'}
+                  </Notice>
+                ) : null}
+              </Panel>
+            )}
           </>
         )}
 
@@ -521,6 +608,11 @@ const styles = StyleSheet.create({
     fontFamily: font.mono.medium, fontSize: 9.5, letterSpacing: 1.3,
     textTransform: 'uppercase', color: color.mute,
   },
+
+  // Password input reveal
+  passwordWrap: { position: 'relative', justifyContent: 'center' },
+  passwordInput: { paddingRight: 92 },
+  revealBtn: { position: 'absolute', right: 7, paddingVertical: 7 },
 
   // Footer
   footerRow: {

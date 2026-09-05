@@ -8,7 +8,7 @@ import api from '../../src/lib/api'
 
 import {
   Screen, PageHead, Label, SectionLabel, Rule, Button, Input, Skeleton,
-  SegmentMeter,
+  SegmentMeter, ContextualLoading,
 } from '../../src/components/fk'
 import {
   color, wash, font, radius, bloodLabel, BLOOD_GROUPS,
@@ -117,23 +117,13 @@ export default function HospitalInventoryScreen() {
 
   if (loading) {
     return (
-      <Screen>
-        <View style={styles.gutter}>
-          <Rule tick />
-          <View style={{ marginTop: 22, gap: 12 }}>
-            <Skeleton width="26%" height={11} />
-            <Skeleton width="66%" height={26} />
-          </View>
-          <View style={{ marginTop: 38, gap: 1 }}>
-            {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
-              <View key={i} style={styles.loadRow}>
-                <Skeleton width={34} height={16} />
-                <Skeleton width="44%" height={5} />
-                <Skeleton width={24} height={16} />
-              </View>
-            ))}
-          </View>
-        </View>
+      <Screen ember>
+        <ContextualLoading
+          eyebrow="Hospital · Stock"
+          message="Syncing blood bank inventory…"
+          subtext="Verifying cold-storage unit levels and shelf reserves"
+          variant="table"
+        />
       </Screen>
     )
   }

@@ -29,6 +29,13 @@ const mono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "ForiKhoon — Blood Donation Platform",
   description: "Connecting blood donors with hospitals across Pakistan",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({

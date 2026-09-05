@@ -9,6 +9,7 @@ import api from '../src/lib/api'
 
 import {
   Screen, PageHead, Label, SectionLabel, Rule, Skeleton, EmptyState, Button,
+  ContextualLoading,
 } from '../src/components/fk'
 import {
   color, wash, font, radius, bloodLabel, tintFor, initialsFor,
@@ -101,19 +102,11 @@ export default function LeaderboardScreen() {
         {renderFilterRow('Cities', 'city', cities, cityFilter, setCityFilter)}
 
         {loading && (
-          <View style={{ gap: 1 }}>
-            {[1, 2, 3, 4, 5].map(i => (
-              <View key={i} style={styles.loadRow}>
-                <Skeleton width={22} height={13} />
-                <Skeleton width={34} height={34} />
-                <View style={{ flex: 1, gap: 8 }}>
-                  <Skeleton width="56%" height={13} />
-                  <Skeleton width="30%" height={10} />
-                </View>
-                <Skeleton width={30} height={18} />
-              </View>
-            ))}
-          </View>
+          <ContextualLoading
+            message="Loading top donor honor roll & rankings…"
+            subtext="Aggregating verified donor commitment scores across Pakistan"
+            variant="table"
+          />
         )}
 
         {!loading && ranked.length === 0 && (

@@ -16,7 +16,7 @@ import OfflineBanner from '../../src/components/OfflineBanner'
 
 import {
   Screen, PageHead, Label, Chip, Button, Skeleton, EmptyState, Rule,
-  TextAction, useTabBarInset,
+  TextAction, useTabBarInset, ContextualLoading,
 } from '../../src/components/fk'
 import {
   color, wash, font, radius, urgencyTone, toneFor, bloodLabel,
@@ -234,18 +234,11 @@ export default function RequestsScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.gutter}>
-          <Rule />
-          {[0, 1, 2, 3].map(i => (
-            <View key={i} style={styles.loadRow}>
-              <Skeleton width={46} height={26} />
-              <View style={{ flex: 1, gap: 9 }}>
-                <Skeleton width="70%" height={13} />
-                <Skeleton width="44%" height={10} />
-              </View>
-            </View>
-          ))}
-        </View>
+        <ContextualLoading
+          message="Searching live emergency blood requests…"
+          subtext="Scanning regional hospitals and clinical urgency tiers"
+          variant="cards"
+        />
       ) : (
         <FlatList
           data={filtered}

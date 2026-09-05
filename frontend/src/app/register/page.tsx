@@ -10,7 +10,9 @@ import {
   Check,
   Droplet,
   Navigation,
-  Compass
+  Compass,
+  Eye,
+  EyeOff
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import api from '@/lib/api'
@@ -24,6 +26,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [city, setCity] = useState('')
@@ -271,14 +274,28 @@ export default function RegisterPage() {
                       <label className="block font-mono text-[10px] uppercase tracking-wider text-mute">
                         Password
                       </label>
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        required
-                        className="w-full rounded-xl border border-line bg-raised/60 py-2 px-3 text-sm text-bone focus:border-blood focus:outline-none"
-                      />
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••"
+                          required
+                          className="w-full rounded-xl border border-line bg-raised/60 py-2 pl-3 pr-10 text-sm text-bone focus:border-blood focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-faint hover:text-bone transition-colors cursor-pointer"
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-1">

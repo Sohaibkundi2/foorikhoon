@@ -416,6 +416,147 @@ export function Skeleton({ width, height = 12, style }: {
   )
 }
 
+/**
+ * Contextual loading state:
+ * Displays an animated pulse scanner, live telemetry status message in mono,
+ * and structural skeleton previews matching the screen layout.
+ */
+export function ContextualLoading({
+  eyebrow,
+  message = 'Loading live telemetry…',
+  subtext = 'Connecting to regional blood network',
+  variant = 'default',
+  style,
+}: {
+  eyebrow?: string
+  message?: string
+  subtext?: string
+  variant?: 'default' | 'table' | 'cards' | 'metrics' | 'form'
+  style?: StyleProp<ViewStyle>
+}) {
+  const pulse = useSharedValue(0.4)
+  const laserX = useSharedValue(-80)
+
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.35, { duration: 800, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      false
+    )
+
+    laserX.value = withRepeat(
+      withTiming(260, { duration: 1600, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      false
+    )
+  }, [])
+
+  const pulseAnim = useAnimatedStyle(() => ({
+    opacity: pulse.value,
+  }))
+
+  const laserAnim = useAnimatedStyle(() => ({
+    transform: [{ translateX: laserX.value }],
+  }))
+
+  return (
+    <View style={[{ paddingHorizontal: 20 }, style]}>
+      <Rule tick />
+      <View style={{ marginTop: 22, marginBottom: 26 }}>
+        {eyebrow && <Label loud style={{ marginBottom: 12 }}>{eyebrow}</Label>}
+
+        <View style={styles.contextualBox}>
+          <View style={styles.contextualHeadRow}>
+            <Animated.View style={[styles.contextualDot, pulseAnim]} />
+            <Text style={styles.contextualMsg}>{message}</Text>
+          </View>
+          {subtext ? <Text style={styles.contextualSub}>{subtext}</Text> : null}
+
+          <View style={styles.contextualTrack}>
+            <Animated.View style={[styles.contextualLaser, laserAnim]} />
+          </View>
+        </View>
+      </View>
+
+      {variant === 'table' && (
+        <View style={{ gap: 1 }}>
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <View key={i} style={styles.contextualTableRow}>
+              <Skeleton width={38} height={16} />
+              <Skeleton width="45%" height={8} />
+              <Skeleton width={32} height={16} />
+            </View>
+          ))}
+        </View>
+      )}
+
+      {variant === 'cards' && (
+        <View style={{ gap: 14 }}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={styles.contextualCard}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Skeleton width="34%" height={12} />
+                <Skeleton width={56} height={18} />
+              </View>
+              <Skeleton width="78%" height={16} style={{ marginBottom: 10 }} />
+              <Skeleton width="50%" height={11} />
+            </View>
+          ))}
+        </View>
+      )}
+
+      {variant === 'metrics' && (
+        <View style={{ gap: 14 }}>
+          <View style={styles.contextualCard}>
+            <Skeleton width="28%" height={10} style={{ marginBottom: 10 }} />
+            <Skeleton width="48%" height={28} style={{ marginBottom: 14 }} />
+            <Skeleton width="75%" height={12} />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={[styles.contextualCard, { flex: 1 }]}>
+              <Skeleton width="48%" height={10} style={{ marginBottom: 8 }} />
+              <Skeleton width="65%" height={22} />
+            </View>
+            <View style={[styles.contextualCard, { flex: 1 }]}>
+              <Skeleton width="48%" height={10} style={{ marginBottom: 8 }} />
+              <Skeleton width="65%" height={22} />
+            </View>
+          </View>
+        </View>
+      )}
+
+      {variant === 'form' && (
+        <View style={{ gap: 20 }}>
+          <View>
+            <Skeleton width="28%" height={10} style={{ marginBottom: 8 }} />
+            <Skeleton height={46} />
+          </View>
+          <View>
+            <Skeleton width="36%" height={10} style={{ marginBottom: 8 }} />
+            <Skeleton height={46} />
+          </View>
+          <View>
+            <Skeleton width="24%" height={10} style={{ marginBottom: 8 }} />
+            <Skeleton height={46} />
+          </View>
+        </View>
+      )}
+
+      {variant === 'default' && (
+        <View style={{ gap: 14 }}>
+          <Skeleton width="65%" height={24} style={{ marginBottom: 6 }} />
+          <Skeleton width="90%" height={13} style={{ marginBottom: 20 }} />
+          <Skeleton height={80} style={{ marginBottom: 10 }} />
+          <Skeleton height={80} />
+        </View>
+      )}
+    </View>
+  )
+}
+
 /** Inline notice. Never a floating toast — it sits in the flow it refers to. */
 export function Notice({ tone, children, icon: Icon, style }: {
   tone: Tone
@@ -723,6 +864,69 @@ const styles = StyleSheet.create({
   choiceItemOn: { borderColor: wash.bloodEdge, backgroundColor: wash.blood },
   choiceText: { fontFamily: font.mono.regular, fontSize: 12.5, color: color.mute },
   choiceTextOn: { fontFamily: font.mono.medium, color: color.bloodLite },
+
+  // Contextual loading
+  contextualBox: {
+    backgroundColor: color.surface,
+    borderWidth: 1,
+    borderColor: color.line,
+    borderRadius: radius.md,
+    padding: 16,
+    overflow: 'hidden',
+  },
+  contextualHeadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  contextualDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: color.blood,
+  },
+  contextualMsg: {
+    fontFamily: font.mono.medium,
+    fontSize: 11.5,
+    color: color.bone,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  contextualSub: {
+    fontFamily: font.sans.regular,
+    fontSize: 12,
+    color: color.mute,
+    marginTop: 6,
+    lineHeight: 17,
+  },
+  contextualTrack: {
+    marginTop: 14,
+    height: 2,
+    backgroundColor: color.lineSoft,
+    borderRadius: 1,
+    overflow: 'hidden',
+  },
+  contextualLaser: {
+    width: 80,
+    height: 2,
+    backgroundColor: color.bloodLite,
+    borderRadius: 1,
+  },
+  contextualTableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: color.lineSoft,
+    paddingVertical: 16,
+  },
+  contextualCard: {
+    backgroundColor: color.surface,
+    borderWidth: 1,
+    borderColor: color.line,
+    borderRadius: radius.md,
+    padding: 16,
+  },
 })
 
 export { styles as fkStyles }

@@ -14,7 +14,7 @@ import api from '../../src/lib/api'
 
 import {
   Screen, PageHead, Panel, Field, Input, Button, Notice, Rule, Label,
-  SectionLabel, Chip, Skeleton, TextAction,
+  SectionLabel, Chip, Skeleton, TextAction, ContextualLoading,
 } from '../../src/components/fk'
 import {
   color, wash, font, statusTone, toneFor, Tone,
@@ -131,20 +131,13 @@ export default function HospitalProfileScreen() {
 
   if (loading) {
     return (
-      <Screen>
-        <View style={styles.gutter}>
-          <Rule tick />
-          <View style={{ marginTop: 22, gap: 12 }}>
-            <Skeleton width="34%" height={11} />
-            <Skeleton width="70%" height={26} />
-          </View>
-          <View style={{ gap: 18, marginTop: 34 }}>
-            <Skeleton width="26%" height={10} />
-            <Skeleton height={46} />
-            <Skeleton height={46} />
-            <Skeleton height={46} />
-          </View>
-        </View>
+      <Screen ember>
+        <ContextualLoading
+          eyebrow="Hospital · Facility Profile"
+          message="Loading hospital credentials & registry status…"
+          subtext="Verifying institutional license and geo-coordinates"
+          variant="form"
+        />
       </Screen>
     )
   }

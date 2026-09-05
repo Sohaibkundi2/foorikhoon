@@ -23,7 +23,7 @@ import OfflineBanner from '../../src/components/OfflineBanner'
 
 import {
   Screen, PageHead, Panel, Field, Input, Button, Notice, Rule, Label, SectionLabel,
-  Skeleton, TextAction, LiveDot,
+  Skeleton, TextAction, LiveDot, ContextualLoading,
 } from '../../src/components/fk'
 import {
   color, wash, font, radius, statusTone, toneFor, bloodLabel, BLOOD_GROUPS,
@@ -183,20 +183,13 @@ export default function DonorProfileScreen() {
 
   if (loading) {
     return (
-      <Screen>
-        <View style={styles.gutter}>
-          <Rule tick />
-          <View style={{ marginTop: 22, gap: 12 }}>
-            <Skeleton width="32%" height={11} />
-            <Skeleton width="64%" height={26} />
-          </View>
-          <View style={{ gap: 18, marginTop: 34 }}>
-            <Skeleton width="24%" height={10} />
-            <Skeleton height={46} />
-            <Skeleton height={46} />
-            <Skeleton height={46} />
-          </View>
-        </View>
+      <Screen ember>
+        <ContextualLoading
+          eyebrow="Donor · Profile"
+          message="Retrieving donor credentials & location…"
+          subtext="Loading availability status, blood group and emergency contact settings"
+          variant="form"
+        />
       </Screen>
     )
   }
