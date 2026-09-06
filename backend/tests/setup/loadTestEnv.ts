@@ -142,3 +142,6 @@ if (!process.env.JWT_SECRET) {
 process.env.CLOUDINARY_CLOUD_NAME ||= 'test-cloud'
 process.env.CLOUDINARY_API_KEY ||= 'test-key'
 process.env.CLOUDINARY_API_SECRET ||= 'test-secret'
+
+process.env.GMAIL_USER ||= 'test-user@gmail.com'
+process.env.GMAIL_APP_PASSWORD ||= 'test-app-password'

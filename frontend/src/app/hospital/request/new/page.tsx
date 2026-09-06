@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import api from '@/lib/api'
@@ -17,7 +17,9 @@ import {
   Droplet,
   Send,
   Building2,
-  Users
+  Users,
+  ShieldAlert,
+  FileBadge
 } from 'lucide-react'
 import { Texture } from '@/components/fk'
 
@@ -37,6 +39,8 @@ export default function NewRequestPage() {
   const { user } = useAuthStore()
   const router = useRouter()
 
+  const [hospital, setHospital] = useState<{ verified: boolean; licenseNo: string; name: string } | null>(null)
+  const [checkingVerification, setCheckingVerification] = useState(true)
   const [bloodGroup, setBloodGroup] = useState('')
   const [units, setUnits] = useState(1)
   const [urgency, setUrgency] = useState('NORMAL')
@@ -44,6 +48,24 @@ export default function NewRequestPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState<{ matchedDonors: number } | null>(null)
+
+  useEffect(() => {
+    if (!user) {
+      router.push('/login')
+      return
+    }
+    const checkStatus = async () => {
+      try {
+        const res = await api.get('/api/hospital/profile')
+        setHospital(res.data.hospitalProfile)
+      } catch (err) {
+        console.error('Failed to fetch hospital profile:', err)
+      } finally {
+        setCheckingVerification(false)
+      }
+    }
+    checkStatus()
+  }, [user])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -63,6 +85,74 @@ export default function NewRequestPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (checkingVerification) {
+    return (
+      <div className="flex min-h-[80vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
+          <p className="font-mono text-xs uppercase tracking-widest text-faint">
+            Verifying hospital accreditation & broadcast credentials...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (hospital && !hospital.verified) {
+    return (
+      <div className="relative min-h-screen overflow-hidden bg-ink flex items-center justify-center p-6">
+        <Texture ember={true} grid={true} noise={true} />
+
+        <div className="relative mx-auto max-w-lg w-full rounded-3xl border border-amber-500/40 bg-surface/90 p-6 sm:p-8 backdrop-blur-xl shadow-2xl text-center space-y-6">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-400">
+            <Clock className="h-7 w-7 animate-pulse" />
+          </div>
+
+          <div>
+            <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400">
+              Accreditation Audit In Progress
+            </span>
+            <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-bone sm:text-3xl">
+              License Verification Required
+            </h1>
+            <p className="mt-2 text-xs text-mute sm:text-sm leading-relaxed">
+              Your medical center (<strong className="text-bone">{hospital.name}</strong>) is currently pending PMDC / Healthcare Commission verification.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-line bg-raised/50 p-4 text-left space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-mono text-[11px] text-faint uppercase">Medical License:</span>
+              <span className="font-mono font-bold text-bone">{hospital.licenseNo || 'PENDING AUDIT'}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-mono text-[11px] text-faint uppercase">Broadcast Rights:</span>
+              <span className="font-mono text-amber-400 uppercase font-semibold">Locked</span>
+            </div>
+            <p className="pt-2 text-[11px] text-mute border-t border-line leading-normal">
+              To safeguard donor trust and prevent fraudulent dispatches, only verified hospitals can broadcast blood requests. System administrators review each license before activation.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <Link
+              href="/hospital/profile"
+              className="flex-1 flex items-center justify-center rounded-xl border border-line bg-surface py-3 px-4 text-xs font-semibold text-bone hover:bg-raised transition-colors"
+            >
+              View Profile & License
+            </Link>
+            <Link
+              href="/hospital/dashboard"
+              className="flex-1 flex items-center justify-center rounded-xl bg-blood py-3 px-4 text-xs font-semibold text-white shadow hover:bg-blood-dark transition-colors"
+            >
+              Return to Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (success) {

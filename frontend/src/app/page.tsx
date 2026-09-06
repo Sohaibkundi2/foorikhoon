@@ -299,7 +299,7 @@ export default function LandingPage() {
 
               <h1 className="text-4xl sm:text-6xl lg:text-[4.25rem] font-bold leading-[1.02] tracking-[-0.035em] text-bone">
                 The right blood,<br />
-                <span className="font-serif font-normal italic tracking-[-0.01em] text-blood">
+                <span className="font-serif font-bold italic tracking-[-0.01em] text-blood">
                   at the second it counts.
                 </span>
               </h1>

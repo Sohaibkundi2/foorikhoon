@@ -99,6 +99,8 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('OVERVIEW')
   const [verifyingId, setVerifyingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
+  const [userToDelete, setUserToDelete] = useState<User | null>(null)
 
   useEffect(() => {
     if (!user) {
@@ -164,6 +166,24 @@ export default function AdminDashboard() {
       console.error('Failed to delete hospital:', err)
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return
+    setDeletingUserId(userToDelete.id)
+    try {
+      await api.delete(`/api/admin/users/${userToDelete.id}`)
+      setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id))
+      setHospitals((prev) => prev.filter((h) => h.user?.email !== userToDelete.email))
+      const statsRes = await api.get('/api/admin/stats')
+      setStats(statsRes.data.stats)
+      setUserToDelete(null)
+    } catch (err: any) {
+      console.error('Failed to delete user:', err)
+      alert(err?.response?.data?.message || 'Failed to delete user.')
+    } finally {
+      setDeletingUserId(null)
     }
   }
 
@@ -483,18 +503,19 @@ export default function AdminDashboard() {
                   </div>
                 ) : (
                   <div className="overflow-hidden rounded-xl border border-line bg-surface">
-                    <div className="grid grid-cols-[1fr_6rem_6rem] border-b border-line px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-faint sm:grid-cols-[1fr_7rem_6rem_7rem]">
+                    <div className="grid grid-cols-[1fr_5rem_3.5rem] border-b border-line px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-faint sm:grid-cols-[1fr_6rem_6rem_6rem_3.5rem]">
                       <span>User</span>
                       <span className="text-center">Role</span>
                       <span className="hidden text-center sm:block">City</span>
-                      <span className="text-right">Registered</span>
+                      <span className="hidden text-right sm:block">Registered</span>
+                      <span className="text-right">Action</span>
                     </div>
 
                     <div className="divide-y divide-line">
                       {users.map((u) => (
                         <div
                           key={u.id}
-                          className="grid grid-cols-[1fr_6rem_6rem] items-center px-4 py-3.5 sm:grid-cols-[1fr_7rem_6rem_7rem]"
+                          className="grid grid-cols-[1fr_5rem_3.5rem] items-center px-4 py-3.5 sm:grid-cols-[1fr_6rem_6rem_6rem_3.5rem]"
                         >
                           <div className="min-w-0 pr-3">
                             <p className="truncate font-medium text-bone">{u.name || 'Unnamed'}</p>
@@ -519,8 +540,27 @@ export default function AdminDashboard() {
                             {u.city || '—'}
                           </div>
 
-                          <div className="text-right font-mono text-[11px] text-faint">
+                          <div className="hidden text-right font-mono text-[11px] text-faint sm:block">
                             {new Date(u.createdAt).toLocaleDateString()}
+                          </div>
+
+                          <div className="text-right">
+                            {u.id === user?.id ? (
+                              <span className="font-mono text-[10px] text-faint uppercase" title="Current Admin">
+                                You
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setUserToDelete(u)}
+                                disabled={deletingUserId === u.id}
+                                aria-label={`Delete ${u.name || u.email}`}
+                                title="Delete user & associated records"
+                                className="inline-flex items-center justify-center rounded-md border border-blood/30 bg-blood/10 p-1.5 text-blood hover:bg-blood/20 transition-colors disabled:opacity-50 cursor-pointer"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -667,6 +707,54 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Admin User Deletion Confirmation Modal */}
+      {userToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-blood/40 bg-surface p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 border-b border-line pb-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-blood/40 bg-blood/10 text-blood">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-bone">Delete Platform User</h4>
+                <p className="font-mono text-[11px] text-blood uppercase">Permanent Administrative Action</p>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-xs text-mute leading-relaxed">
+              <p>
+                Are you sure you want to permanently delete user{' '}
+                <strong className="text-bone font-semibold">{userToDelete.name || userToDelete.email}</strong>{' '}
+                (<span className="font-mono text-blood">{userToDelete.role}</span>)?
+              </p>
+              <div className="rounded-lg border border-blood/20 bg-blood/5 p-3 text-[11px] text-bone">
+                ⚠️ All associated records (hospital requisitions, inventory, active match dispatches, donor availability history, and credentials) will be permanently purged.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setUserToDelete(null)}
+                disabled={deletingUserId === userToDelete.id}
+                className="rounded-lg border border-line bg-raised px-4 py-2 font-mono text-xs text-mute hover:text-bone transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteUser}
+                disabled={deletingUserId === userToDelete.id}
+                className="inline-flex items-center gap-2 rounded-lg bg-blood px-4 py-2 font-mono text-xs font-semibold text-white shadow hover:bg-blood-dark transition-all disabled:opacity-50 cursor-pointer"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>{deletingUserId === userToDelete.id ? 'Deleting...' : 'Confirm Permanent Deletion'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

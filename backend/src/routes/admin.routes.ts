@@ -7,7 +7,8 @@ import {
   verifyHospital,
   getUsers,
   getRequests,
-  deleteHospital
+  deleteHospital,
+  deleteUser
 } from '../controllers/admin.controller'
 
 const router = Router()
@@ -15,6 +16,7 @@ const router = Router()
 router.use(authenticate, authorize('ADMIN'))
 
 router.delete('/hospitals/:id', deleteHospital)
+router.delete('/users/:id', deleteUser)
 router.get('/stats', getStats)
 router.get('/hospitals', getHospitals)
 router.put('/hospitals/:id/verify', verifyHospital)

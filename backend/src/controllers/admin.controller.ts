@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import prisma from '../lib/prisma'
+import { deleteUserCascade } from '../services/userDeletion.service'
 
 const getStats = async (req: Request, res: Response) => {
   try {
@@ -117,11 +118,36 @@ const deleteHospital = async (req: Request, res: Response) => {
   }
 }
 
+const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string }
+    const adminUserId = req.user?.userId
+
+    if (adminUserId && adminUserId === id) {
+      res.status(400).json({ message: 'Admins cannot delete their own account from the admin console' })
+      return
+    }
+
+    const user = await prisma.user.findUnique({ where: { id } })
+    if (!user) {
+      res.status(404).json({ message: 'User not found' })
+      return
+    }
+
+    await deleteUserCascade(id)
+    res.status(200).json({ message: 'User and all associated records deleted successfully' })
+  } catch (error) {
+    console.error('Admin delete user error:', error)
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}
+
 export { 
   getStats, 
   getHospitals, 
   verifyHospital, 
   getUsers, 
   getRequests, 
-  deleteHospital
+  deleteHospital,
+  deleteUser
  }

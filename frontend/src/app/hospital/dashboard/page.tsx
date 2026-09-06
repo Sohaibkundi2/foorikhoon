@@ -179,6 +179,15 @@ export default function HospitalDashboard() {
               )}
             </div>
 
+            {!hospital?.verified && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                <span>
+                  <strong className="text-bone">License Verification Pending:</strong> Requisition broadcasting will activate once an administrator verifies your PMDC medical license.
+                </span>
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center gap-3 pt-3">
               <Link
                 href="/hospital/request/new"

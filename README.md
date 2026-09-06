@@ -49,7 +49,11 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 - Donor leaderboard with city filter
 - Public blood request board with filters
 - Hospital analytics — most requested blood group, fulfillment rate, inventory status
-- Admin dashboard with hospital verification, shortage alerts, user management (including account deletion)
+- **Hospital license verification gate** — unverified hospitals cannot create blood requests. Medical center accounts must be audited and verified by an administrator via their PMDC / Healthcare Commission registration license before emergency requisition broadcast privileges are unlocked.
+- **Forgot-password & secure reset flow** — automated self-service password recovery via Gmail SMTP (Nodemailer) with 15-minute SHA-256 hashed one-time tokens, automatic invalidation of stale tokens on new requests, user-enumeration protection, and dedicated isolated rate limiters.
+- **Profile password management & Danger Zone account deletion** — self-service password update with visibility toggles, plus GitHub-style irreversible account deletion requiring users to explicitly type `"delete"` to confirm.
+- **Atomic cascading deletions** — deleting a hospital account purges all associated blood requests, matches, inventory records, and credentials in a single atomic transaction; deleting a donor account cascades matches and profile records cleanly.
+- **Admin dashboard & user management** — platform administrators can review institutional license credentials, verify hospitals, inspect national platform telemetry, and delete malicious or compromised accounts (with self-deletion protection).
 - Push notifications via Expo Push Service (production ready)
 - Offline support with cached data on mobile
 - Mobile responsive web + React Native mobile app
@@ -227,14 +231,10 @@ The scoring engine's compatibility matrix is deliberately maintained in two plac
 
 ## Roadmap — Planned Features
 
-- Real-time updates via WebSockets (Socket.io)
-- Redis caching for public stats, leaderboard, heatmap
 - Urdu language support (i18n) for web and mobile
-- Automatic (cron-based) no-show detection
 - Blood drive event scheduling
 - Hospital-to-hospital inventory transfer
 - Trained ML model (logistic regression) replacing rule-based scoring, once sufficient real/synthetic data is available
-- CI/CD pipeline (GitHub Actions) for automated test-and-deploy
 - Small-scale user study (SUS usability testing) for FYP evaluation
 - Google Play Store release
 

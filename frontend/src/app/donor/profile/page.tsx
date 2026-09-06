@@ -17,7 +17,12 @@ import {
   Phone,
   Droplet,
   Save,
-  Compass
+  Compass,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  Trash2,
+  KeyRound
 } from 'lucide-react'
 import { Texture } from '@/components/fk'
 
@@ -58,7 +63,7 @@ function Switch({
 }
 
 export default function DonorProfilePage() {
-  const { user } = useAuthStore()
+  const { user, logout } = useAuthStore()
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
@@ -78,6 +83,79 @@ export default function DonorProfilePage() {
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null)
   const [locationError, setLocationError] = useState('')
   const [locatingInProgress, setLocatingInProgress] = useState(false)
+
+  // Password change states
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
+
+  // Danger zone account deletion states
+  const [deleteConfirmation, setDeleteConfirmation] = useState('')
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordError('')
+    setPasswordSuccess(false)
+
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters long.')
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match.')
+      return
+    }
+
+    try {
+      setPasswordSaving(true)
+      await api.put('/api/auth/change-password', {
+        currentPassword,
+        newPassword,
+      })
+      setPasswordSuccess(true)
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => setPasswordSuccess(false), 4000)
+    } catch (err: any) {
+      setPasswordError(err?.response?.data?.message || 'Failed to change password. Please verify current password.')
+    } finally {
+      setPasswordSaving(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation.trim().toLowerCase() !== 'delete') {
+      setDeleteError("Please type 'delete' to confirm account deletion.")
+      return
+    }
+
+    if (!confirm('Are you absolutely sure? All your donor records and match data will be permanently wiped.')) {
+      return
+    }
+
+    try {
+      setIsDeletingAccount(true)
+      setDeleteError('')
+      await api.delete('/api/auth/account', {
+        data: { confirmation: 'delete' },
+      })
+      logout()
+      router.push('/login')
+    } catch (err: any) {
+      setDeleteError(err?.response?.data?.message || 'Failed to delete account. Please try again.')
+      setIsDeletingAccount(false)
+    }
+  }
 
   const requestLocation = () => {
     setLocationError('')
@@ -415,6 +493,172 @@ export default function DonorProfilePage() {
             </button>
           </div>
         </form>
+
+        {/* Section 4: Security & Password Update */}
+        <div className="mt-8 rounded-3xl border border-line bg-surface/90 p-5 sm:p-7 backdrop-blur-xl space-y-5">
+          <div className="flex items-center justify-between border-b border-line pb-3">
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-blood" />
+              <span className="font-mono text-xs font-bold text-blood">04 • Account Security & Password</span>
+            </div>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Auth Credentials</span>
+          </div>
+
+          {passwordError && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-blood/40 bg-blood/10 p-3.5 text-xs text-bone">
+              <CircleAlert className="h-4 w-4 shrink-0 text-blood mt-0.5" />
+              <span>{passwordError}</span>
+            </div>
+          )}
+
+          {passwordSuccess && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-bone/30 bg-surface p-3.5 text-xs text-bone shadow-md">
+              <Check className="h-4 w-4 shrink-0 text-blood mt-0.5" />
+              <span className="font-medium">Password updated successfully.</span>
+            </div>
+          )}
+
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="block font-mono text-[10px] uppercase tracking-wider text-mute">
+                Current Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  className="w-full rounded-xl border border-line bg-raised/60 py-2.5 pl-3.5 pr-10 text-sm text-bone focus:border-blood focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-mute hover:text-bone"
+                  aria-label={showCurrentPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="block font-mono text-[10px] uppercase tracking-wider text-mute">
+                  New Password (min. 8 chars)
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    placeholder="••••••••"
+                    className="w-full rounded-xl border border-line bg-raised/60 py-2.5 pl-3.5 pr-10 text-sm text-bone focus:border-blood focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-mute hover:text-bone"
+                    aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block font-mono text-[10px] uppercase tracking-wider text-mute">
+                  Confirm New Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    placeholder="••••••••"
+                    className="w-full rounded-xl border border-line bg-raised/60 py-2.5 pl-3.5 pr-10 text-sm text-bone focus:border-blood focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-mute hover:text-bone"
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={passwordSaving}
+                className="flex items-center justify-center gap-2 rounded-xl border border-line bg-raised py-2.5 px-5 font-mono text-xs font-semibold text-bone hover:border-blood hover:text-blood transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <Lock className="h-3.5 w-3.5" />
+                <span>{passwordSaving ? 'Updating Password...' : 'Change Password'}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Section 5: Danger Zone */}
+        <div className="mt-8 rounded-3xl border border-blood/40 bg-blood/[0.04] p-5 sm:p-7 backdrop-blur-xl space-y-5">
+          <div className="flex items-center justify-between border-b border-blood/20 pb-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-blood" />
+              <span className="font-mono text-xs font-bold text-blood">05 • Danger Zone</span>
+            </div>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-blood font-semibold">Irreversible</span>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-bone">
+              Permanently Delete Donor Account
+            </p>
+            <p className="text-xs text-mute leading-relaxed">
+              Once you delete your account, your profile, match history, and volunteer donor availability
+              will be permanently removed. There is no recovery or restoration path.
+            </p>
+
+            {deleteError && (
+              <div className="flex items-start gap-2 rounded-xl border border-blood/40 bg-blood/10 p-3 text-xs text-bone">
+                <CircleAlert className="h-4 w-4 shrink-0 text-blood mt-0.5" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            <div className="pt-2">
+              <label className="block font-mono text-[11px] text-mute mb-2">
+                To confirm deletion, please type <strong className="font-mono text-blood">delete</strong> below:
+              </label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  value={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.value)}
+                  placeholder="type delete to confirm"
+                  className="flex-1 rounded-xl border border-blood/30 bg-raised/80 py-2.5 px-3.5 font-mono text-xs text-bone placeholder:text-faint focus:border-blood focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirmation.trim().toLowerCase() !== 'delete' || isDeletingAccount}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-blood bg-blood/90 py-2.5 px-5 font-mono text-xs font-semibold text-white shadow hover:bg-blood transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>{isDeletingAccount ? 'Deleting...' : 'Delete My Account'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
