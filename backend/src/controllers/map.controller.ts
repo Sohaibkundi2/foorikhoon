@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 import prisma from '../lib/prisma'
 import axios from 'axios'
 
-const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://localhost:5001'
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:5001'
 
 
 const getMapStats = async (req: Request, res: Response) => {
@@ -115,14 +115,38 @@ const getShortagePrediiction = async (req: Request, res: Response) => {
       })
     )
 
-    // call Flask AI engine
-    const aiResponse = await axios.post(`${AI_ENGINE_URL}/ai/predict`, {
-      bloodStats
-    })
+    let predictions: any[] = []
 
-    res.status(200).json({ predictions: aiResponse.data.predictions })
+    try {
+      // call Flask AI engine
+      const aiResponse = await axios.post(`${AI_ENGINE_URL}/ai/predict`, {
+        bloodStats
+      }, { timeout: 3500 })
+      predictions = aiResponse.data.predictions
+    } catch (aiErr) {
+      console.warn('AI engine predict unreachable or failed, using local statistical calculation:', (aiErr as any)?.message)
+      // Fallback: calculate directly using the exact same ratio & risk logic
+      predictions = bloodStats.map(stat => {
+        const ratio = stat.requestCount / Math.max(stat.donorCount, 1)
+        let risk = 'LOW'
+        if (ratio >= 0.8) risk = 'CRITICAL'
+        else if (ratio >= 0.5) risk = 'HIGH'
+        else if (ratio >= 0.3) risk = 'MODERATE'
+
+        return {
+          bloodGroup: stat.bloodGroup,
+          requestCount: stat.requestCount,
+          donorCount: stat.donorCount,
+          ratio: Math.round(ratio * 100) / 100,
+          risk
+        }
+      }).sort((a, b) => b.ratio - a.ratio)
+    }
+
+    res.status(200).json({ predictions })
 
   } catch (error) {
+    console.error('getShortagePrediction error:', error)
     res.status(500).json({ message: 'Internal server error' })
   }
 }

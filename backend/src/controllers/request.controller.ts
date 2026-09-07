@@ -12,7 +12,7 @@ import {
   isRequestStatus
 } from '../lib/statusTransitions'
 
-const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://localhost:5001'
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:5001'
 
 
 const bloodGroupLabels: Record<string, string> = {
@@ -36,6 +36,13 @@ const createRequest = async (req: Request, res: Response) => {
 
     if (!hospital) {
       res.status(404).json({ message: "hospital not found" })
+      return
+    }
+
+    if (!hospital.verified) {
+      res.status(403).json({
+        message: 'Your hospital account is awaiting PMDC license verification by administrators. Only verified hospitals can broadcast blood requests.'
+      })
       return
     }
 

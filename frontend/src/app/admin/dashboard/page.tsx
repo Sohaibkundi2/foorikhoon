@@ -102,7 +102,14 @@ export default function AdminDashboard() {
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
 
+  const [hydrated, setHydrated] = useState(false)
+
   useEffect(() => {
+    setHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated) return
     if (!user) {
       router.push('/login')
       return
@@ -112,22 +119,37 @@ export default function AdminDashboard() {
       return
     }
     fetchAll()
-  }, [user])
+  }, [hydrated, user])
 
   const fetchAll = async () => {
     try {
       const [statsRes, hospitalsRes, usersRes, requestsRes, shortageRes] = await Promise.all([
-        api.get('/api/admin/stats'),
-        api.get('/api/admin/hospitals'),
-        api.get('/api/admin/users'),
-        api.get('/api/admin/requests'),
-        api.get('/api/map/shortage')
+        api.get('/api/admin/stats').catch(err => {
+          console.error('Failed to fetch admin stats:', err)
+          return { data: { stats: null } }
+        }),
+        api.get('/api/admin/hospitals').catch(err => {
+          console.error('Failed to fetch admin hospitals:', err)
+          return { data: { hospitals: [] } }
+        }),
+        api.get('/api/admin/users').catch(err => {
+          console.error('Failed to fetch admin users:', err)
+          return { data: { users: [] } }
+        }),
+        api.get('/api/admin/requests').catch(err => {
+          console.error('Failed to fetch admin requests:', err)
+          return { data: { requests: [] } }
+        }),
+        api.get('/api/map/shortage').catch(err => {
+          console.warn('Failed to fetch shortage predictions:', err)
+          return { data: { predictions: [] } }
+        })
       ])
-      setStats(statsRes.data.stats)
-      setHospitals(hospitalsRes.data.hospitals || [])
-      setUsers(usersRes.data.users || [])
-      setRequests(requestsRes.data.requests || [])
-      setPredictions(shortageRes.data.predictions || [])
+      if (statsRes?.data?.stats) setStats(statsRes.data.stats)
+      setHospitals(hospitalsRes?.data?.hospitals || [])
+      setUsers(usersRes?.data?.users || [])
+      setRequests(requestsRes?.data?.requests || [])
+      setPredictions(shortageRes?.data?.predictions || [])
     } catch (err) {
       console.error('Admin fetch error:', err)
     } finally {

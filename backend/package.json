@@ -19,7 +19,8 @@
     "test:security": "jest tests/integration/security.test.ts",
     "test:eligibility": "jest tests/integration/donorEligibility.test.ts",
     "test:score": "jest tests/integration/commitmentScore.test.ts",
-    "test:lifecycle": "jest tests/integration/lifecycle.test.ts"
+    "test:lifecycle": "jest tests/integration/lifecycle.test.ts",
+    "test:password-reset": "jest tests/integration/passwordReset.test.ts"
   },
   "keywords": [],
   "author": "",
@@ -38,6 +39,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
     "node-cron": "^4.4.1",
+    "nodemailer": "^10.0.0",
     "pg": "^8.21.0",
     "prisma": "^7.8.0"
   },
@@ -50,6 +52,7 @@
     "@types/multer": "^2.2.0",
     "@types/node": "^25.9.1",
     "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^8.0.1",
     "@types/pg": "^8.20.0",
     "@types/supertest": "^7.2.1",
     "jest": "^30.4.2",

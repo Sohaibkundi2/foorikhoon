@@ -50,17 +50,10 @@ const limiter = isTestEnv
       message: { message: 'Too many requests, please try again later.' }
     })
 
-const authLimiter = isTestEnv
-  ? passthrough
-  : rateLimit({
-      windowMs: 15 * 60 * 1000,
-      max: 10, // stricter for auth
-      standardHeaders: true,
-      legacyHeaders: false,
-      message: { message: 'Too many login attempts, please try again later.' }
-    })
+// Auth endpoints have dedicated, isolated rate limiters configured per-route in auth.routes.ts
+// to avoid mixing login, registration, and password recovery budgets.
+app.use('/api/auth', authRouter)
 
-app.use('/api/auth', authLimiter, authRouter)
 
 app.use('/api/hospital', limiter, hospitalRouter)
 app.use('/api/donor', limiter, donorRouter)
