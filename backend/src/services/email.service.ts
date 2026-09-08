@@ -11,7 +11,8 @@ export const getTransporter = () => {
 }
 
 export async function sendPasswordResetEmail(to: string, rawToken: string): Promise<void> {
-  const resetUrl = `https://forikhoon.app/reset-password?token=${rawToken}`
+  const baseUrl = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/$/, '') : 'https://forikhoon.app'
+  const resetUrl = `${baseUrl}/reset-password?token=${rawToken}`
 
   const transporter = getTransporter()
 

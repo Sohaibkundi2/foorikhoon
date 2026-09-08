@@ -180,7 +180,7 @@ export default function HeroCertificate({
   const handleWhatsAppShare = () => {
     window.open(
       `https://wa.me/?text=${encodeURIComponent(
-        `I just donated blood through ForiKhoon and helped save a life. Join the network: https://forikhoon.com`
+        `I just donated blood through ForiKhoon and helped save a life. Join the network: https://forikhoon.app`
       )}`,
       '_blank'
     )
@@ -378,7 +378,7 @@ export default function HeroCertificate({
               fontSize: 8.5, fontWeight: 700, letterSpacing: 1.6, textTransform: 'uppercase', lineHeight: 1,
               margin: 0, opacity: 0.8, fontFamily: MONO, whiteSpace: 'nowrap'
             }}>
-              forikhoon.com
+              forikhoon.app
             </p>
           </div>
         </div>

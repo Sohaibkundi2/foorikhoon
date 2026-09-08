@@ -296,7 +296,7 @@ export default function HeroCertificate({
 
               <View style={styles.footerBottom}>
                 <Text style={styles.thankYou}>Thank you for being a hero.</Text>
-                <Text style={styles.footerBrand}>FORIKHOON.COM</Text>
+                <Text style={styles.footerBrand}>FORIKHOON.APP</Text>
               </View>
             </View>
           </View>
