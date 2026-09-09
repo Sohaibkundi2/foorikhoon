@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 import prisma from "../lib/prisma"
 import axios from "axios"
 import { BloodGroup } from "../../prisma/generated"
-import { sendPushNotification } from '../services/notification.service'
+import { sendPushNotification, notifyMatchedDonor } from '../services/notification.service'
 import { haversineDistance, getBoundingBox, RADIUS_TIERS_KM } from "../lib/distance"
 import { COMPATIBLE_DONOR_GROUPS } from "../lib/compatibility"
 import { findEligibleDonors } from '../lib/donorMatching'
@@ -99,16 +99,19 @@ const createRequest = async (req: Request, res: Response) => {
         })
 
         const donor = await prisma.donor.findUnique({
-          where: { id: ranked.donorId }
+          where: { id: ranked.donorId },
+          include: { user: true }
         })
 
-        if (donor?.pushToken) {
-          await sendPushNotification(
-            donor.pushToken,
-            '🩸 Blood Needed Urgently',
-            `${hospital.name} needs ${bloodGroupLabels[bloodGroup]} blood nearby`,
-            { requestId: newRequest.id }
-          )
+        if (donor) {
+          await notifyMatchedDonor({
+            donor,
+            hospital,
+            bloodGroup,
+            urgency,
+            distanceKm: distanceByDonorId[donor.id],
+            requestId: newRequest.id
+          })
         }
 
         return match

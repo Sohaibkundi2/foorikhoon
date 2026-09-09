@@ -1,7 +1,7 @@
 import cron from 'node-cron'
 import prisma from '../lib/prisma'
 import axios from 'axios'
-import { sendPushNotification } from '../services/notification.service'
+import { sendPushNotification, notifyMatchedDonor } from '../services/notification.service'
 import { COMPATIBLE_DONOR_GROUPS } from '../lib/compatibility'
 import { findEligibleDonors } from '../lib/donorMatching'
 
@@ -27,7 +27,7 @@ export const startEscalationJob = () => {
             }
           }
         },
-        include: { hospital: true, matches: true }
+        include: { hospital: { include: { user: true } }, matches: true }
       })
 
       for (const request of staleRequests) {
@@ -58,20 +58,28 @@ export const startEscalationJob = () => {
         })
 
         const nextBatch = aiResponse.data.matches.slice(0, 3)
+        const distanceByDonorId = Object.fromEntries(matches.map(w => [w.donor.id, w.distanceKm]))
 
         for (const ranked of nextBatch) {
           await prisma.match.create({
             data: { requestId: request.id, donorId: ranked.donorId }
           })
 
-          const donor = await prisma.donor.findUnique({ where: { id: ranked.donorId } })
-          if (donor?.pushToken) {
-            await sendPushNotification(
-              donor.pushToken,
-              '🩸 Blood Needed Urgently',
-              `${request.hospital.name} needs blood — previous donors unavailable`,
-              { requestId: request.id }
-            )
+          const donor = await prisma.donor.findUnique({
+            where: { id: ranked.donorId },
+            include: { user: true }
+          })
+
+          if (donor) {
+            await notifyMatchedDonor({
+              donor,
+              hospital: request.hospital,
+              bloodGroup: request.bloodGroup,
+              urgency: request.urgency,
+              distanceKm: distanceByDonorId[donor.id],
+              requestId: request.id,
+              pushBody: `${request.hospital.name} needs blood — previous donors unavailable`
+            })
           }
         }
 

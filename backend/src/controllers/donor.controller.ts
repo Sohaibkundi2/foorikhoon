@@ -3,7 +3,7 @@ import prisma from '../lib/prisma'
 import { geocodeAddress } from "../lib/geocode"
 import { COMPATIBLE_DONOR_GROUPS } from "../lib/compatibility"
 import axios from "axios"
-import { sendPushNotification } from '../services/notification.service'
+import { sendPushNotification, notifyMatchedDonor } from '../services/notification.service'
 import { findEligibleDonors } from '../lib/donorMatching'
 import { getSignedPhotoUrl } from '../services/cloudinary.service'
 import {
@@ -234,7 +234,7 @@ const respondToMatch = async (req: Request, res: Response) => {
 export async function escalateAfterDecline(requestId: string) {
   const request = await prisma.bloodRequest.findUnique({
     where: { id: requestId },
-    include: { hospital: true, matches: true }
+    include: { hospital: { include: { user: true } }, matches: true }
   })
 
   if (!request) return
@@ -289,14 +289,23 @@ export async function escalateAfterDecline(requestId: string) {
   // unconditional write would then reset it to PENDING and silently discard a real
   // acceptance. Please don't reinstate it.
 
-  const donor = await prisma.donor.findUnique({ where: { id: nextDonor.donorId } })
-  if (donor?.pushToken) {
-    await sendPushNotification(
-      donor.pushToken,
-      '🩸 Blood Needed Urgently',
-      `${request.hospital.name} needs blood — please respond`,
-      { requestId: request.id }
-    )
+  const distanceByDonorId = Object.fromEntries(matches.map(w => [w.donor.id, w.distanceKm]))
+
+  const donor = await prisma.donor.findUnique({
+    where: { id: nextDonor.donorId },
+    include: { user: true }
+  })
+
+  if (donor) {
+    await notifyMatchedDonor({
+      donor,
+      hospital: request.hospital,
+      bloodGroup: request.bloodGroup,
+      urgency: request.urgency,
+      distanceKm: distanceByDonorId[donor.id],
+      requestId: request.id,
+      pushBody: `${request.hospital.name} needs blood — please respond`
+    })
   }
 }
 
