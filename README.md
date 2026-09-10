@@ -59,6 +59,9 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 - Mobile responsive web + React Native mobile app
 - **Donor contact-sharing consent** — donors can opt in to sharing their name and phone number with a hospital once they accept a match, to help coordinate the actual donation. Off by default; contact info is only ever included in the hospital's data when the donor has explicitly enabled it and the match is accepted — never exposed otherwise, enforced server-side
 - **Hospital push notifications** — hospitals are notified the moment a donor accepts their request, including the donor's contact info if shared
+- **Multi-channel match notification with automatic email fallback** — when a donor is matched to a blood request, the backend automatically determines the optimal notification channel: donors with registered mobile device tokens receive instant Expo push notifications; donors without a push token (such as web browser users) automatically receive a rich fallback email via Gmail SMTP with hospital name, city, distance in km, urgency badge, and a direct link to accept or decline on `forikhoon.app`. Notification dispatch is asynchronous and non-blocking, ensuring match creation is never delayed.
+- **Fault-tolerant shortage prediction & admin dashboard resilience** — the shortage prediction endpoint automatically falls back to local statistical computation if the external Python ML service is unreachable, and the admin dashboard incorporates isolated query fault barriers with hydration protection so partial network issues never block administrator controls from rendering.
+- **Domain standardization (`forikhoon.app`)** — all web and mobile Hero Certificates, WhatsApp social sharing links, and transactional emails consistently target the official `https://forikhoon.app` domain.
 
 ---
 
@@ -79,6 +82,7 @@ ForiKhoon bridges that gap with a platform that handles the full lifecycle of a 
 | State (Mobile) | Zustand + AsyncStorage |
 | Maps | Leaflet.js, React Leaflet |
 | Push Notifications | Expo Push Service (FCM) |
+| Email & Fallback Notifications | Nodemailer (Gmail SMTP) — password recovery & match notifications |
 | Image Storage | Cloudinary (authenticated assets + signed URLs) |
 | File Uploads | Multer (memory storage), expo-image-picker (mobile) |
 | Certificate Export (Web) | html2canvas |
