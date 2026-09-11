@@ -49,4 +49,7 @@ GET   /api/map/public-stats
 GET   /api/map/weekly-heroes
 GET   /api/map/leaderboard
 GET   /api/map/shortage
+ 
+SYSTEM / HEALTH
+GET   /api/healthz              → checks live database connectivity; returns 200 ok or 503 error
 ```

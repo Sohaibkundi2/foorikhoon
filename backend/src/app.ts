@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit'
 import cors from 'cors'
 
 import authRouter from './routes/auth.routes'
+import healthRouter from './routes/health.routes'
 
 //protected routes
 import hospitalRouter from './routes/hospital.routes'
@@ -53,6 +54,8 @@ const limiter = isTestEnv
 // Auth endpoints have dedicated, isolated rate limiters configured per-route in auth.routes.ts
 // to avoid mixing login, registration, and password recovery budgets.
 app.use('/api/auth', authRouter)
+app.use('/api', healthRouter)
+app.use('/', healthRouter)
 
 
 app.use('/api/hospital', limiter, hospitalRouter)
