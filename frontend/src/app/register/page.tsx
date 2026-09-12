@@ -141,10 +141,10 @@ export default function RegisterPage() {
           <div className="border-b border-line bg-raised/40 p-6 sm:p-7">
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-blood">
-                Registration Portal
+                Create Account
               </span>
               <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
-                Pakistan Emergency Grid
+                Emergency Blood Network
               </span>
             </div>
 
@@ -157,7 +157,7 @@ export default function RegisterPage() {
                 href="/login"
                 className="font-semibold text-bone hover:text-white underline decoration-line hover:decoration-blood transition-colors"
               >
-                Sign in here
+                Log in here
               </Link>
             </p>
           </div>
@@ -167,7 +167,7 @@ export default function RegisterPage() {
             {!role && (
               <div className="space-y-4">
                 <p className="font-mono text-[11px] uppercase tracking-wider text-faint">
-                  Select Your Account Type
+                  Choose how you want to join
                 </p>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -179,14 +179,14 @@ export default function RegisterPage() {
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-blood/30 bg-blood/10 text-blood">
                         <Droplet className="h-5 w-5 fill-blood" />
                       </div>
-                      <h3 className="mt-4 text-base font-bold text-bone">On-Call Donor</h3>
+                      <h3 className="mt-4 text-base font-bold text-bone">Blood Donor</h3>
                       <p className="mt-1 text-xs text-mute leading-relaxed">
-                        Join our emergency response pool. Receive targeted alerts when a nearby hospital needs your blood group.
+                        Register as a donor. Receive alerts when a nearby hospital urgently needs your blood group.
                       </p>
                     </div>
 
                     <div className="mt-5 flex items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-blood group-hover:translate-x-0.5 transition-transform">
-                      <span>Register as Donor</span>
+                      <span>Join as Donor</span>
                       <ArrowRight className="h-3.5 w-3.5" />
                     </div>
                   </button>
@@ -199,14 +199,14 @@ export default function RegisterPage() {
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-surface text-bone">
                         <Building2 className="h-5 w-5 text-blood" />
                       </div>
-                      <h3 className="mt-4 text-base font-bold text-bone">Hospital / Facility</h3>
+                      <h3 className="mt-4 text-base font-bold text-bone">Hospital / Blood Bank</h3>
                       <p className="mt-1 text-xs text-mute leading-relaxed">
-                        Accredited medical center. Broadcast emergency requests, access ranked donors, and verify collections.
+                        Verified medical center. Request emergency blood, connect with nearby donors, and confirm donations.
                       </p>
                     </div>
 
                     <div className="mt-5 flex items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-blood group-hover:translate-x-0.5 transition-transform">
-                      <span>Hospital Access</span>
+                      <span>Register Hospital</span>
                       <ArrowRight className="h-3.5 w-3.5" />
                     </div>
                   </button>
@@ -226,7 +226,7 @@ export default function RegisterPage() {
                     onClick={() => { setRole(null); setError('') }}
                     className="font-mono text-[10px] uppercase tracking-wider text-faint hover:text-bone transition-colors"
                   >
-                    Change Role
+                    Change choice
                   </button>
                 </div>
 
@@ -242,13 +242,13 @@ export default function RegisterPage() {
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1">
                       <label className="block font-mono text-[10px] uppercase tracking-wider text-mute">
-                        {role === 'DONOR' ? 'Your Full Name' : 'Administrator / Coordinator Name'}
+                        {role === 'DONOR' ? 'Your Full Name' : 'Hospital Representative Name'}
                       </label>
                       <input
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="e.g. Dr. Tariq Khan"
+                        placeholder={role === 'DONOR' ? 'e.g. Ali Ahmed' : 'e.g. Dr. Tariq Khan'}
                         required
                         className="w-full rounded-xl border border-line bg-raised/60 py-2 px-3 text-sm text-bone focus:border-blood focus:outline-none"
                       />
@@ -262,7 +262,7 @@ export default function RegisterPage() {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@domain.com"
+                        placeholder="you@example.com"
                         required
                         className="w-full rounded-xl border border-line bg-raised/60 py-2 px-3 text-sm text-bone focus:border-blood focus:outline-none"
                       />
@@ -315,7 +315,7 @@ export default function RegisterPage() {
 
                   <div className="space-y-1">
                     <label className="block font-mono text-[10px] uppercase tracking-wider text-mute">
-                      Phone Number (Hidden until request accepted)
+                      Phone Number (Kept private until you accept a request)
                     </label>
                     <input
                       type="tel"
@@ -382,7 +382,7 @@ export default function RegisterPage() {
                           <div>
                             <p className="text-xs font-bold text-bone">Share Your Location</p>
                             <p className="text-[11px] text-mute mt-0.5">
-                              For faster, more accurate matching in an emergency, we recommend sharing your location.
+                              Sharing your location helps us alert you only when a hospital near you needs blood.
                             </p>
                           </div>
                           <Compass className="h-4 w-4 text-blood shrink-0" />
@@ -392,14 +392,14 @@ export default function RegisterPage() {
                           <div className="rounded-xl border border-bone/20 bg-surface p-3 flex items-center justify-between">
                             <div className="flex items-center gap-2 text-xs font-semibold text-bone">
                               <Check className="h-4 w-4 text-blood" />
-                              <span>Location captured for your profile</span>
+                              <span>Location saved</span>
                             </div>
                             <button
                               type="button"
                               onClick={() => { setLocationMethod(null); setCoords(null) }}
                               className="font-mono text-[10px] uppercase tracking-wider text-mute hover:text-bone"
                             >
-                              Use a different method
+                              Change location
                             </button>
                           </div>
                         ) : locationMethod === 'manual' ? (
@@ -416,7 +416,7 @@ export default function RegisterPage() {
                               onClick={() => setLocationMethod(null)}
                               className="font-mono text-[10px] uppercase tracking-wider text-faint hover:text-bone"
                             >
-                              Use current location instead
+                              Use GPS location instead
                             </button>
                           </div>
                         ) : (
@@ -435,7 +435,7 @@ export default function RegisterPage() {
                               onClick={() => setLocationMethod('manual')}
                               className="flex items-center justify-center rounded-xl border border-line bg-surface py-2.5 px-3 text-xs font-medium text-mute hover:text-bone transition-colors"
                             >
-                              Enter Area Instead
+                              Enter Area Name Manually
                             </button>
                           </div>
                         )}
@@ -470,7 +470,7 @@ export default function RegisterPage() {
                           <div>
                             <p className="text-xs font-bold text-bone">Hospital Location</p>
                             <p className="text-[11px] text-mute mt-0.5">
-                              Sharing your exact location helps donors and patients find you accurately.
+                              Your location helps nearby donors see how far your hospital is.
                             </p>
                           </div>
                           <Building2 className="h-4 w-4 text-blood shrink-0" />
@@ -480,14 +480,14 @@ export default function RegisterPage() {
                           <div className="rounded-xl border border-bone/20 bg-surface p-3 flex items-center justify-between">
                             <div className="flex items-center gap-2 text-xs font-semibold text-bone">
                               <Check className="h-4 w-4 text-blood" />
-                              <span>Location captured for your hospital</span>
+                              <span>Hospital location saved</span>
                             </div>
                             <button
                               type="button"
                               onClick={() => { setLocationMethod(null); setCoords(null) }}
                               className="font-mono text-[10px] uppercase tracking-wider text-mute hover:text-bone"
                             >
-                              Use a different method
+                              Change location
                             </button>
                           </div>
                         ) : locationMethod === 'manual' ? (
@@ -504,7 +504,7 @@ export default function RegisterPage() {
                               onClick={() => setLocationMethod(null)}
                               className="font-mono text-[10px] uppercase tracking-wider text-faint hover:text-bone"
                             >
-                              Use current location instead
+                              Use GPS location instead
                             </button>
                           </div>
                         ) : (
@@ -516,14 +516,14 @@ export default function RegisterPage() {
                               className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-blood/40 bg-blood/10 py-2.5 px-3 text-xs font-semibold text-blood hover:bg-blood/20 transition-colors cursor-pointer"
                             >
                               <Navigation className="h-3.5 w-3.5" />
-                              <span>{locatingInProgress ? 'Getting location...' : 'Use Current Location'}</span>
+                              <span>{locatingInProgress ? 'Getting location...' : 'Use Hospital GPS'}</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => setLocationMethod('manual')}
                               className="flex items-center justify-center rounded-xl border border-line bg-surface py-2.5 px-3 text-xs font-medium text-mute hover:text-bone transition-colors"
                             >
-                              Enter Address Instead
+                              Enter Address Manually
                             </button>
                           </div>
                         )}
@@ -535,7 +535,7 @@ export default function RegisterPage() {
 
                       <div className="space-y-1">
                         <label className="block font-mono text-[10px] uppercase tracking-wider text-mute">
-                          License Number
+                          Hospital License / Registration Number
                         </label>
                         <input
                           type="text"

@@ -65,7 +65,7 @@ export default function LeaderboardPreview() {
                   </span>
                 </div>
                 <h3 className="mt-1 text-xl sm:text-2xl font-bold tracking-tight text-bone">
-                  Highest Rated Donors
+                  Top Rated Donors
                 </h3>
               </div>
 
@@ -73,7 +73,7 @@ export default function LeaderboardPreview() {
                 href="/leaderboard"
                 className="group inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-blood transition-colors hover:text-blood-lite self-start sm:self-auto"
               >
-                <span>View Full Top 20</span>
+                <span>View Top 20 Donors</span>
                 <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-1" />
               </Link>
             </div>
@@ -110,7 +110,7 @@ export default function LeaderboardPreview() {
                           #{rank}
                         </span>
                         <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
-                          {isFirst ? 'Gold Tier' : rank === 2 ? 'Silver Tier' : 'Bronze Tier'}
+                          {isFirst ? '1st Place' : rank === 2 ? '2nd Place' : '3rd Place'}
                         </span>
                       </div>
 
@@ -147,16 +147,16 @@ export default function LeaderboardPreview() {
                     {/* Stats Footer */}
                     <div className="mt-4 grid grid-cols-2 gap-2 border-t border-line-soft pt-3 font-mono">
                       <div>
-                        <span className="text-[10px] uppercase tracking-wider text-faint">Commitment</span>
+                        <span className="text-[10px] uppercase tracking-wider text-faint">Reliability</span>
                         <p className="text-base font-bold text-bone tabular-nums">
                           {donor.commitmentScore}<span className="text-xs text-faint font-normal">/100</span>
                         </p>
                       </div>
 
                       <div className="text-right">
-                        <span className="text-[10px] uppercase tracking-wider text-faint">Fulfilled</span>
+                        <span className="text-[10px] uppercase tracking-wider text-faint">Donations</span>
                         <p className="text-base font-bold text-blood tabular-nums">
-                          {donor.totalDonations} <span className="text-xs text-mute font-normal">units</span>
+                          {donor.totalDonations} <span className="text-xs text-mute font-normal">bags</span>
                         </p>
                       </div>
                     </div>

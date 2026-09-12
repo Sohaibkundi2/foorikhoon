@@ -126,7 +126,7 @@ export default function HospitalDashboard() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
           <p className="font-mono text-xs uppercase tracking-widest text-faint">
-            Loading hospital command center & active requests...
+            Loading hospital dashboard...
           </p>
         </div>
       </div>
@@ -143,7 +143,7 @@ export default function HospitalDashboard() {
           <div className="space-y-4">
             <div className="flex items-center gap-2 rounded-full border border-blood/30 bg-blood/10 px-3.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-blood w-fit">
               <LiveDot />
-              <span>Hospital Dispatch Console</span>
+              <span>Hospital Portal</span>
             </div>
 
             <div>
@@ -162,19 +162,19 @@ export default function HospitalDashboard() {
               {hospital?.verified ? (
                 <span className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-bone">
                   <BadgeCheck className="h-4 w-4 text-blood" />
-                  <span>Accredited Medical Center</span>
+                  <span>Verified Hospital</span>
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-amber-300">
                   <Clock className="h-4 w-4" />
-                  <span>Verification Under Review</span>
+                  <span>Verification in Progress</span>
                 </span>
               )}
 
               {lowStock.length > 0 && (
                 <span className="inline-flex items-center gap-1.5 rounded-xl border border-blood/30 bg-blood/15 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-blood">
                   <TriangleAlert className="h-4 w-4" />
-                  <span>{lowStock.length} Blood Group{lowStock.length > 1 ? 's' : ''} Deficit</span>
+                  <span>{lowStock.length} Blood Group{lowStock.length > 1 ? 's' : ''} Low in Stock</span>
                 </span>
               )}
             </div>
@@ -183,7 +183,7 @@ export default function HospitalDashboard() {
               <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
                 <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
                 <span>
-                  <strong className="text-bone">License Verification Pending:</strong> Requisition broadcasting will activate once an administrator verifies your PMDC medical license.
+                  <strong className="text-bone">Verification in Progress:</strong> Emergency requests will be activated once an administrator approves your hospital license.
                 </span>
               </div>
             )}
@@ -194,7 +194,7 @@ export default function HospitalDashboard() {
                 className="flex items-center gap-2 rounded-xl bg-blood px-4 py-2.5 text-xs font-semibold text-white shadow-[0_0_20px_-3px_rgba(220,38,38,0.5)] transition-all hover:bg-blood-dark active:scale-95"
               >
                 <Plus className="h-4 w-4" />
-                <span>Post Emergency Request</span>
+                <span>Request Blood Now</span>
               </Link>
               <Link
                 href="/hospital/requests"
@@ -206,13 +206,13 @@ export default function HospitalDashboard() {
                 href="/hospital/inventory"
                 className="rounded-xl border border-line bg-surface px-4 py-2.5 text-xs font-semibold text-mute hover:text-bone hover:border-line-soft transition-colors"
               >
-                Stock Tracker
+                Blood Stock
               </Link>
               <Link
                 href="/hospital/analytics"
                 className="rounded-xl border border-line bg-surface px-4 py-2.5 text-xs font-semibold text-mute hover:text-bone hover:border-line-soft transition-colors"
               >
-                Shortage AI
+                Shortage Forecast
               </Link>
             </div>
           </div>
@@ -221,7 +221,7 @@ export default function HospitalDashboard() {
           <div className="rounded-3xl border border-line bg-surface/90 p-5 backdrop-blur-xl shadow-2xl space-y-3">
             <div className="flex items-center justify-between border-b border-line pb-3">
               <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
-                Transfusion Operations
+                Blood Operations
               </span>
               <span className="rounded-md border border-line bg-raised px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-blood font-semibold">
                 Live
@@ -240,12 +240,12 @@ export default function HospitalDashboard() {
               </div>
 
               <div className="rounded-2xl border border-line bg-raised/40 p-3">
-                <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Fulfilled</p>
+                <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Completed</p>
                 <p className="mt-1 font-mono text-xl font-bold text-bone">{fulfilledCount}</p>
               </div>
 
               <div className="rounded-2xl border border-line bg-raised/40 p-3">
-                <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Stocked Units</p>
+                <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Blood Bags in Stock</p>
                 <p className="mt-1 font-mono text-xl font-bold text-bone">{unitsOnShelf}</p>
               </div>
             </div>
@@ -258,7 +258,7 @@ export default function HospitalDashboard() {
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs font-bold text-blood">01</span>
               <h2 className="text-lg font-bold tracking-tight text-bone">
-                Blood Bank Stock Monitor
+                Blood Stock Monitor
               </h2>
             </div>
 
@@ -266,19 +266,19 @@ export default function HospitalDashboard() {
               href="/hospital/inventory"
               className="flex items-center gap-1 font-mono text-xs text-mute hover:text-blood transition-colors"
             >
-              <span>Manage Units</span>
+              <span>Update Stock</span>
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
           {inventory.length === 0 ? (
             <div className="text-center py-6">
-              <p className="text-xs text-mute">No inventory data recorded for your facility.</p>
+              <p className="text-xs text-mute">No blood stock recorded for your hospital yet.</p>
               <Link
                 href="/hospital/inventory"
                 className="mt-2 inline-block text-xs font-semibold text-blood hover:underline"
               >
-                Add Inventory Units
+                Add Blood Bags
               </Link>
             </div>
           ) : (
@@ -302,14 +302,14 @@ export default function HospitalDashboard() {
                       </span>
                       {isLow && (
                         <span className="font-mono text-[9px] uppercase font-bold text-blood">
-                          Deficit
+                          Low Stock
                         </span>
                       )}
                     </div>
 
                     <div className="mt-3 flex items-baseline justify-between">
                       <span className="font-mono text-2xl font-bold text-bone">{item.units}</span>
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Units</span>
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Bags</span>
                     </div>
 
                     <div className="mt-2.5 h-1.5 w-full rounded-full bg-surface overflow-hidden">
@@ -333,7 +333,7 @@ export default function HospitalDashboard() {
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs font-bold text-blood">02</span>
               <h2 className="text-lg font-bold tracking-tight text-bone">
-                Active Hospital Requisitions
+                Active Blood Requests
               </h2>
             </div>
 
@@ -341,21 +341,21 @@ export default function HospitalDashboard() {
               href="/hospital/requests"
               className="flex items-center gap-1 font-mono text-xs text-mute hover:text-blood transition-colors"
             >
-              <span>View History</span>
+              <span>View All Requests</span>
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
           {activeRequests.length === 0 ? (
             <div className="rounded-2xl border border-line bg-surface/60 p-8 text-center backdrop-blur-md">
-              <p className="text-sm font-semibold text-bone">No active broadcasts</p>
+              <p className="text-sm font-semibold text-bone">No active blood requests</p>
               <p className="mt-1 text-xs text-mute">All patient requests have been fulfilled.</p>
               <Link
                 href="/hospital/request/new"
                 className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-blood py-2 px-4 text-xs font-semibold text-white shadow hover:bg-blood-dark transition-colors"
               >
                 <Plus className="h-3.5 w-3.5" />
-                <span>Broadcast New Request</span>
+                <span>Post New Request</span>
               </Link>
             </div>
           ) : (
@@ -384,7 +384,7 @@ export default function HospitalDashboard() {
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-bone">
-                              {req.units} Unit{req.units > 1 ? 's' : ''} Needed
+                              {req.units} Bag{req.units > 1 ? 's' : ''} Needed
                             </span>
                             <span
                               className={`rounded-md px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
@@ -406,7 +406,7 @@ export default function HospitalDashboard() {
 
                           <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-faint">
                             <span className={matched > 0 ? 'text-blood font-bold' : 'text-faint'}>
-                              {matched} Donor{matched !== 1 ? 's' : ''} Alerted
+                              {matched} Donor{matched !== 1 ? 's' : ''} Notified
                             </span>
                             <span>•</span>
                             <span>{dayjs(req.createdAt).fromNow()}</span>
@@ -419,7 +419,7 @@ export default function HospitalDashboard() {
                           href="/hospital/requests"
                           className="rounded-xl border border-line bg-raised px-3.5 py-2 text-xs font-semibold text-bone hover:border-blood transition-colors"
                         >
-                          Manage Matches
+                          View Donors
                         </Link>
                       </div>
                     </div>

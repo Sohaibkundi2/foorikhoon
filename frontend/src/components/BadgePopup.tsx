@@ -19,42 +19,42 @@ const BADGE_DATA: Record<string, Badge> = {
   'First Step': {
     name: 'First Step',
     icon: CircleCheck,
-    description: 'You joined ForiKhoon as a donor. Welcome to the family.',
+    description: 'You registered as a donor on ForiKhoon. Welcome!',
     tone: 'border-line bg-raised text-bone',
     text: 'text-bone',
   },
   'First Blood': {
     name: 'First Blood',
     icon: Droplet,
-    description: 'You accepted your first donation request. Someone needed you — and you showed up.',
+    description: 'You accepted your first donation request and helped save a life.',
     tone: 'border-blood/25 bg-blood/10 text-blood',
     text: 'text-blood',
   },
   'Reliable': {
     name: 'Reliable',
     icon: Star,
-    description: 'Your commitment score crossed 50. Hospitals trust you.',
+    description: 'Your reliability score passed 50. Hospitals know you are dependable.',
     tone: 'border-warn/25 bg-warn/10 text-warn',
     text: 'text-warn',
   },
   'Dedicated': {
     name: 'Dedicated',
     icon: Trophy,
-    description: 'Commitment score above 80. You are one of our most dependable donors.',
+    description: 'Reliability score above 80. You are one of our most dependable donors.',
     tone: 'border-warn/25 bg-warn/10 text-warn',
     text: 'text-warn',
   },
   'Lifesaver': {
     name: 'Lifesaver',
     icon: Syringe,
-    description: 'You have accepted 5 or more donation requests. You have saved lives.',
+    description: 'You accepted 5 or more donation requests and helped save multiple lives.',
     tone: 'border-blood/25 bg-blood/10 text-blood',
     text: 'text-blood',
   },
   'Hero': {
     name: 'Hero',
     icon: Award,
-    description: 'Over 10 accepted requests. You are a hero of ForiKhoon.',
+    description: 'More than 10 completed requests. You are a true champion of ForiKhoon.',
     tone: 'border-blood/25 bg-blood-deep/50 text-blood-lite',
     text: 'text-blood-lite',
   },
@@ -160,7 +160,7 @@ export default function BadgePopup({ badges, donorId }: BadgePopupProps) {
 
             {/* Close button */}
             <button onClick={handleClose} className={`w-full ${primaryBtn}`}>
-              Awesome!
+              Continue
             </button>
 
           </div>

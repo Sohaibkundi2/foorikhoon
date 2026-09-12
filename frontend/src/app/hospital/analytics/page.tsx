@@ -80,7 +80,7 @@ export default function HospitalAnalyticsPage() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
           <p className="font-mono text-xs uppercase tracking-widest text-faint">
-            Aggregating clinical analytics & demand telemetry...
+            Loading hospital analytics and statistics...
           </p>
         </div>
       </div>
@@ -107,7 +107,7 @@ export default function HospitalAnalyticsPage() {
           className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-faint transition-colors hover:text-bone"
         >
           <ArrowLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
-          Back to Command Center
+          Back to Dashboard
         </Link>
 
         {/* Masthead */}
@@ -117,29 +117,28 @@ export default function HospitalAnalyticsPage() {
             <div className="flex items-center gap-3">
               <span className="flex h-2 w-2 rounded-full bg-blood" />
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-blood">
-                Clinical Intelligence
+                Hospital Overview
               </p>
             </div>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-bone sm:text-4xl">
-              Demand & Reserve Telemetry
+              Hospital Analytics & Stats
             </h1>
             <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-mute">
-              Real-time audit of hospital emergency dispatches, fulfillment ratios, and regional
-              antigen supply levels.
+              Overview of your blood requests, fulfilled donations, and current blood stock.
             </p>
           </div>
 
           {/* Large Hero Metric */}
           <div className="rounded-xl border border-line bg-surface p-5 sm:text-right">
             <p className="font-mono text-[10px] uppercase tracking-widest text-faint">
-              Fulfillment Efficacy
+              Fulfilled Requests
             </p>
             <p className="mt-1 font-mono text-4xl font-bold tracking-tight text-bone sm:text-5xl">
               {fulfillmentRate}
               <span className="ml-1 text-2xl font-normal text-blood">%</span>
             </p>
             <p className="mt-1 font-mono text-[11px] text-faint">
-              {fulfilled} of {totalRequests} emergency calls met
+              {fulfilled} of {totalRequests} requests completed
             </p>
           </div>
         </div>
@@ -150,11 +149,11 @@ export default function HospitalAnalyticsPage() {
             <div className="flex items-center gap-2.5">
               <Percent className="h-4 w-4 text-blood" />
               <span className="font-mono text-xs uppercase tracking-wider text-bone">
-                Fulfillment Distribution (All Time)
+                All-Time Requests Fulfilled
               </span>
             </div>
             <span className="font-mono text-xs tabular-nums text-faint">
-              {totalRequests} Total Cases
+              {totalRequests} Total Requests
             </span>
           </div>
 
@@ -178,18 +177,18 @@ export default function HospitalAnalyticsPage() {
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-blood" />
                 <span className="text-mute">
-                  Fulfilled Cases: <strong className="text-bone">{fulfilled}</strong> (
+                  Completed Requests: <strong className="text-bone">{fulfilled}</strong> (
                   {totalRequests > 0 ? fulfillmentRate : 0}%)
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-line" />
                 <span className="text-mute">
-                  Unfulfilled / Active: <strong className="text-bone">{unfulfilled}</strong>
+                  Pending / Active Requests: <strong className="text-bone">{unfulfilled}</strong>
                 </span>
               </div>
             </div>
-            <span className="text-faint">Source: ForiKhoon Dispatch Core</span>
+            <span className="text-faint">ForiKhoon Network</span>
           </div>
         </div>
 
@@ -199,10 +198,10 @@ export default function HospitalAnalyticsPage() {
             <div className="flex items-center gap-2.5">
               <Activity className="h-4 w-4 text-blood" />
               <h2 className="font-mono text-xs uppercase tracking-wider text-bone">
-                01. Requisition Activity
+                01. Blood Requests Summary
               </h2>
             </div>
-            <span className="font-mono text-[11px] text-faint">Trailing 30 Days vs All-Time</span>
+            <span className="font-mono text-[11px] text-faint">This Month & All-Time</span>
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -214,26 +213,26 @@ export default function HospitalAnalyticsPage() {
               <p className="mt-3 font-mono text-3xl font-bold tracking-tight text-bone">
                 {analytics.totalRequestsThisMonth}
               </p>
-              <p className="mt-1.5 text-xs text-mute">Cases initiated since 1st of this month</p>
+              <p className="mt-1.5 text-xs text-mute">Requests posted this month</p>
             </div>
 
             <div className="rounded-xl border border-line bg-surface p-5">
               <div className="flex items-center justify-between text-faint">
                 <span className="font-mono text-[10px] uppercase tracking-widest">
-                  Total Dispatches
+                  Total Requests
                 </span>
                 <TrendingUp className="h-4 w-4" />
               </div>
               <p className="mt-3 font-mono text-3xl font-bold tracking-tight text-bone">
                 {totalRequests}
               </p>
-              <p className="mt-1.5 text-xs text-mute">Cumulative requests broadcast by facility</p>
+              <p className="mt-1.5 text-xs text-mute">Total blood requests posted</p>
             </div>
 
             <div className="rounded-xl border border-line bg-surface p-5">
               <div className="flex items-center justify-between text-faint">
                 <span className="font-mono text-[10px] uppercase tracking-widest">
-                  Peak Deficit Group
+                  Most Needed Blood Group
                 </span>
                 <BarChart3 className="h-4 w-4 text-blood" />
               </div>
@@ -244,7 +243,7 @@ export default function HospitalAnalyticsPage() {
               </p>
               <p className="mt-1.5 text-xs text-mute">
                 {analytics.mostRequested
-                  ? 'Most requested antigen profile by your doctors'
+                  ? 'Most requested blood group by your hospital'
                   : 'No hospital requests recorded yet'}
               </p>
             </div>
@@ -257,14 +256,14 @@ export default function HospitalAnalyticsPage() {
             <div className="flex items-center gap-2.5">
               <Boxes className="h-4 w-4 text-blood" />
               <h2 className="font-mono text-xs uppercase tracking-wider text-bone">
-                02. Reserve Distribution By Antigen Group
+                02. Blood Stock by Blood Group
               </h2>
             </div>
             <Link
               href="/hospital/inventory"
               className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-mute transition hover:text-bone"
             >
-              Update Shelf Quantities
+              Update Blood Stock
               <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
@@ -272,15 +271,15 @@ export default function HospitalAnalyticsPage() {
           {inventory.length === 0 ? (
             <div className="mt-6 rounded-xl border border-line bg-surface p-12 text-center">
               <Boxes className="mx-auto h-8 w-8 text-faint" />
-              <p className="mt-4 text-sm font-medium text-bone">No inventory levels recorded</p>
+              <p className="mt-4 text-sm font-medium text-bone">No blood stock recorded yet</p>
               <p className="mt-1 text-xs text-mute">
-                Initialize stock values on the inventory page to activate distribution telemetry.
+                Add your blood bags on the stock page to see the chart.
               </p>
               <Link
                 href="/hospital/inventory"
                 className="mt-6 inline-flex items-center gap-2 rounded-md bg-blood px-4 py-2 font-mono text-xs uppercase tracking-wider text-white"
               >
-                Go to Inventory
+                Go to Blood Stock
               </Link>
             </div>
           ) : (
@@ -294,7 +293,7 @@ export default function HospitalAnalyticsPage() {
                   style={{ bottom: `${thresholdPct}%` }}
                 >
                   <span className="absolute -top-4 right-0 font-mono text-[10px] uppercase tracking-wider text-warn">
-                    Depletion Alert (&lt; {LOW_STOCK_UNITS} Units)
+                    Low Stock Warning (&lt; {LOW_STOCK_UNITS} Bags)
                   </span>
                 </div>
 
@@ -334,8 +333,7 @@ export default function HospitalAnalyticsPage() {
               </div>
 
               <p className="mt-6 font-mono text-[11px] text-faint">
-                {inventory.length} of {TOTAL_GROUPS} antigen profiles mapped. Bars scale relative to
-                maximum active stock ({peak} units).
+                {inventory.length} of {TOTAL_GROUPS} blood groups recorded. Bars scale based on highest stock ({peak} bags).
               </p>
             </div>
           )}
@@ -350,11 +348,10 @@ export default function HospitalAnalyticsPage() {
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-warn">
-                      Critical Shortage Detected
+                      Low Blood Stock Warning
                     </h3>
                     <p className="mt-1 text-xs text-mute">
-                      {lowStock.length} blood group{lowStock.length > 1 ? 's' : ''} currently hold
-                      fewer than {LOW_STOCK_UNITS} emergency units.
+                      {lowStock.length} blood group{lowStock.length > 1 ? 's' : ''} have fewer than {LOW_STOCK_UNITS} bags in stock.
                     </p>
                   </div>
                   <Link
@@ -362,7 +359,7 @@ export default function HospitalAnalyticsPage() {
                     className="inline-flex items-center gap-1.5 rounded-md bg-blood px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wider text-white shadow transition hover:bg-blood-dark"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    Broadcast Emergency Request
+                    Post Blood Request
                   </Link>
                 </div>
 
@@ -377,7 +374,7 @@ export default function HospitalAnalyticsPage() {
                       </span>
                       <span className="text-faint">|</span>
                       <span className="text-bone">
-                        {item.units} unit{item.units !== 1 ? 's' : ''} remaining
+                        {item.units} bag{item.units !== 1 ? 's' : ''} left
                       </span>
                     </div>
                   ))}

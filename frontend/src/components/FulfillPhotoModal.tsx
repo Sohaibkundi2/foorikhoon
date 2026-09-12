@@ -61,12 +61,12 @@ export default function FulfillPhotoModal({
     if (!candidate) return
 
     if (!ALLOWED_TYPES.includes(candidate.type)) {
-      setError('Unsupported file type. Choose a JPG, PNG or WebP image.')
+      setError('Unsupported file format. Please choose a JPG, PNG, or WebP photo.')
       return
     }
     if (candidate.size > MAX_FILE_SIZE) {
       const mb = (candidate.size / 1024 / 1024).toFixed(1)
-      setError(`That image is ${mb}MB. Maximum size is 5MB.`)
+      setError(`Photo is ${mb}MB. Maximum allowed size is 5MB.`)
       return
     }
     setFile(candidate)
@@ -102,7 +102,7 @@ export default function FulfillPhotoModal({
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Upload failed. Check your connection and try again.'
+        'Could not upload photo. Please check your internet connection and try again.'
       setError(message)
       setUploading(false)
     }
@@ -170,7 +170,7 @@ export default function FulfillPhotoModal({
             />
             <p className="text-sm font-medium text-bone">Drop the photo here</p>
             <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-faint">
-              or click to browse · JPG, PNG, WebP · max 5MB
+              or click to choose photo · JPG, PNG, WebP · max 5MB
             </p>
           </button>
         ) : (

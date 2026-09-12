@@ -115,7 +115,7 @@ export default function HospitalRequestsPage() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
           <p className="font-mono text-xs uppercase tracking-widest text-faint">
-            Retrieving hospital requisitions & donor responses...
+            Loading blood requests and donor responses...
           </p>
         </div>
       </div>
@@ -140,13 +140,13 @@ export default function HospitalRequestsPage() {
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end border-b border-line pb-6 mb-8">
           <div>
             <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-blood">
-              Hospital Requisitions Ledger
+              Hospital Requests
             </span>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-bone sm:text-4xl">
               All Blood Requests
             </h1>
             <p className="mt-1 text-sm text-mute">
-              Monitor active candidate responses, donor contacts, and photo verification fulfillment.
+              See donor responses, contact details, and completed blood donations.
             </p>
           </div>
 
@@ -155,7 +155,7 @@ export default function HospitalRequestsPage() {
             className="flex items-center gap-2 rounded-xl bg-blood px-4 py-2.5 text-xs font-semibold text-white shadow-[0_0_20px_-3px_rgba(220,38,38,0.5)] transition-all hover:bg-blood-dark active:scale-95 shrink-0"
           >
             <Plus className="h-4 w-4" />
-            <span>Broadcast Request</span>
+            <span>Post Request</span>
           </Link>
         </div>
 
@@ -194,11 +194,11 @@ export default function HospitalRequestsPage() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-line bg-raised text-mute">
               <ClipboardList className="h-6 w-6 text-faint" />
             </div>
-            <h3 className="mt-4 text-base font-semibold text-bone">No Requisitions in this Category</h3>
+            <h3 className="mt-4 text-base font-semibold text-bone">No Blood Requests Found</h3>
             <p className="mt-1 text-xs text-mute">
               {activeTab === 'ALL'
-                ? 'Requests you broadcast to the emergency network will appear here.'
-                : `You currently have no ${activeTab.toLowerCase()} requests.`}
+                ? 'Blood requests you post will appear here.'
+                : `You do not have any ${activeTab.toLowerCase()} requests right now.`}
             </p>
           </div>
         ) : (
@@ -235,7 +235,7 @@ export default function HospitalRequestsPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-base font-bold text-bone">
-                            {req.units} Unit{req.units > 1 ? 's' : ''} Needed
+                            {req.units} Bag{req.units > 1 ? 's' : ''} Needed
                           </span>
                           <span
                             className={`rounded-md px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
@@ -252,9 +252,9 @@ export default function HospitalRequestsPage() {
                         </div>
 
                         <div className="mt-1.5 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-faint">
-                          <span>{matchCount} Donors Matched</span>
+                          <span>{matchCount} Donors Notified</span>
                           <span>•</span>
-                          <span>Broadcasted {new Date(req.createdAt).toLocaleDateString()}</span>
+                          <span>Posted {new Date(req.createdAt).toLocaleDateString()}</span>
                         </div>
 
                         {req.notes && (
@@ -274,11 +274,11 @@ export default function HospitalRequestsPage() {
                                 </p>
                               ) : (
                                 <p className="text-bone font-semibold">
-                                  Accepted by on-call donor (Direct phone private)
+                                  Accepted by donor (Phone number kept private)
                                 </p>
                               )}
                               <p className="text-[10px] text-mute mt-0.5">
-                                Please prepare cross-match and upload bag photo upon collection.
+                                Please prepare blood bag and upload photo proof upon donation.
                               </p>
                             </div>
                           </div>
@@ -290,8 +290,8 @@ export default function HospitalRequestsPage() {
                             <Clock className="h-3.5 w-3.5 text-amber-400" />
                             <span>
                               {awaitingCount > 0
-                                ? `Waiting on ${awaitingCount} alerted donor(s) to respond.`
-                                : `All ${declinedCount} alerted donor(s) were unavailable.`}
+                                ? `Waiting for ${awaitingCount} notified donor(s) to respond.`
+                                : `All ${declinedCount} notified donor(s) were unable to come.`}
                             </span>
                           </div>
                         )}
@@ -312,7 +312,7 @@ export default function HospitalRequestsPage() {
                               />
                             </button>
                             <div>
-                              <p className="text-xs font-semibold text-bone">Transfusion Completed</p>
+                              <p className="text-xs font-semibold text-bone">Donation Completed</p>
                               <p className="font-mono text-[9px] uppercase tracking-wider text-faint">
                                 Photo Proof Attached
                               </p>
@@ -331,7 +331,7 @@ export default function HospitalRequestsPage() {
                             className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-blood py-2 px-4 text-xs font-semibold text-white shadow hover:bg-blood-dark transition-all active:scale-95 cursor-pointer"
                           >
                             <Check className="h-3.5 w-3.5" />
-                            <span>Mark Fulfilled</span>
+                            <span>Complete Donation</span>
                           </button>
                         )}
 
@@ -341,7 +341,7 @@ export default function HospitalRequestsPage() {
                             disabled={updatingKey === `${acceptedMatch.id}-noshow`}
                             className="flex-1 sm:flex-none rounded-xl border border-line bg-raised py-2 px-3 text-xs font-medium text-mute hover:text-bone transition-colors active:scale-95 cursor-pointer"
                           >
-                            {updatingKey === `${acceptedMatch.id}-noshow` ? 'Reporting...' : 'Report No-Show'}
+                            {updatingKey === `${acceptedMatch.id}-noshow` ? 'Reporting...' : 'Report Did Not Show'}
                           </button>
                         )}
 
@@ -390,7 +390,7 @@ export default function HospitalRequestsPage() {
               className="max-h-[75vh] max-w-full rounded-2xl border border-line shadow-2xl"
             />
             <p className="max-w-sm text-center text-xs text-mute">
-              Tamper-proof collection label photo.
+              Photo proof of collected blood bag.
             </p>
           </div>
           <button

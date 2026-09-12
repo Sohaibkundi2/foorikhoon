@@ -139,7 +139,7 @@ export default function HospitalInventoryPage() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
           <p className="font-mono text-xs uppercase tracking-widest text-faint">
-            Syncing blood bank inventory...
+            Loading blood stock...
           </p>
         </div>
       </div>
@@ -164,7 +164,7 @@ export default function HospitalInventoryPage() {
           className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-faint transition-colors hover:text-bone"
         >
           <ArrowLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
-          Back to Command Center
+          Back to Dashboard
         </Link>
 
         {/* Masthead */}
@@ -178,11 +178,10 @@ export default function HospitalInventoryPage() {
               </p>
             </div>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-bone sm:text-4xl">
-              Blood Bank Inventory
+              Blood Bank Stock
             </h1>
             <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-mute">
-              Real-time reserve levels matched directly against national emergency dispatches.
-              Groups below {LOW_STOCK_THRESHOLD} units trigger automated matching alerts.
+              Current blood bags available in your hospital. Blood groups with fewer than {LOW_STOCK_THRESHOLD} bags will show a low stock alert.
             </p>
           </div>
 
@@ -205,7 +204,7 @@ export default function HospitalInventoryPage() {
                   className="inline-flex items-center gap-2 rounded-md bg-blood px-5 py-2.5 font-mono text-xs font-semibold uppercase tracking-wider text-white shadow-[0_0_24px_rgba(220,38,38,0.4)] transition hover:bg-blood-dark disabled:opacity-50"
                 >
                   <Save className="h-3.5 w-3.5" />
-                  {saving ? 'Saving...' : 'Save Stock Levels'}
+                  {saving ? 'Saving...' : 'Save Blood Stock'}
                 </button>
               </>
             ) : (
@@ -215,7 +214,7 @@ export default function HospitalInventoryPage() {
                 className="inline-flex items-center gap-2 rounded-md border border-line bg-raised px-5 py-2.5 font-mono text-xs font-medium uppercase tracking-wider text-bone transition hover:border-blood/40 hover:bg-surface"
               >
                 <Pencil className="h-3.5 w-3.5 text-blood" />
-                Adjust Stock Levels
+                Update Stock
               </button>
             )}
           </div>
@@ -225,7 +224,7 @@ export default function HospitalInventoryPage() {
         {saveSuccess && (
           <div className="mt-6 flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3 text-xs text-bone shadow-lg">
             <CheckCircle2 className="h-4 w-4 text-bone" />
-            <span>Blood bank inventory levels successfully updated and saved.</span>
+            <span>Blood stock successfully updated.</span>
           </div>
         )}
 
@@ -233,19 +232,19 @@ export default function HospitalInventoryPage() {
         <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <div className="rounded-xl border border-line bg-surface p-5">
             <div className="flex items-center justify-between text-faint">
-              <span className="font-mono text-[10px] uppercase tracking-widest">Total On Shelf</span>
+              <span className="font-mono text-[10px] uppercase tracking-widest">Total Bags in Stock</span>
               <Package className="h-4 w-4" />
             </div>
             <p className="mt-3 font-mono text-3xl font-bold tracking-tight text-bone sm:text-4xl">
               {totalUnits}
-              <span className="ml-2 text-xs font-normal uppercase tracking-wider text-faint">units</span>
+              <span className="ml-2 text-xs font-normal uppercase tracking-wider text-faint">bags</span>
             </p>
-            <p className="mt-1 font-mono text-[11px] text-faint">Across all 8 antigen types</p>
+            <p className="mt-1 font-mono text-[11px] text-faint">Across all 8 blood groups</p>
           </div>
 
           <div className="rounded-xl border border-line bg-surface p-5">
             <div className="flex items-center justify-between text-faint">
-              <span className="font-mono text-[10px] uppercase tracking-widest">Low Stock (&lt;5)</span>
+              <span className="font-mono text-[10px] uppercase tracking-widest">Low Stock (&lt;5 bags)</span>
               <TriangleAlert className="h-4 w-4 text-warn" />
             </div>
             <p
@@ -254,14 +253,14 @@ export default function HospitalInventoryPage() {
               }`}
             >
               {lowGroups.length}
-              <span className="ml-2 text-xs font-normal uppercase tracking-wider text-faint">of 8</span>
+              <span className="ml-2 text-xs font-normal uppercase tracking-wider text-faint">of 8 groups</span>
             </p>
-            <p className="mt-1 font-mono text-[11px] text-faint">Require donor call-out</p>
+            <p className="mt-1 font-mono text-[11px] text-faint">Needs more donors</p>
           </div>
 
           <div className="rounded-xl border border-line bg-surface p-5">
             <div className="flex items-center justify-between text-faint">
-              <span className="font-mono text-[10px] uppercase tracking-widest">Zero Reserve</span>
+              <span className="font-mono text-[10px] uppercase tracking-widest">Out of Stock</span>
               <ShieldAlert className="h-4 w-4 text-blood" />
             </div>
             <p
@@ -270,9 +269,9 @@ export default function HospitalInventoryPage() {
               }`}
             >
               {zeroStockGroups.length}
-              <span className="ml-2 text-xs font-normal uppercase tracking-wider text-faint">groups</span>
+              <span className="ml-2 text-xs font-normal uppercase tracking-wider text-faint">blood groups</span>
             </p>
-            <p className="mt-1 font-mono text-[11px] text-faint">Complete supply exhaustion</p>
+            <p className="mt-1 font-mono text-[11px] text-faint">Zero bags available</p>
           </div>
 
           <div className="rounded-xl border border-line bg-surface p-5">
@@ -283,7 +282,7 @@ export default function HospitalInventoryPage() {
             <p className="mt-3 font-mono text-3xl font-bold tracking-tight text-bone sm:text-4xl">
               {Math.round(((8 - lowGroups.length) / 8) * 100)}%
             </p>
-            <p className="mt-1 font-mono text-[11px] text-faint">Stabilized blood supply</p>
+            <p className="mt-1 font-mono text-[11px] text-faint">Available blood groups</p>
           </div>
         </div>
 
@@ -295,14 +294,14 @@ export default function HospitalInventoryPage() {
                 <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-warn" />
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-warn">
-                    Stock Depletion Alert
+                    Low Stock Alert
                   </p>
                   <p className="mt-1 text-xs text-mute">
-                    Immediate replenishment needed for{' '}
+                    Low bags in stock for{' '}
                     <span className="font-medium text-bone">
                       {lowGroups.map((bg) => bloodGroupLabels[bg]).join(', ')}
                     </span>
-                    . We recommend filing emergency requests to notify matching donors in your district.
+                    . We recommend posting a blood request to alert nearby donors.
                   </p>
                 </div>
               </div>
@@ -310,7 +309,7 @@ export default function HospitalInventoryPage() {
                 href="/hospital/request/new"
                 className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-blood/40 bg-blood/20 px-4 py-2 font-mono text-xs font-medium uppercase tracking-wider text-bone transition hover:bg-blood/30"
               >
-                Post Emergency Request
+                Post Blood Request
               </Link>
             </div>
           </div>
@@ -328,7 +327,7 @@ export default function HospitalInventoryPage() {
                   : 'text-faint hover:text-mute'
               }`}
             >
-              All Groups (8)
+              All Blood Groups (8)
             </button>
             <button
               type="button"
@@ -339,12 +338,12 @@ export default function HospitalInventoryPage() {
                   : 'text-faint hover:text-mute'
               }`}
             >
-              Low Reserve ({lowGroups.length})
+              Low Stock ({lowGroups.length})
             </button>
           </div>
 
           <div className="hidden font-mono text-[11px] text-faint sm:block">
-            {editing ? 'Editing mode active — adjust values directly or use + / -' : 'Read-only display'}
+            {editing ? 'Change numbers directly or use + / -' : 'View only'}
           </div>
         </div>
 
@@ -388,7 +387,7 @@ export default function HospitalInventoryPage() {
                         </span>
                         {isZero ? (
                           <span className="rounded border border-blood/30 bg-blood/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-blood">
-                            Depleted
+                            Out of Stock
                           </span>
                         ) : isLow ? (
                           <span className="rounded border border-warn/30 bg-warn/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-warn">
@@ -396,7 +395,7 @@ export default function HospitalInventoryPage() {
                           </span>
                         ) : (
                           <span className="rounded border border-line bg-raised px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-faint">
-                            Adequate
+                            In Stock
                           </span>
                         )}
                       </div>
@@ -409,8 +408,8 @@ export default function HospitalInventoryPage() {
                   {/* Meter Bar */}
                   <div className="min-w-0 flex-1 sm:max-w-xs">
                     <div className="flex items-center justify-between text-[11px] font-mono text-faint mb-1.5">
-                      <span>Reserve Gauge</span>
-                      <span className="tabular-nums text-bone">{units} units</span>
+                      <span>Stock Level</span>
+                      <span className="tabular-nums text-bone">{units} bags</span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-raised">
                       <div
@@ -439,7 +438,7 @@ export default function HospitalInventoryPage() {
                           type="number"
                           min={0}
                           value={units}
-                          aria-label={`${bloodGroupLabels[bg]} units in stock`}
+                          aria-label={`${bloodGroupLabels[bg]} bags in stock`}
                           onChange={(e) => handleChange(bg, e.target.value)}
                           className="h-9 w-16 rounded-md border border-line bg-raised px-2 text-center font-mono text-base font-medium tabular-nums text-bone outline-none focus:border-blood focus:ring-1 focus:ring-blood/25 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                         />
@@ -458,7 +457,7 @@ export default function HospitalInventoryPage() {
                           {units}
                         </span>
                         <span className="ml-1.5 font-mono text-xs uppercase tracking-wider text-faint">
-                          units
+                          bags
                         </span>
                       </div>
                     )}
@@ -472,18 +471,14 @@ export default function HospitalInventoryPage() {
         {/* Footer Technical Reference */}
         <div className="mt-12 rounded-xl border border-line bg-surface p-6">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
-            Protocol Guidance & Thresholds
+            Stock Guidelines
           </p>
           <div className="mt-3 grid gap-4 text-xs leading-relaxed text-mute sm:grid-cols-2">
             <p>
-              • <strong className="text-bone">Low Reserve Threshold:</strong> Less than 5 units
-              flags an automated warning in the regional distribution dispatch and highlights the
-              deficiency on hospital analytics charts.
+              • <strong className="text-bone">Low Stock Warning:</strong> Fewer than 5 blood bags shows a warning on your dashboard and encourages posting requests.
             </p>
             <p>
-              • <strong className="text-bone">Deterministic AI Weight:</strong> Hospitals with
-              depleted reserves are prioritized when matching incoming volunteer donors from nearby
-              clusters within a 15 km radius.
+              • <strong className="text-bone">Priority Donor Matching:</strong> Hospitals that run out of blood are given higher priority when connecting with nearby volunteer donors within 15 km.
             </p>
           </div>
         </div>

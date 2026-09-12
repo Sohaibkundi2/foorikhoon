@@ -103,7 +103,7 @@ export default function HospitalProfilePage() {
       return
     }
 
-    if (!confirm('Are you absolutely certain? This will permanently delete all hospital requisitions, matches, inventory, and your institutional account.')) {
+    if (!confirm('Are you sure? This will permanently delete your hospital account, blood requests, and stock data.')) {
       return
     }
 
@@ -125,7 +125,7 @@ export default function HospitalProfilePage() {
     setLocationError('')
 
     if (!navigator.geolocation) {
-      setLocationError('Geolocation services are unavailable in your browser.')
+      setLocationError('Location services are not available in your browser.')
       return
     }
 
@@ -144,7 +144,7 @@ export default function HospitalProfilePage() {
         setLocationError(
           err.code === err.PERMISSION_DENIED
             ? 'Location access was denied. You can manually enter your hospital address below.'
-            : 'Unable to acquire precise GPS signal. Please enter your address manually.'
+            : 'Unable to get GPS location. Please enter your address manually below.'
         )
         setLocatingInProgress(false)
       },
@@ -204,7 +204,7 @@ export default function HospitalProfilePage() {
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3500)
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to save hospital credentials.')
+      setError(err?.response?.data?.message || 'Failed to save hospital profile.')
     } finally {
       setSaving(false)
     }
@@ -216,7 +216,7 @@ export default function HospitalProfilePage() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
           <p className="font-mono text-xs uppercase tracking-widest text-faint">
-            Loading hospital credentials & registry status...
+            Loading hospital profile...
           </p>
         </div>
       </div>
@@ -234,7 +234,7 @@ export default function HospitalProfilePage() {
           className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-faint transition-colors hover:text-bone"
         >
           <ArrowLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
-          Back to Command Center
+          Back to Dashboard
         </Link>
 
         {/* Masthead */}
@@ -244,15 +244,14 @@ export default function HospitalProfilePage() {
             <div className="flex items-center gap-3">
               <span className="flex h-2 w-2 rounded-full bg-blood" />
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-blood">
-                Registry Credentials
+                Hospital Details
               </p>
             </div>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-bone sm:text-4xl">
-              Hospital Profile & Verification
+              Hospital Profile
             </h1>
             <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-mute">
-              Official institutional parameters used to authenticate clinical blood requisitions
-              and compute donor proximity dispatches.
+              Official hospital details used to verify blood requests and find nearby donors.
             </p>
           </div>
         </div>
@@ -267,39 +266,39 @@ export default function HospitalProfilePage() {
               <div>
                 <div className="flex flex-wrap items-center gap-2.5">
                   <span className="font-mono text-xs uppercase tracking-wider text-faint">
-                    Institutional License
+                    Hospital License
                   </span>
                   {verified ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-raised px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-bone">
                       <BadgeCheck className="h-3.5 w-3.5 text-bone" />
-                      Verified Institution
+                      Verified Hospital
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-warn/30 bg-warn/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-warn">
                       <Clock className="h-3.5 w-3.5 text-warn" />
-                      Verification Pending Review
+                      Verification Under Review
                     </span>
                   )}
                 </div>
                 <p className="mt-1.5 font-mono text-xl font-bold tracking-tight text-bone">
-                  {licenseNo || 'UNLICENSED / TEST RECORD'}
+                  {licenseNo || 'UNDER REVIEW'}
                 </p>
                 <p className="mt-1 text-xs text-mute">
                   {verified
-                    ? 'PMDC / Healthcare Commission record confirmed by ForiKhoon National Network.'
-                    : 'Your hospital registration is currently under review by system administrators.'}
+                    ? 'Healthcare license verified by ForiKhoon.'
+                    : 'Your hospital registration is currently under review by administrators.'}
                 </p>
               </div>
             </div>
 
             <div className="rounded-lg border border-line-soft bg-raised/50 p-3 text-right">
               <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
-                Account Authority
+                Login Email
               </span>
               <p className="mt-1 font-mono text-xs font-medium text-bone">
                 {user?.email || 'N/A'}
               </p>
-              <p className="mt-0.5 font-mono text-[10px] text-faint">Role: CLINICAL_HOSPITAL</p>
+              <p className="mt-0.5 font-mono text-[10px] text-faint">Role: Hospital</p>
             </div>
           </div>
         </div>
@@ -315,7 +314,7 @@ export default function HospitalProfilePage() {
         {success && (
           <div className="mt-6 flex items-start gap-3 rounded-xl border border-line bg-surface p-4 text-xs text-bone shadow-lg">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-bone" />
-            <span>Hospital profile credentials and coordinates successfully updated.</span>
+            <span>Hospital profile and location successfully updated.</span>
           </div>
         )}
 
@@ -326,7 +325,7 @@ export default function HospitalProfilePage() {
             <div className="flex items-center gap-3 border-b border-line pb-4">
               <Building2 className="h-4 w-4 text-blood" />
               <h2 className="font-mono text-xs uppercase tracking-wider text-bone">
-                01. Facility Identity
+                01. Hospital Name & License
               </h2>
             </div>
 
@@ -336,7 +335,7 @@ export default function HospitalProfilePage() {
                   htmlFor="hospital-name"
                   className="block font-mono text-[11px] uppercase tracking-wider text-faint"
                 >
-                  Hospital / Clinical Facility Name <span className="text-blood">*</span>
+                  Hospital Name <span className="text-blood">*</span>
                 </label>
                 <input
                   id="hospital-name"
@@ -354,18 +353,17 @@ export default function HospitalProfilePage() {
                   htmlFor="hospital-license-display"
                   className="block font-mono text-[11px] uppercase tracking-wider text-faint"
                 >
-                  Medical Registration / PMDC License No. (Locked)
+                  Hospital License Number (Locked)
                 </label>
                 <input
                   id="hospital-license-display"
                   type="text"
                   disabled
-                  value={licenseNo || 'Contact admin to update registration license'}
+                  value={licenseNo || 'Contact admin to update license number'}
                   className="mt-2 w-full cursor-not-allowed rounded-md border border-line-soft bg-raised/50 px-4 py-3 font-mono text-xs text-faint outline-none"
                 />
                 <p className="mt-1.5 text-[11px] text-faint">
-                  License numbers are cryptographic identifiers and require manual admin re-audit
-                  to change.
+                  License numbers cannot be edited directly. Please contact an admin if you need to update it.
                 </p>
               </div>
             </div>
@@ -376,13 +374,12 @@ export default function HospitalProfilePage() {
             <div className="flex items-center gap-3 border-b border-line pb-4">
               <Compass className="h-4 w-4 text-blood" />
               <h2 className="font-mono text-xs uppercase tracking-wider text-bone">
-                02. Geolocation & Dispatch Proximity
+                02. Hospital Location
               </h2>
             </div>
 
             <p className="mt-4 text-xs leading-relaxed text-mute">
-              ForiKhoon utilizes high-precision coordinates to match donor proximity distances (25%
-              score weight). Ensure your facility's physical emergency gate location is accurate.
+              ForiKhoon uses your exact location to find and notify nearby donors quickly. Make sure your location is accurate.
             </p>
 
             <div className="mt-6">
@@ -395,7 +392,7 @@ export default function HospitalProfilePage() {
                       </div>
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-bone">
-                          Active Coordinates Captured
+                          Location Set
                         </p>
                         <p className="mt-1 font-mono text-xs text-mute">
                           LAT: {coords.latitude.toFixed(6)} | LNG: {coords.longitude.toFixed(6)}
@@ -410,7 +407,7 @@ export default function HospitalProfilePage() {
                       }}
                       className="font-mono text-xs text-faint underline transition hover:text-bone"
                     >
-                      Reset
+                      Clear
                     </button>
                   </div>
                 </div>
@@ -421,7 +418,7 @@ export default function HospitalProfilePage() {
                       htmlFor="hospital-address"
                       className="block font-mono text-[11px] uppercase tracking-wider text-faint"
                     >
-                      Street Address & Landmark <span className="text-blood">*</span>
+                      Address / Landmark <span className="text-blood">*</span>
                     </label>
                     <textarea
                       id="hospital-address"
@@ -437,7 +434,7 @@ export default function HospitalProfilePage() {
                     onClick={() => setLocationMethod(null)}
                     className="font-mono text-xs text-faint underline transition hover:text-bone"
                   >
-                    Switch to GPS auto-detection
+                    Use GPS location instead
                   </button>
                 </div>
               ) : (
@@ -445,10 +442,10 @@ export default function HospitalProfilePage() {
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wider text-bone">
-                        Acquire Emergency Coordinates
+                        Set Hospital Location
                       </p>
                       <p className="mt-1 text-xs text-mute">
-                        Auto-detect latitude and longitude via device hardware GPS.
+                        Use your device's GPS to find your location.
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
@@ -459,14 +456,14 @@ export default function HospitalProfilePage() {
                         className="inline-flex items-center gap-2 rounded-md bg-blood px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wider text-white transition hover:bg-blood-dark disabled:opacity-50"
                       >
                         <Compass className="h-3.5 w-3.5" />
-                        {locatingInProgress ? 'Acquiring GPS...' : 'Detect GPS Coordinates'}
+                        {locatingInProgress ? 'Getting Location...' : 'Use Current GPS Location'}
                       </button>
                       <button
                         type="button"
                         onClick={() => setLocationMethod('manual')}
                         className="rounded-md border border-line bg-surface px-4 py-2.5 font-mono text-xs uppercase tracking-wider text-mute transition hover:bg-raised hover:text-bone"
                       >
-                        Manual Address
+                        Enter Address Manually
                       </button>
                     </div>
                   </div>
@@ -487,7 +484,7 @@ export default function HospitalProfilePage() {
             <div className="flex items-center gap-3 border-b border-line pb-4">
               <Phone className="h-4 w-4 text-blood" />
               <h2 className="font-mono text-xs uppercase tracking-wider text-bone">
-                03. Dispatch Line & City Center
+                03. Contact Details & City
               </h2>
             </div>
 
@@ -497,7 +494,7 @@ export default function HospitalProfilePage() {
                   htmlFor="hospital-city"
                   className="block font-mono text-[11px] uppercase tracking-wider text-faint"
                 >
-                  Operating City <span className="text-blood">*</span>
+                  City <span className="text-blood">*</span>
                 </label>
                 <input
                   id="hospital-city"
@@ -515,7 +512,7 @@ export default function HospitalProfilePage() {
                   htmlFor="hospital-phone"
                   className="block font-mono text-[11px] uppercase tracking-wider text-faint"
                 >
-                  Blood Bank Direct Hotline
+                  Blood Bank Phone Number
                 </label>
                 <input
                   id="hospital-phone"
@@ -536,7 +533,7 @@ export default function HospitalProfilePage() {
                 href="/hospital/dashboard"
                 className="font-mono text-xs uppercase tracking-wider text-faint transition hover:text-bone"
               >
-                Discard Changes
+                Cancel
               </Link>
               <button
                 type="submit"
@@ -544,7 +541,7 @@ export default function HospitalProfilePage() {
                 className="inline-flex items-center gap-2 rounded-md bg-blood px-6 py-3 font-mono text-xs font-semibold uppercase tracking-wider text-white shadow-[0_0_24px_rgba(220,38,38,0.4)] transition hover:bg-blood-dark disabled:opacity-50"
               >
                 <Save className="h-4 w-4" />
-                {saving ? 'Updating Credentials...' : 'Save Profile Changes'}
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -556,11 +553,11 @@ export default function HospitalProfilePage() {
             <div className="flex items-center gap-3">
               <KeyRound className="h-4 w-4 text-blood" />
               <h2 className="font-mono text-xs uppercase tracking-wider text-bone">
-                04. Security & Access Credentials
+                04. Change Password
               </h2>
             </div>
             <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
-              Admin / Dispatch Password
+              Account Password
             </span>
           </div>
 
@@ -574,7 +571,7 @@ export default function HospitalProfilePage() {
           {passwordSuccess && (
             <div className="mt-4 flex items-start gap-3 rounded-xl border border-line bg-raised p-4 text-xs text-bone shadow-lg">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blood" />
-              <span>Institutional access credentials updated successfully.</span>
+              <span>Password updated successfully.</span>
             </div>
           )}
 
@@ -690,18 +687,16 @@ export default function HospitalProfilePage() {
               </h2>
             </div>
             <span className="font-mono text-[10px] uppercase tracking-wider text-blood font-semibold">
-              Irreversible Deletion
+              Delete Account
             </span>
           </div>
 
           <div className="mt-4 space-y-3">
             <p className="text-xs font-semibold text-bone">
-              Permanently Delete Hospital Account & Medical Registries
+              Permanently Delete Hospital Account
             </p>
             <p className="text-xs text-mute leading-relaxed">
-              Deleting this hospital account will immediately and permanently erase all institutional
-              records, clinical blood requisitions, matched donor communications, and blood inventory
-              records from the national network. This operation cannot be reversed.
+              Deleting your hospital account will permanently remove your profile, blood requests, and blood stock data. This cannot be undone.
             </p>
 
             {deleteError && (
@@ -713,7 +708,7 @@ export default function HospitalProfilePage() {
 
             <div className="mt-4 pt-3 border-t border-blood/10">
               <label className="block font-mono text-[11px] text-mute mb-2">
-                To confirm permanent deletion, please type <strong className="font-mono text-blood">delete</strong> in the box below:
+                To confirm deletion, please type <strong className="font-mono text-blood">delete</strong> below:
               </label>
               <div className="flex flex-col sm:flex-row gap-3">
                 <input

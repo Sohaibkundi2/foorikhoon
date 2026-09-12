@@ -165,7 +165,7 @@ export default function DonorDashboard() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
           <p className="font-mono text-xs uppercase tracking-widest text-faint">
-            Syncing donor record & nearby emergency matches...
+            Loading your donor details and nearby requests...
           </p>
         </div>
       </div>
@@ -182,7 +182,7 @@ export default function DonorDashboard() {
           <div className="space-y-4">
             <div className="flex items-center gap-2 rounded-full border border-blood/30 bg-blood/10 px-3.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-blood w-fit">
               <LiveDot />
-              <span>On-Call Emergency Network</span>
+              <span>Emergency Blood Network</span>
             </div>
 
             <div>
@@ -190,7 +190,7 @@ export default function DonorDashboard() {
                 Welcome, {donor?.user.name?.split(' ')[0] || 'Donor'}
               </h1>
               <p className="mt-2 text-sm text-mute leading-relaxed">
-                Your on-call profile is synchronized with emergency centers in{' '}
+                You are ready to receive blood requests from hospitals in{' '}
                 <span className="text-bone font-semibold">{donor?.user.city}</span>
                 {donor?.area && <span> ({donor.area})</span>}.
               </p>
@@ -200,7 +200,7 @@ export default function DonorDashboard() {
               <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 flex items-start gap-2.5">
                 <CircleAlert className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
                 <div className="text-xs text-amber-200">
-                  <span>Add your specific area or GPS coordinates to receive high-priority 10km radius broadcasts. </span>
+                  <span>Add your area or location so hospitals near you can find you faster. </span>
                   <Link href="/donor/profile" className="font-semibold underline hover:text-white">
                     Update Profile &rarr;
                   </Link>
@@ -213,13 +213,13 @@ export default function DonorDashboard() {
                 href="/donor/matches"
                 className="rounded-xl border border-line bg-raised px-4 py-2 text-xs font-semibold text-bone hover:border-blood transition-colors"
               >
-                All My Matches ({matches.length})
+                My Blood Requests ({matches.length})
               </Link>
               <Link
                 href="/donor/profile"
                 className="rounded-xl border border-line bg-surface px-4 py-2 text-xs font-semibold text-mute hover:text-bone transition-colors"
               >
-                Settings & Radius
+                Profile Settings
               </Link>
             </div>
           </div>
@@ -228,7 +228,7 @@ export default function DonorDashboard() {
           <div className="rounded-3xl border border-line bg-surface/90 p-5 backdrop-blur-xl shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-line pb-3">
               <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
-                Donor Record #{donor?.id ? donor.id.slice(0, 8) : '—'}
+                Donor ID #{donor?.id ? donor.id.slice(0, 8) : '—'}
               </span>
               <span className="rounded-md border border-line bg-raised px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-bone font-semibold">
                 Verified
@@ -244,10 +244,10 @@ export default function DonorDashboard() {
               </div>
 
               <div className="text-right">
-                <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Availability</p>
+                <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Ready to Donate?</p>
                 <div className="mt-1.5 flex items-center justify-end gap-2">
                   <span className="font-mono text-xs font-semibold text-bone">
-                    {donor?.isAvailable ? 'Active' : 'Paused'}
+                    {donor?.isAvailable ? 'Available' : 'Paused'}
                   </span>
                   <button
                     type="button"
@@ -272,9 +272,9 @@ export default function DonorDashboard() {
 
             <div className="grid grid-cols-2 gap-2 border-t border-line pt-3">
               <div>
-                <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Eligibility</p>
+                <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Can Donate?</p>
                 <p className="mt-0.5 text-xs font-bold text-bone">
-                  {daysLeft === null || daysLeft === 0 ? 'Eligible to Donate' : `${daysLeft}d recovery remaining`}
+                  {daysLeft === null || daysLeft === 0 ? 'Yes, Ready to Donate' : `${daysLeft} days until next donation`}
                 </p>
               </div>
 
@@ -297,7 +297,7 @@ export default function DonorDashboard() {
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs font-bold text-blood">01</span>
               <h2 className="text-lg font-bold tracking-tight text-bone">
-                Incoming Emergency Dispatches
+                Emergency Blood Requests Near You
               </h2>
               {pendingMatches.length > 0 && (
                 <span className="rounded-full bg-blood px-2 py-0.5 font-mono text-[10px] font-bold text-white shadow">
@@ -306,15 +306,15 @@ export default function DonorDashboard() {
               )}
             </div>
             <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
-              15-Min Auto-Escalation
+              15-Min Response Window
             </span>
           </div>
 
           {pendingMatches.length === 0 ? (
             <div className="rounded-2xl border border-line bg-surface/60 p-6 text-center backdrop-blur-md">
-              <p className="text-sm font-semibold text-bone">No pending emergency matches</p>
+              <p className="text-sm font-semibold text-bone">No emergency requests right now</p>
               <p className="mt-1 text-xs text-mute">
-                Keep your availability active. When a verified hospital posts an emergency matching your blood group, you will receive an alert.
+                Keep your status set to available. You will be alerted when a nearby hospital needs your blood group.
               </p>
             </div>
           ) : (
@@ -340,7 +340,7 @@ export default function DonorDashboard() {
                       </div>
                       <p className="mt-0.5 text-xs text-mute">{match.request.hospital.address}</p>
                       <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-faint">
-                        {match.request.units} Unit{match.request.units > 1 ? 's' : ''} Needed • Phone revealed upon acceptance
+                        {match.request.units} Blood Bag{match.request.units > 1 ? 's' : ''} Needed • Hospital contact shown once accepted
                       </p>
                     </div>
                   </div>
@@ -351,7 +351,7 @@ export default function DonorDashboard() {
                       className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-blood py-2 px-4 text-xs font-semibold text-white shadow hover:bg-blood-dark transition-all active:scale-95 cursor-pointer"
                     >
                       <Check className="h-3.5 w-3.5" />
-                      <span>Accept Match</span>
+                      <span>Accept Request</span>
                     </button>
                     <button
                       onClick={() => respondToMatch(match.id, 'DECLINED')}
@@ -373,7 +373,7 @@ export default function DonorDashboard() {
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs font-bold text-blood">02</span>
                 <h2 className="text-lg font-bold tracking-tight text-bone">
-                  Transfusion Achievements & Badges
+                  Your Donation Badges
                 </h2>
               </div>
               <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
@@ -391,7 +391,7 @@ export default function DonorDashboard() {
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs font-bold text-blood">03</span>
                 <h2 className="text-lg font-bold tracking-tight text-bone">
-                  Transfusion History & Proofs
+                  Your Donation History
                 </h2>
               </div>
               <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
@@ -414,7 +414,7 @@ export default function DonorDashboard() {
                       <button
                         type="button"
                         onClick={() => setLightboxUrl(match.photoUrl!)}
-                        title="View photo proof of collection"
+                        title="View blood bag photo proof"
                         className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-line cursor-pointer hover:border-blood"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -429,7 +429,7 @@ export default function DonorDashboard() {
                     <div>
                       <p className="text-xs font-semibold text-bone">{match.request.hospital.name}</p>
                       <p className="font-mono text-[10px] uppercase tracking-wider text-mute">
-                        {match.request.units} Unit{match.request.units > 1 ? 's' : ''} • Status: {match.status}
+                        {match.request.units} Bag{match.request.units > 1 ? 's' : ''} • Status: {match.status}
                       </p>
                     </div>
                   </div>
@@ -497,7 +497,7 @@ export default function DonorDashboard() {
               className="max-h-[75vh] max-w-full rounded-2xl border border-line shadow-2xl"
             />
             <p className="max-w-sm text-center text-xs text-mute">
-              Tamper-proof photo uploaded by the hospital upon physical donation collection.
+              Photo proof of the blood bag taken and verified by hospital staff.
             </p>
           </div>
           <button

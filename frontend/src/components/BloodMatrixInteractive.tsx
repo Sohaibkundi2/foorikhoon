@@ -21,49 +21,49 @@ const MATRIX_DATA: Record<string, BloodRule> = {
   'O−': {
     giveTo: ['O−', 'O+', 'A−', 'A+', 'B−', 'B+', 'AB−', 'AB+'],
     receiveFrom: ['O−'],
-    scarcityNotes: 'High-scarcity universal donor. Reserved for O− recipients first.',
+    scarcityNotes: 'Universal donor for all blood types. Highly needed in emergencies.',
     populationSharePk: '~2%'
   },
   'O+': {
     giveTo: ['O+', 'A+', 'B+', 'AB+'],
     receiveFrom: ['O+', 'O−'],
-    scarcityNotes: 'Most requested blood type across emergency wards in Pakistan.',
+    scarcityNotes: 'Most common blood type needed across Pakistani hospitals.',
     populationSharePk: '~32%'
   },
   'A−': {
     giveTo: ['A−', 'A+', 'AB−', 'AB+'],
     receiveFrom: ['A−', 'O−'],
-    scarcityNotes: 'Rare Rh-negative group with critical emergency need.',
+    scarcityNotes: 'Rare negative blood group with high emergency need.',
     populationSharePk: '~3%'
   },
   'A+': {
     giveTo: ['A+', 'AB+'],
     receiveFrom: ['A+', 'A−', 'O+', 'O−'],
-    scarcityNotes: 'High demand for surgery and planned transfusions.',
+    scarcityNotes: 'Common blood group needed for surgeries and accidents.',
     populationSharePk: '~24%'
   },
   'B−': {
     giveTo: ['B−', 'B+', 'AB−', 'AB+'],
     receiveFrom: ['B−', 'O−'],
-    scarcityNotes: 'Rare Rh-negative group with limited regional donors.',
+    scarcityNotes: 'Rare blood group with very few registered donors.',
     populationSharePk: '~4%'
   },
   'B+': {
     giveTo: ['B+', 'AB+'],
     receiveFrom: ['B+', 'B−', 'O+', 'O−'],
-    scarcityNotes: 'One of Pakistan’s most common and frequently used blood types.',
+    scarcityNotes: "One of Pakistan's most common blood groups.",
     populationSharePk: '~31%'
   },
   'AB−': {
     giveTo: ['AB−', 'AB+'],
     receiveFrom: ['AB−', 'A−', 'B−', 'O−'],
-    scarcityNotes: 'The rarest blood type in Pakistan (1% of population).',
+    scarcityNotes: 'The rarest blood group in Pakistan (only 1% of population).',
     populationSharePk: '~1%'
   },
   'AB+': {
     giveTo: ['AB+'],
     receiveFrom: ['Universal Recipient (All Groups)'],
-    scarcityNotes: 'Universal plasma donor and universal red-cell recipient.',
+    scarcityNotes: 'Can receive blood from all blood types.',
     populationSharePk: '~3%'
   },
 }
@@ -81,14 +81,14 @@ export default function BloodMatrixInteractive() {
         <div>
           <div className="flex items-center gap-2">
             <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-blood">
-              Compatibility Matrix
+              Who Can Donate To Whom
             </span>
             <span className="rounded-full border border-line bg-raised px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-mute">
-              Select Your Type
+              Select Your Blood Group
             </span>
           </div>
           <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-bone">
-            Check your compatibility & <span className="font-serif italic font-normal text-blood">impact</span>
+            Check who you can give blood to & <span className="font-serif italic font-normal text-blood">receive from</span>
           </h2>
         </div>
 
@@ -98,7 +98,7 @@ export default function BloodMatrixInteractive() {
             <Heart className="h-4 w-4 fill-blood" />
           </div>
           <div className="text-xs">
-            <span className="font-semibold text-bone">1 Unit = Up to 3 Lives Saved</span>
+            <span className="font-semibold text-bone">1 Blood Bag = Up to 3 Lives Saved</span>
           </div>
         </div>
       </div>
@@ -150,10 +150,10 @@ export default function BloodMatrixInteractive() {
               <div className="rounded-xl border border-line bg-surface/70 p-4">
                 <div className="flex items-center justify-between pb-2 border-b border-line-soft">
                   <span className="font-mono text-[10px] uppercase tracking-wider text-bone font-medium">
-                    You Can Give To
+                    You Can Give Blood To
                   </span>
                   <span className="font-mono text-xs text-mute">
-                    {details.giveTo.length} Groups
+                    {details.giveTo.length} Blood Groups
                   </span>
                 </div>
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -172,10 +172,10 @@ export default function BloodMatrixInteractive() {
               <div className="rounded-xl border border-line bg-surface/70 p-4">
                 <div className="flex items-center justify-between pb-2 border-b border-line-soft">
                   <span className="font-mono text-[10px] uppercase tracking-wider text-blood-lite">
-                    You Can Receive From
+                    You Can Receive Blood From
                   </span>
                   <span className="font-mono text-xs text-mute">
-                    {details.receiveFrom.length} Groups
+                    {details.receiveFrom.length} Blood Groups
                   </span>
                 </div>
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -209,7 +209,7 @@ export default function BloodMatrixInteractive() {
                 Register as {selectedGroup} Donor
               </h4>
               <p className="mt-1 text-xs text-mute">
-                Receive SMS only when a nearby hospital needs your blood group.
+                Get notified only when a nearby hospital needs your exact blood group.
               </p>
 
               <div className="mt-4 flex flex-col sm:flex-row gap-2">

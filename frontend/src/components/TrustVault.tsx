@@ -32,14 +32,14 @@ export default function TrustVault() {
             </span>
             <span className="inline-flex items-center gap-1 rounded-full border border-line bg-raised px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-bone">
               <CheckCircle2 className="h-3 w-3 text-blood" />
-              100% Audited
+              100% Verified
             </span>
           </div>
           <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-bone">
             Every match is <span className="font-serif italic font-normal text-blood">verified.</span>
           </h2>
           <p className="mt-1 max-w-xl text-xs sm:text-sm text-mute leading-relaxed">
-            Multi-layer verification guarantees real emergencies, protected donor privacy, and authentic medical proof.
+            Verified hospitals, donor privacy protection, and genuine photo proof of every donation.
           </p>
         </div>
 
@@ -65,7 +65,7 @@ export default function TrustVault() {
             }`}
           >
             <Building2 className="h-3.5 w-3.5" />
-            Hospital Seal
+            Verified Hospitals
           </button>
           <button
             onClick={() => setActiveTab('privacy')}
@@ -96,13 +96,13 @@ export default function TrustVault() {
               <div className="lg:col-span-7 space-y-3">
                 <div className="inline-flex items-center gap-2 rounded-lg border border-line bg-raised px-2.5 py-1 font-mono text-[11px] text-bone">
                   <ScanLine className="h-3.5 w-3.5 text-blood" />
-                  Photo-Verified Transfusion Bag
+                  Photo Proof of Blood Bag
                 </div>
                 <h3 className="text-lg sm:text-xl font-semibold tracking-tight text-bone">
                   Physical proof required for every completed donation.
                 </h3>
                 <p className="text-xs sm:text-sm leading-relaxed text-mute">
-                  Hospitals upload a photograph of the sealed collection bag with the donor ID tag. This unlocks your official shareable Hero Certificate and updates your commitment score.
+                  Hospitals upload a photo of the blood bag upon collection. This unlocks your downloadable certificate and updates your reliability score.
                 </p>
 
                 <div className="grid grid-cols-2 gap-3 pt-1">
@@ -111,7 +111,7 @@ export default function TrustVault() {
                       01 / Bag Photo
                     </p>
                     <p className="mt-1 text-xs text-mute">
-                      Staff uploads sealed blood bag photo with unique tag.
+                      Staff uploads photo of the collected blood bag.
                     </p>
                   </div>
                   <div className="rounded-xl border border-line bg-surface/60 p-3.5">
@@ -119,7 +119,7 @@ export default function TrustVault() {
                       02 / Hero Card
                     </p>
                     <p className="mt-1 text-xs text-mute">
-                      Donor receives verified shareable certificate.
+                      Donor receives an official lifesaver certificate.
                     </p>
                   </div>
                 </div>
@@ -130,7 +130,7 @@ export default function TrustVault() {
                 <div className="relative mx-auto max-w-sm rounded-xl border border-line bg-surface p-4 shadow-xl">
                   <div className="flex items-center justify-between border-b border-line-soft pb-2.5">
                     <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-bone">
-                      <ShieldCheck className="h-3.5 w-3.5 text-blood" /> Verified Collection
+                      <ShieldCheck className="h-3.5 w-3.5 text-blood" /> Verified Donation
                     </span>
                     <span className="font-mono text-[10px] text-faint">#FK-9482</span>
                   </div>
@@ -140,7 +140,7 @@ export default function TrustVault() {
                       <FileCheck2 className="h-5 w-5" />
                     </div>
                     <p className="mt-2 font-mono text-xs font-semibold text-bone">
-                      Transfusion Tagged: O−
+                      Donation Verified: O−
                     </p>
                     <p className="mt-0.5 text-[11px] text-mute">
                       DHQ Teaching Hospital • Blood Bank
@@ -168,30 +168,30 @@ export default function TrustVault() {
               <div className="lg:col-span-7 space-y-3">
                 <div className="inline-flex items-center gap-2 rounded-lg border border-line bg-raised px-2.5 py-1 font-mono text-[11px] text-bone">
                   <Building2 className="h-3.5 w-3.5 text-blood" />
-                  Accredited Hospital Network
+                  Verified Hospitals Only
                 </div>
                 <h3 className="text-lg sm:text-xl font-semibold tracking-tight text-bone">
-                  Only authentic hospitals can post requests.
+                  Only verified hospitals can post blood requests.
                 </h3>
                 <p className="text-xs sm:text-sm leading-relaxed text-mute">
-                  Every hospital is verified with government medical licenses and GPS location before posting emergency calls.
+                  Every hospital is checked with official medical licenses and verified location before posting blood requests.
                 </p>
 
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   <div className="rounded-xl border border-line bg-surface/60 p-3.5">
                     <p className="font-mono text-[10px] uppercase tracking-wider text-bone">
-                      Geo-Fenced
+                      Verified Location
                     </p>
                     <p className="mt-1 text-xs text-mute">
-                      Requests anchored to verified hospital premises.
+                      Requests only originate from verified hospital locations.
                     </p>
                   </div>
                   <div className="rounded-xl border border-line bg-surface/60 p-3.5">
                     <p className="font-mono text-[10px] uppercase tracking-wider text-bone">
-                      Anti-Spam
+                      No Fake Requests
                     </p>
                     <p className="mt-1 text-xs text-mute">
-                      Strict rate limits prevent false panics.
+                      Strict rules prevent spam and false alarms.
                     </p>
                   </div>
                 </div>
@@ -247,30 +247,30 @@ export default function TrustVault() {
               <div className="lg:col-span-7 space-y-3">
                 <div className="inline-flex items-center gap-2 rounded-lg border border-line bg-raised px-2.5 py-1 font-mono text-[11px] text-bone">
                   <Lock className="h-3.5 w-3.5 text-blood" />
-                  Donor Privacy Shield
+                  Donor Privacy Protection
                 </div>
                 <h3 className="text-lg sm:text-xl font-semibold tracking-tight text-bone">
                   Your phone number stays private until you accept.
                 </h3>
                 <p className="text-xs sm:text-sm leading-relaxed text-mute">
-                  No public donor lists, no unsolicited calls. Your phone number is shared only when you voluntarily accept an emergency match.
+                  No public phone numbers, no unwanted calls. Your phone number is only shared when you choose to accept a blood request.
                 </p>
 
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   <div className="rounded-xl border border-line bg-surface/60 p-3.5">
                     <p className="font-mono text-[10px] uppercase tracking-wider text-bone">
-                      Fuzzed GPS
+                      Private Location
                     </p>
                     <p className="mt-1 text-xs text-mute">
-                      Coordinates fuzzed server-side for privacy.
+                      Your exact home address is never shown publicly.
                     </p>
                   </div>
                   <div className="rounded-xl border border-line bg-surface/60 p-3.5">
                     <p className="font-mono text-[10px] uppercase tracking-wider text-bone">
-                      90-Day Rest
+                      90-Day Rest Period
                     </p>
                     <p className="mt-1 text-xs text-mute">
-                      Automated recovery blackout after donation.
+                      Automatic rest period keeps you safe after donating.
                     </p>
                   </div>
                 </div>
@@ -279,15 +279,15 @@ export default function TrustVault() {
               <div className="lg:col-span-5">
                 <div className="relative mx-auto max-w-sm rounded-xl border border-line bg-surface p-4 shadow-xl font-mono text-xs space-y-2">
                   <div className="flex items-center justify-between rounded-lg bg-ink/60 p-2.5">
-                    <span className="text-mute">Public Search</span>
+                    <span className="text-mute">Public Phone Listing</span>
                     <span className="font-semibold text-blood">BLOCKED</span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-ink/60 p-2.5">
-                    <span className="text-mute">Consent Sharing</span>
-                    <span className="font-semibold text-bone">ENFORCED</span>
+                    <span className="text-mute">Your Permission Required</span>
+                    <span className="font-semibold text-bone">ALWAYS</span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-ink/60 p-2.5">
-                    <span className="text-mute">Recovery Window</span>
+                    <span className="text-mute">Rest Period</span>
                     <span className="font-semibold text-bone">90 DAYS</span>
                   </div>
                 </div>

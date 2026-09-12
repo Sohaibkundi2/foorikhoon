@@ -119,7 +119,7 @@ function HeroInteractiveSimulator() {
                   : 'text-mute hover:text-bone'
               }`}
             >
-              Donor Experience
+              Donor View
             </button>
             <button
               onClick={() => setMode('hospital')}
@@ -129,13 +129,13 @@ function HeroInteractiveSimulator() {
                   : 'text-mute hover:text-bone'
               }`}
             >
-              Hospital Dispatch
+              Hospital View
             </button>
           </div>
 
           <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-blood">
             <LiveDot />
-            <span className="hidden sm:inline">Live Flow</span>
+            <span className="hidden sm:inline">Live Demo</span>
           </span>
         </div>
 
@@ -153,7 +153,7 @@ function HeroInteractiveSimulator() {
                 <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-faint mb-3">
                   <span className="flex items-center gap-1.5">
                     <Radio className="h-3 w-3 text-blood animate-pulse" />
-                    Incoming Emergency Match
+                    Emergency Alert: Donor Needed
                   </span>
                   <span className="rounded bg-blood/10 px-1.5 py-0.5 text-blood font-semibold">
                     Critical
@@ -175,7 +175,7 @@ function HeroInteractiveSimulator() {
                       Circular Road, DI Khan (2.4 km away)
                     </p>
                     <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px]">
-                      <span className="text-blood font-medium">2 Units Required</span>
+                      <span className="text-blood font-medium">2 Blood Bags Needed</span>
                       <span className="text-line">•</span>
                       <span className="text-mute">Trauma ICU</span>
                     </div>
@@ -185,9 +185,9 @@ function HeroInteractiveSimulator() {
                 {/* Privacy & Matching Callout */}
                 <div className="mt-3.5 rounded-lg border border-line-soft bg-ink/60 p-2.5 text-xs text-mute font-mono flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Lock className="h-3 w-3 text-bone" /> Phone number hidden
+                    <Lock className="h-3 w-3 text-bone" /> Phone number is private
                   </span>
-                  <span className="text-bone">Match Score: 98.4%</span>
+                  <span className="text-bone">Best Match: 98%</span>
                 </div>
 
                 {/* Action State */}
@@ -196,10 +196,10 @@ function HeroInteractiveSimulator() {
                     <div className="space-y-2 rounded-xl border border-line bg-raised p-3 text-xs">
                       <div className="flex items-center gap-1.5 font-semibold text-bone">
                         <Check className="h-4 w-4 text-blood" />
-                        <span>Accepted — Hospital Navigation Active</span>
+                        <span>Accepted — Hospital Directions Ready</span>
                       </div>
                       <p className="text-[11px] text-mute leading-relaxed">
-                        After donation, hospital staff photographs the sealed blood bag to credit +10 commitment points and issue your shareable Hero Certificate.
+                        After you donate, hospital staff takes a photo of the blood bag to confirm your donation (+10 reliability points) and give you your Hero Certificate.
                       </p>
                     </div>
                   ) : (
@@ -209,7 +209,7 @@ function HeroInteractiveSimulator() {
                         className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blood py-2.5 text-xs font-semibold text-white shadow transition-all hover:bg-blood-dark active:scale-98 cursor-pointer"
                       >
                         <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
-                        Accept Match
+                        Accept Request
                       </button>
                       <button
                         onClick={() => setAccepted(false)}
@@ -233,36 +233,36 @@ function HeroInteractiveSimulator() {
                 <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-faint">
                   <span className="flex items-center gap-1.5">
                     <Building2 className="h-3 w-3 text-blood" />
-                    Verified Facility Portal
+                    Hospital Emergency Portal
                   </span>
                   <span className="text-bone font-medium">Request #FK-8291</span>
                 </div>
 
                 <div className="rounded-lg border border-line-soft bg-ink/60 p-3 space-y-2 font-mono text-xs">
                   <div className="flex justify-between items-center">
-                    <span className="text-mute">Post Need:</span>
-                    <span className="text-blood font-semibold">2 Units • O− (Critical)</span>
+                    <span className="text-mute">Blood Needed:</span>
+                    <span className="text-blood font-semibold">2 Bags • O− (Urgent)</span>
                   </div>
                   <div className="flex justify-between items-center text-[11px]">
-                    <span className="text-mute">Geo-Scan Radius:</span>
-                    <span className="text-bone">Tier 1 (10km Radius)</span>
+                    <span className="text-mute">Search Area:</span>
+                    <span className="text-bone">Within 10 km</span>
                   </div>
                   <div className="flex justify-between items-center text-[11px]">
-                    <span className="text-mute">Top Candidate Ranked:</span>
-                    <span className="text-bone font-medium">Donor #4019 (2.4km, 94 Score)</span>
+                    <span className="text-mute">Nearest Donor Found:</span>
+                    <span className="text-bone font-medium">Donor #4019 (2.4 km away, 94 score)</span>
                   </div>
                   <div className="flex justify-between items-center text-[11px]">
-                    <span className="text-mute">Medical Window:</span>
-                    <span className="text-bone">Eligible (&gt; 90d recovery)</span>
+                    <span className="text-mute">Can Donate:</span>
+                    <span className="text-bone">Yes (last donated 90+ days ago)</span>
                   </div>
                 </div>
 
                 <div className="rounded-lg border border-line bg-surface p-2.5 font-mono text-[11px] text-mute flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Clock className="h-3 w-3 text-blood" />
-                    15m Escalation Timer
+                    15-min Response Timer
                   </span>
-                  <span className="text-bone">Push Dispatched</span>
+                  <span className="text-bone">Alert Sent to Donor</span>
                 </div>
               </motion.div>
             )}
@@ -305,13 +305,13 @@ export default function LandingPage() {
               </h1>
 
               <p className="mt-4 max-w-xl text-sm sm:text-base leading-relaxed text-mute">
-                Connecting verified Pakistani hospitals with on-call donors in real time. Hospitals post emergency needs; our scoring engine matches candidate donors within minutes.
+                Connecting verified Pakistani hospitals with nearby blood donors in real time. When a hospital needs blood urgently, nearby donors are alerted right away.
               </p>
 
               {/* Instant Donor Registration Card (Only donors register; hospitals login/verify) */}
               <div className="mt-6 rounded-2xl border border-line bg-surface/80 p-4 backdrop-blur-sm">
                 <p className="font-mono text-[10px] uppercase tracking-wider text-faint mb-2">
-                  Join as an On-Call Donor — Select Your Blood Group:
+                  Sign up to save lives — Choose your blood group:
                 </p>
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {BLOOD_QUICK_SELECT.map(bg => (
@@ -344,7 +344,7 @@ export default function LandingPage() {
                     className="flex items-center justify-center gap-1.5 rounded-xl border border-line bg-surface px-4 py-3 text-xs font-medium text-mute hover:text-bone hover:bg-raised transition-colors active:scale-98"
                   >
                     <Search className="h-4 w-4 text-blood" />
-                    <span>Browse Hospital Requests</span>
+                    <span>View Blood Requests</span>
                   </Link>
                 </div>
               </div>
@@ -356,7 +356,7 @@ export default function LandingPage() {
                     <ShieldCheck className="h-3.5 w-3.5 text-blood" /> Verified Hospitals Only
                   </span>
                   <span className="flex items-center gap-1">
-                    <Camera className="h-3.5 w-3.5 text-bone" /> Photo-Proof Transfusions
+                    <Camera className="h-3.5 w-3.5 text-bone" /> Photo-Verified Donations
                   </span>
                 </div>
 
@@ -365,7 +365,7 @@ export default function LandingPage() {
                   className="inline-flex items-center gap-1 text-bone hover:text-blood transition-colors self-start sm:self-auto"
                 >
                   <Building2 className="h-3.5 w-3.5 text-blood" />
-                  <span>Hospital Portal Login &rarr;</span>
+                  <span>Hospital Login &rarr;</span>
                 </Link>
               </div>
             </div>
@@ -385,7 +385,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 divide-y divide-line-soft sm:grid-cols-3 sm:divide-x sm:divide-y-0">
             <div className="py-5 sm:px-6 sm:py-6 first:pl-0">
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
-                <span className="text-blood">01</span> / Donors Registered
+                <span className="text-blood">01</span> / Registered Donors
               </p>
               <p className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-bone tabular-nums">
                 {loading ? (
@@ -411,7 +411,7 @@ export default function LandingPage() {
 
             <div className="py-5 sm:px-6 sm:py-6">
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
-                <span className="text-blood">03</span> / Fulfilled Transfusions
+                <span className="text-blood">03</span> / Blood Bags Donated
               </p>
               <p className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-blood tabular-nums">
                 {loading ? (
@@ -467,7 +467,7 @@ export default function LandingPage() {
                   </span>
                 </div>
                 <h2 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-bone">
-                  Emergency Demand Across Pakistan
+                  Urgent Blood Needs Across Pakistan
                 </h2>
               </div>
             </div>
@@ -482,10 +482,10 @@ export default function LandingPage() {
           <Reveal>
             <div className="text-center max-w-xl mx-auto mb-10">
               <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-blood">
-                Protocol
+                How It Works
               </span>
               <h2 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-bone">
-                How an emergency is <span className="font-serif italic font-normal text-blood">fulfilled</span>
+                How we help save a <span className="font-serif italic font-normal text-blood">life</span>
               </h2>
             </div>
           </Reveal>
@@ -495,16 +495,16 @@ export default function LandingPage() {
               <div className="rounded-2xl border border-line bg-surface/80 p-5 sm:p-6 h-full flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between border-b border-line-soft pb-3 font-mono text-xs font-bold text-blood">
-                    <span>01 / HOSPITAL DISPATCH</span>
+                    <span>01 / HOSPITAL REQUEST</span>
                     <Building2 className="h-4 w-4 text-mute" />
                   </div>
-                  <h3 className="mt-3 text-lg font-semibold text-bone">Verified Hospital Posts Need</h3>
+                  <h3 className="mt-3 text-lg font-semibold text-bone">Hospital Requests Blood</h3>
                   <p className="mt-1.5 text-xs text-mute leading-relaxed">
-                    Hospital selects required blood type and units. Unverified accounts cannot post emergency broadcasts.
+                    A verified hospital posts the required blood group and number of bags needed urgently.
                   </p>
                 </div>
                 <div className="mt-4 font-mono text-[10px] text-faint border-t border-line-soft pt-2.5">
-                  Geo-fenced request broadcast
+                  Alerts sent to nearby donors
                 </div>
               </div>
             </Reveal>
@@ -513,16 +513,16 @@ export default function LandingPage() {
               <div className="rounded-2xl border border-blood/30 bg-gradient-to-b from-blood-deep/15 via-surface to-raised p-5 sm:p-6 h-full flex flex-col justify-between shadow-[0_15px_40px_-15px_rgba(220,38,38,0.3)]">
                 <div>
                   <div className="flex items-center justify-between border-b border-line-soft pb-3 font-mono text-xs font-bold text-blood">
-                    <span>02 / DETERMINISTIC AI MATCH</span>
+                    <span>02 / FAST DONOR SEARCH</span>
                     <Zap className="h-4 w-4 text-blood" />
                   </div>
-                  <h3 className="mt-3 text-lg font-semibold text-bone">Nearest Donors Alerted</h3>
+                  <h3 className="mt-3 text-lg font-semibold text-bone">Nearest Donors Notified</h3>
                   <p className="mt-1.5 text-xs text-mute leading-relaxed">
-                    Python scoring engine ranks candidate donors by radius tier, 90-day medical window, and commitment history.
+                    The system finds the closest eligible donors who can safely donate today and alerts them instantly.
                   </p>
                 </div>
                 <div className="mt-4 font-mono text-[10px] text-blood-lite border-t border-line-soft pt-2.5">
-                  Auto-escalates if no reply in 15m
+                  Alerts more donors if no reply in 15 mins
                 </div>
               </div>
             </Reveal>
@@ -531,16 +531,16 @@ export default function LandingPage() {
               <div className="rounded-2xl border border-line bg-surface/80 p-5 sm:p-6 h-full flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between border-b border-line-soft pb-3 font-mono text-xs font-bold text-blood">
-                    <span>03 / PHOTO-PROOF</span>
+                    <span>03 / CONFIRMED DONATION</span>
                     <Camera className="h-4 w-4 text-blood" />
                   </div>
-                  <h3 className="mt-3 text-lg font-semibold text-bone">Bag Proof & Hero Certificate</h3>
+                  <h3 className="mt-3 text-lg font-semibold text-bone">Donation Verified & Certificate</h3>
                   <p className="mt-1.5 text-xs text-mute leading-relaxed">
-                    Hospital uploads photo proof of filled collection bag. Donor receives digital Hero Certificate and commitment points.
+                    The hospital confirms the donation with a photo of the blood bag. The donor receives a Hero Certificate and reliability points.
                   </p>
                 </div>
                 <div className="mt-4 font-mono text-[10px] text-faint border-t border-line-soft pt-2.5">
-                  Tamper-proof signed Cloudinary audit
+                  Secure hospital photo verification
                 </div>
               </div>
             </Reveal>
@@ -563,7 +563,7 @@ export default function LandingPage() {
                   <span className="font-serif italic font-normal text-blood">needs you.</span>
                 </h2>
                 <p className="mt-2.5 text-sm text-mute">
-                  Register once. Answer when a hospital near you needs your blood type.
+                  Sign up once. Receive an alert when a hospital near you urgently needs your blood.
                 </p>
               </div>
 
@@ -581,7 +581,7 @@ export default function LandingPage() {
                   href="/requests"
                   className="inline-flex items-center justify-center rounded-xl border border-line bg-surface px-5 py-3.5 text-sm font-semibold text-bone hover:bg-raised transition-colors active:scale-98"
                 >
-                  Browse Hospital Requests
+                  View Blood Requests
                 </Link>
               </div>
             </div>
@@ -603,10 +603,10 @@ export default function LandingPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-5 font-mono text-xs text-mute">
-            <Link href="/requests" className="hover:text-blood transition-colors">Hospital Requests</Link>
+            <Link href="/requests" className="hover:text-blood transition-colors">Blood Requests</Link>
             <Link href="/leaderboard" className="hover:text-blood transition-colors">Leaderboard</Link>
-            <Link href="/login" className="hover:text-blood transition-colors">Hospital Portal</Link>
-            <Link href="/register" className="hover:text-blood transition-colors">Donor Registration</Link>
+            <Link href="/login" className="hover:text-blood transition-colors">Hospital Login</Link>
+            <Link href="/register" className="hover:text-blood transition-colors">Donor Sign Up</Link>
           </div>
         </div>
       </footer>

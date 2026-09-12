@@ -49,7 +49,7 @@ function ResetPasswordContent() {
     setError('')
 
     if (!token) {
-      setError('Password reset token is missing from the URL.')
+      setError('Reset link is missing or invalid.')
       return
     }
 
@@ -59,12 +59,12 @@ function ResetPasswordContent() {
     }
 
     if (!passwordsMatch) {
-      setError('Password confirmation does not match.')
+      setError('Passwords do not match.')
       return
     }
 
     if (!acknowledged) {
-      setError('Please acknowledge the security session revocation statement.')
+      setError('Please check the box below to confirm.')
       return
     }
 
@@ -96,10 +96,10 @@ function ResetPasswordContent() {
             <div className="border-b border-amber-500/20 bg-amber-950/30 p-6 sm:p-7">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400">
-                  Security Checkpoint
+                  Invalid Link
                 </span>
                 <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
-                  Access Blocked
+                  Link Expired
                 </span>
               </div>
 
@@ -109,10 +109,10 @@ function ResetPasswordContent() {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold tracking-tight text-bone">
-                    Missing Security Token
+                    Invalid or Expired Link
                   </h1>
                   <p className="text-xs text-mute mt-0.5">
-                    Cryptographic token missing from verification link.
+                    The password reset link is missing or has expired.
                   </p>
                 </div>
               </div>
@@ -121,10 +121,10 @@ function ResetPasswordContent() {
             <div className="p-6 sm:p-7 space-y-5">
               <div className="rounded-2xl border border-amber-500/20 bg-amber-950/20 p-4 text-xs text-mute leading-relaxed">
                 <p>
-                  For account safety and privacy compliance, sensitive password changes cannot be accessed directly without an authentic, one-time verification token.
+                  For your account safety, you need a valid reset link to change your password.
                 </p>
                 <p className="mt-2 text-[11px] text-faint font-mono">
-                  If you received an email, ensure you opened the entire URL or request a new 15-minute token below.
+                  Please make sure you clicked the complete link in your email, or request a new one below.
                 </p>
               </div>
 
@@ -142,7 +142,7 @@ function ResetPasswordContent() {
                   className="w-full flex items-center justify-center gap-2 rounded-xl border border-line bg-raised/60 py-2.5 px-4 text-xs font-semibold text-bone hover:border-faint hover:bg-raised transition-all cursor-pointer"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
-                  <span>Return to Sign In</span>
+                  <span>Back to Login</span>
                 </Link>
               </div>
             </div>
@@ -165,10 +165,10 @@ function ResetPasswordContent() {
                 <ShieldCheck className="h-7 w-7" />
               </div>
               <h1 className="mt-4 text-2xl font-extrabold text-bone">
-                Credentials Updated
+                Password Changed Successfully
               </h1>
               <p className="mt-1.5 text-xs text-mute">
-                Your password has been securely overwritten.
+                Your new password is now active.
               </p>
             </div>
 
@@ -176,10 +176,10 @@ function ResetPasswordContent() {
               <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/20 p-4 text-xs text-mute space-y-2">
                 <div className="flex items-center gap-2 text-emerald-400 font-mono text-[11px] font-semibold">
                   <CheckCircle2 className="h-4 w-4" />
-                  <span>CRYPTOGRAPHIC COMMIT COMPLETED</span>
+                  <span>PASSWORD UPDATED</span>
                 </div>
                 <p className="text-[11px] text-faint leading-relaxed">
-                  Your new password is now active. All previous sessions have been terminated. You can now authenticate with your updated credentials.
+                  Your new password is now active. All other active logins have been signed out. You can now log in with your new password.
                 </p>
               </div>
 
@@ -188,7 +188,7 @@ function ResetPasswordContent() {
                 onClick={() => router.push('/login')}
                 className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 px-5 text-sm font-semibold text-white shadow-[0_0_25px_-3px_rgba(16,185,129,0.5)] transition-all hover:bg-emerald-500 cursor-pointer"
               >
-                <span>Proceed to Sign In</span>
+                <span>Log In Now</span>
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>
@@ -212,10 +212,10 @@ function ResetPasswordContent() {
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400">
                 <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-                Sensitive Security Enclave
+                Password Reset
               </span>
               <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
-                One-Time Token Override
+                Secure Link Verified
               </span>
             </div>
 
@@ -225,10 +225,10 @@ function ResetPasswordContent() {
               </div>
               <div>
                 <h1 className="text-xl font-extrabold tracking-tight text-bone sm:text-2xl">
-                  Reset Sensitive Password
+                  Set New Password
                 </h1>
                 <p className="mt-1 text-xs text-mute leading-relaxed">
-                  Override account authentication credentials with full session termination.
+                  Choose a strong new password for your account.
                 </p>
               </div>
             </div>
@@ -237,7 +237,7 @@ function ResetPasswordContent() {
             <div className="mt-4 flex items-center gap-2 rounded-lg bg-surface/80 border border-line-soft px-3 py-2 font-mono text-[11px] text-faint">
               <KeyRound className="h-3.5 w-3.5 text-amber-400 shrink-0" />
               <span className="truncate">
-                Token verification active:{' '}
+                Reset link verified:{' '}
                 <span className="text-bone font-medium">••••{token.slice(-8)}</span>
               </span>
             </div>
@@ -248,10 +248,10 @@ function ResetPasswordContent() {
             <div className="rounded-2xl border border-amber-500/20 bg-amber-950/15 p-4 text-xs text-mute space-y-1.5">
               <div className="flex items-center gap-1.5 font-semibold text-amber-300">
                 <ShieldAlert className="h-4 w-4 shrink-0 text-amber-400" />
-                <span>Security Notice: Session Invalidation</span>
+                <span>Notice: Automatic Sign Out</span>
               </div>
               <p className="text-[11px] text-faint leading-relaxed">
-                Resetting your password will immediately revoke all active mobile and web login sessions to safeguard patient records and blood dispatch requests.
+                Changing your password will sign you out of all other devices to keep your account safe.
               </p>
             </div>
 
@@ -268,7 +268,7 @@ function ResetPasswordContent() {
                     className="inline-flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 hover:underline font-medium transition-colors"
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
-                    <span>Request a fresh reset link</span>
+                    <span>Request a new reset link</span>
                   </Link>
                 )}
               </div>
@@ -311,7 +311,7 @@ function ResetPasswordContent() {
                 {password.length > 0 && (
                   <div className="pt-2 space-y-2">
                     <div className="flex items-center justify-between text-[11px] font-mono">
-                      <span className="text-faint">Strength Rating:</span>
+                      <span className="text-faint">Password strength:</span>
                       <span
                         className={
                           strengthScore === 3
@@ -322,10 +322,10 @@ function ResetPasswordContent() {
                         }
                       >
                         {strengthScore === 3
-                          ? 'Resilient / High Security'
+                          ? 'Strong'
                           : strengthScore === 2
-                          ? 'Acceptable'
-                          : 'Vulnerable (Too Simple)'}
+                          ? 'Medium'
+                          : 'Weak (too simple)'}
                       </span>
                     </div>
 
@@ -363,7 +363,7 @@ function ResetPasswordContent() {
                         {hasNumber ? '✓' : '•'} Contains a number
                       </span>
                       <span className={hasUpperOrSpecial ? 'text-emerald-400' : 'text-faint'}>
-                        {hasUpperOrSpecial ? '✓' : '•'} Special or uppercase
+                        {hasUpperOrSpecial ? '✓' : '•'} Special or capital letter
                       </span>
                     </div>
                   </div>
@@ -385,7 +385,7 @@ function ResetPasswordContent() {
                         passwordsMatch ? 'text-emerald-400' : 'text-blood'
                       }`}
                     >
-                      {passwordsMatch ? '✓ Match verified' : '✕ Does not match'}
+                      {passwordsMatch ? '✓ Passwords match' : '✕ Passwords do not match'}
                     </span>
                   )}
                 </div>
@@ -424,7 +424,7 @@ function ResetPasswordContent() {
                     className="mt-0.5 h-4 w-4 rounded border-line bg-surface text-amber-500 focus:ring-amber-400/30"
                   />
                   <span className="text-xs text-mute leading-snug">
-                    I confirm that I am the authorized owner of this account and understand that resetting credentials revokes all active sessions.
+                    I confirm this is my account and agree to sign out of all other devices.
                   </span>
                 </label>
               </div>
@@ -437,7 +437,7 @@ function ResetPasswordContent() {
                   className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-500 py-3 px-5 text-sm font-bold text-black shadow-[0_0_25px_-3px_rgba(245,158,11,0.4)] transition-all hover:bg-amber-400 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <KeyRound className="h-4 w-4" />
-                  <span>{loading ? 'Committing New Credentials...' : 'Overwrite & Secure Password'}</span>
+                  <span>{loading ? 'Saving new password...' : 'Save New Password'}</span>
                 </button>
               </div>
             </form>
@@ -448,7 +448,7 @@ function ResetPasswordContent() {
                 className="inline-flex items-center gap-1.5 text-xs text-mute hover:text-bone transition-colors group"
               >
                 <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
-                <span>Cancel and return to Sign In</span>
+                <span>Cancel and return to login</span>
               </Link>
             </div>
           </div>
@@ -457,7 +457,7 @@ function ResetPasswordContent() {
         {/* Footnote Security Badge */}
         <div className="mt-4 flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-wider text-faint">
           <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />
-          <span>FIPS / OWASP Salted Hash Credential Storage Protocol</span>
+          <span>Safe & Secure Account Recovery • Pakistan 24/7</span>
         </div>
       </div>
     </div>
@@ -467,7 +467,7 @@ function ResetPasswordContent() {
 function ResetPasswordFallback() {
   return (
     <div className="relative min-h-[90vh] flex items-center justify-center bg-ink text-mute text-xs font-mono">
-      Initializing secure cryptographic checkpoint...
+      Loading reset page...
     </div>
   )
 }

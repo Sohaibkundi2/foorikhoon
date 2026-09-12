@@ -90,24 +90,24 @@ export default function ShortageRadar() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-blood">
-                    AI Shortage Radar
+                    Shortage Radar
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full border border-line bg-raised px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-faint">
-                    <LiveDot /> Live Telemetry
+                    <LiveDot /> Live Alerts
                   </span>
                 </div>
               </div>
             </div>
 
             <span className="font-mono text-[11px] tracking-wide text-faint">
-              {criticalAndHigh.length} Groups with High Demand
+              {criticalAndHigh.length} Blood Groups in High Demand
             </span>
           </div>
 
           {/* Selector Grid */}
           <div className="relative mt-5">
             <p className="mb-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
-              Select Blood Type to View Deficit:
+              Select Blood Group to Check Status:
             </p>
             <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-none sm:grid sm:grid-cols-4 md:grid-cols-8">
               {activePredictions.map(pred => {
@@ -139,7 +139,7 @@ export default function ShortageRadar() {
                         isCritical ? 'text-blood font-semibold' : isHigh ? 'text-warn' : 'text-faint'
                       }`}
                     >
-                      {isCritical ? 'Crit' : isHigh ? 'High' : 'Normal'}
+                      {isCritical ? 'Urgent' : isHigh ? 'High' : 'Normal'}
                     </span>
 
                     <span
@@ -207,15 +207,15 @@ export default function ShortageRadar() {
                           }`}
                         >
                           <AlertTriangle className="h-3 w-3" />
-                          {currentPrediction.risk} Demand
+                          {currentPrediction.risk === 'CRITICAL' ? 'Critical' : currentPrediction.risk === 'HIGH' ? 'High' : 'Normal'} Need
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-mute leading-relaxed max-w-lg">
                         {currentPrediction.risk === 'CRITICAL'
-                          ? 'Severe regional deficit. Nearest donors are prioritized for instant emergency SMS notification.'
+                          ? 'Severe blood shortage. Nearby donors are alerted immediately when emergency requests are posted.'
                           : currentPrediction.risk === 'HIGH'
-                          ? 'High hospital emergency rotation. Registrations for this blood type are urgently welcomed.'
-                          : 'Supply and active donor readiness for this blood group meet standard baseline.'}
+                          ? 'High hospital demand. Donors with this blood group are urgently needed.'
+                          : 'Available blood supply and active donors meet current hospital needs.'}
                       </p>
                     </div>
                   </div>
@@ -231,14 +231,14 @@ export default function ShortageRadar() {
                       }`}
                     >
                       <Droplet className="h-3.5 w-3.5" />
-                      <span>Pledge {BLOOD_LABELS[currentPrediction.bloodGroup]}</span>
+                      <span>Join as {BLOOD_LABELS[currentPrediction.bloodGroup]} Donor</span>
                       <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                     <Link
                       href="/requests"
                       className="inline-flex items-center justify-center rounded-lg border border-line bg-surface px-3 py-2.5 text-xs font-medium text-mute hover:text-bone transition-colors"
                     >
-                      Requests
+                      View Requests
                     </Link>
                   </div>
                 </div>

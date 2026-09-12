@@ -65,7 +65,7 @@ export default function LeaderboardPage() {
         <div className="mb-8 space-y-4">
           <div className="flex items-center gap-2 rounded-full border border-blood/30 bg-blood/10 px-3.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-blood w-fit">
             <Trophy className="h-3 w-3" />
-            <span>National Lifesaver Registry</span>
+            <span>Top Lifesavers</span>
           </div>
 
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -74,7 +74,7 @@ export default function LeaderboardPage() {
                 Donor Leaderboard
               </h1>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-mute sm:text-base">
-                Recognizing Pakistan's most reliable emergency blood donors ranked by verified transfusions and AI commitment reliability score.
+                Honoring Pakistan's most dedicated blood donors, ranked by completed donations and response reliability.
               </p>
             </div>
 
@@ -117,7 +117,7 @@ export default function LeaderboardPage() {
             <div className="flex flex-col items-center justify-center py-10 gap-3">
               <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
               <p className="font-mono text-xs uppercase tracking-widest text-faint">
-                Loading top donor honor roll & rankings...
+                Loading top donors...
               </p>
             </div>
             {[1, 2, 3, 4].map(i => (
@@ -135,8 +135,8 @@ export default function LeaderboardPage() {
             <h3 className="mt-4 text-base font-semibold text-bone">No Ranked Donors Yet</h3>
             <p className="mt-1.5 text-xs text-mute sm:text-sm">
               {cityFilter === 'ALL'
-                ? 'Scores start accruing after the first hospital-confirmed donation.'
-                : `Be the first emergency donor to climb the leaderboard in ${cityFilter}.`}
+                ? 'Donors will appear here after their first hospital-confirmed donation.'
+                : `Be the first donor to join the leaderboard in ${cityFilter}.`}
             </p>
             <div className="mt-6">
               <Link
@@ -197,12 +197,12 @@ export default function LeaderboardPage() {
 
                   <div className="mt-5 border-t border-line/80 pt-4 flex items-center justify-between">
                     <div>
-                      <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Commitment</p>
+                      <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Reliability</p>
                       <p className="font-mono text-xl font-extrabold text-bone">{donor.commitmentScore} <span className="text-xs text-mute font-normal">/ 100</span></p>
                     </div>
 
                     <div className="text-right">
-                      <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Transfusions</p>
+                      <p className="font-mono text-[9px] uppercase tracking-wider text-faint">Donations</p>
                       <p className="font-mono text-xl font-bold text-bone">{donor.totalDonations}</p>
                     </div>
                   </div>
@@ -220,7 +220,7 @@ export default function LeaderboardPage() {
               <span>Donor</span>
               <span className="text-center">Group</span>
               <span className="hidden sm:block text-center">Donations</span>
-              <span className="text-right">Score</span>
+              <span className="text-right">Reliability</span>
             </div>
 
             <div className="divide-y divide-line-soft">
@@ -266,7 +266,7 @@ export default function LeaderboardPage() {
 
         <div className="mt-8 rounded-xl border border-line bg-surface/40 p-4 text-center">
           <p className="font-mono text-[10px] uppercase tracking-wider text-mute">
-            Scoring Formula: 35% Blood Compatibility • 25% Proximity Distance • 25% Verified Response Track Record • 15% Transfusion Recency
+            How Ranking Works: Matching blood group • Distance to hospital • Quick response to emergency calls • Recent donation history
           </p>
         </div>
       </div>

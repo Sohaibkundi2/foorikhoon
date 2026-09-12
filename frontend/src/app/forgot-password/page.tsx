@@ -48,10 +48,10 @@ export default function ForgotPasswordPage() {
           <div className="border-b border-line bg-raised/40 p-6 sm:p-7">
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-blood">
-                Credential Recovery
+                Reset Password
               </span>
               <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
-                Encrypted Session
+                Safe & Secure
               </span>
             </div>
 
@@ -64,7 +64,7 @@ export default function ForgotPasswordPage() {
                   Forgot Password
                 </h1>
                 <p className="text-xs text-mute leading-relaxed">
-                  Initiate secure 15-minute credential recovery.
+                  We'll send you a link to reset your password.
                 </p>
               </div>
             </div>
@@ -78,15 +78,15 @@ export default function ForgotPasswordPage() {
                     <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400 mt-0.5" />
                     <div className="space-y-2">
                       <h3 className="text-sm font-semibold text-emerald-300">
-                        Recovery Request Received
+                        Reset Link Sent
                       </h3>
                       <p className="text-xs text-mute leading-relaxed">
-                        If an account registered to{' '}
-                        <strong className="text-bone font-mono font-medium">{sentEmail}</strong> exists
-                        in our registry, a reset link has been dispatched to your inbox.
+                        If an account exists for{' '}
+                        <strong className="text-bone font-mono font-medium">{sentEmail}</strong>,
+                        we have sent a password reset link to your email.
                       </p>
                       <div className="rounded-lg bg-surface/80 border border-line p-3 font-mono text-[11px] text-faint leading-normal">
-                        ⏱️ Link valid for <span className="text-bone font-medium">15 minutes</span>. Check spam/junk folders if it doesn't appear shortly.
+                        ⏱️ The link is valid for <span className="text-bone font-medium">15 minutes</span>. Please check your spam or junk folder if you don't see it.
                       </div>
                     </div>
                   </div>
@@ -101,7 +101,7 @@ export default function ForgotPasswordPage() {
                     }}
                     className="w-full rounded-xl border border-line bg-raised/60 py-2.5 px-4 text-xs font-semibold text-bone hover:border-faint hover:bg-raised transition-all cursor-pointer"
                   >
-                    Send to a different email address
+                    Try a different email address
                   </button>
 
                   <Link
@@ -109,7 +109,7 @@ export default function ForgotPasswordPage() {
                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-blood py-3 px-5 text-sm font-semibold text-white shadow-[0_0_20px_-3px_rgba(220,38,38,0.5)] transition-all hover:bg-blood-dark cursor-pointer"
                   >
                     <ArrowLeft className="h-4 w-4" />
-                    <span>Return to Sign In</span>
+                    <span>Back to Login</span>
                   </Link>
                 </div>
               </div>
@@ -123,7 +123,7 @@ export default function ForgotPasswordPage() {
                 )}
 
                 <p className="text-xs text-mute leading-relaxed">
-                  Enter your registered ForiKhoon account email. We will generate a one-time, cryptographically hashed recovery link valid for 15 minutes.
+                  Enter your registered email address. We will send you a secure link to reset your password (valid for 15 minutes).
                 </p>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -132,7 +132,7 @@ export default function ForgotPasswordPage() {
                       htmlFor="forgot-email"
                       className="block font-mono text-[11px] uppercase tracking-wider text-mute"
                     >
-                      Registered Email
+                      Your Email Address
                     </label>
                     <div className="relative">
                       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-faint">
@@ -145,7 +145,7 @@ export default function ForgotPasswordPage() {
                         autoFocus
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="doctor@hospital.org or donor@domain.com"
+                        placeholder="name@example.com"
                         required
                         className="w-full rounded-xl border border-line bg-raised/60 py-2.5 pl-10 pr-4 text-sm text-bone placeholder-faint transition-all focus:border-blood focus:bg-surface focus:outline-none focus:ring-1 focus:ring-blood/50"
                       />
@@ -158,7 +158,7 @@ export default function ForgotPasswordPage() {
                       disabled={loading}
                       className="w-full flex items-center justify-center gap-2 rounded-xl bg-blood py-3 px-5 text-sm font-semibold text-white shadow-[0_0_20px_-3px_rgba(220,38,38,0.5)] transition-all hover:bg-blood-dark active:scale-98 disabled:opacity-60 cursor-pointer"
                     >
-                      <span>{loading ? 'Transmitting Request...' : 'Send Recovery Link'}</span>
+                      <span>{loading ? 'Sending link...' : 'Send Reset Link'}</span>
                       {!loading && <ArrowRight className="h-4 w-4" />}
                     </button>
                   </div>
@@ -170,7 +170,7 @@ export default function ForgotPasswordPage() {
                     className="inline-flex items-center gap-1.5 text-xs text-mute hover:text-bone transition-colors group"
                   >
                     <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
-                    <span>Remember your password? Sign in</span>
+                    <span>Remember your password? Log in</span>
                   </Link>
                 </div>
               </>
@@ -181,7 +181,7 @@ export default function ForgotPasswordPage() {
         {/* Footnote Security Badge */}
         <div className="mt-4 flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-wider text-faint">
           <ShieldCheck className="h-3.5 w-3.5 text-blood" />
-          <span>Zero Knowledge Account Enumeration Shield Active</span>
+          <span>Secure Password Recovery • Pakistan 24/7</span>
         </div>
       </div>
     </div>

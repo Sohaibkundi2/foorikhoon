@@ -338,7 +338,7 @@ export default function HeroCertificate({
                     width: 5, height: 5, borderRadius: 1, background: '#86efac',
                     display: 'block', flexShrink: 0
                   }} />
-                  Collection Verified
+                  Donation Verified
                 </p>
                 <p style={{ fontSize: 8.5, margin: '5px 0 0', lineHeight: 1, opacity: 0.75 }}>
                   Photo confirmed by {hospitalName}
@@ -361,7 +361,7 @@ export default function HeroCertificate({
               <p style={{ fontSize: 22, fontWeight: 700, margin: 0, lineHeight: 1, fontFamily: MONO }}>
                 {typeof commitmentScore === 'number' ? commitmentScore : '—'}
               </p>
-              <p style={{ fontSize: 8, letterSpacing: 1.3, textTransform: 'uppercase', opacity: 0.7, margin: '6px 0 0', fontWeight: 700, lineHeight: 1, fontFamily: MONO }}>Commitment</p>
+              <p style={{ fontSize: 8, letterSpacing: 1.3, textTransform: 'uppercase', opacity: 0.7, margin: '6px 0 0', fontWeight: 700, lineHeight: 1, fontFamily: MONO }}>Reliability</p>
             </div>
           </div>
           <div style={{ ...RULE }} />

@@ -30,9 +30,9 @@ const bloodGroupLabels: Record<string, string> = {
 }
 
 const urgencyOptions = [
-  { value: 'NORMAL', label: 'Normal', desc: 'Standard clinical scheduled need' },
+  { value: 'NORMAL', label: 'Normal', desc: 'Standard scheduled need' },
   { value: 'URGENT', label: 'Urgent', desc: 'Needed within 12–24 hours' },
-  { value: 'CRITICAL', label: 'Critical', desc: 'Immediate emergency transfusion (ICU / Trauma)' },
+  { value: 'CRITICAL', label: 'Critical', desc: 'Immediate emergency transfusion (ICU / Emergency)' },
 ]
 
 export default function NewRequestPage() {
@@ -72,7 +72,7 @@ export default function NewRequestPage() {
     setError('')
 
     if (!bloodGroup) {
-      setError('Please select a blood group for this emergency broadcast')
+      setError('Please select a blood group for this blood request')
       return
     }
 
@@ -93,7 +93,7 @@ export default function NewRequestPage() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
           <p className="font-mono text-xs uppercase tracking-widest text-faint">
-            Verifying hospital accreditation & broadcast credentials...
+            Checking hospital verification status...
           </p>
         </div>
       </div>
@@ -112,27 +112,27 @@ export default function NewRequestPage() {
 
           <div>
             <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400">
-              Accreditation Audit In Progress
+              Verification In Progress
             </span>
             <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-bone sm:text-3xl">
-              License Verification Required
+              Hospital Verification Required
             </h1>
             <p className="mt-2 text-xs text-mute sm:text-sm leading-relaxed">
-              Your medical center (<strong className="text-bone">{hospital.name}</strong>) is currently pending PMDC / Healthcare Commission verification.
+              Your hospital (<strong className="text-bone">{hospital.name}</strong>) is waiting for healthcare verification.
             </p>
           </div>
 
           <div className="rounded-2xl border border-line bg-raised/50 p-4 text-left space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-mono text-[11px] text-faint uppercase">Medical License:</span>
-              <span className="font-mono font-bold text-bone">{hospital.licenseNo || 'PENDING AUDIT'}</span>
+              <span className="font-mono text-[11px] text-faint uppercase">Hospital License:</span>
+              <span className="font-mono font-bold text-bone">{hospital.licenseNo || 'UNDER REVIEW'}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="font-mono text-[11px] text-faint uppercase">Broadcast Rights:</span>
+              <span className="font-mono text-[11px] text-faint uppercase">Posting Requests:</span>
               <span className="font-mono text-amber-400 uppercase font-semibold">Locked</span>
             </div>
             <p className="pt-2 text-[11px] text-mute border-t border-line leading-normal">
-              To safeguard donor trust and prevent fraudulent dispatches, only verified hospitals can broadcast blood requests. System administrators review each license before activation.
+              To protect donors and prevent fake requests, only verified hospitals can post blood requests. Administrators review each license before approving.
             </p>
           </div>
 
@@ -141,13 +141,13 @@ export default function NewRequestPage() {
               href="/hospital/profile"
               className="flex-1 flex items-center justify-center rounded-xl border border-line bg-surface py-3 px-4 text-xs font-semibold text-bone hover:bg-raised transition-colors"
             >
-              View Profile & License
+              View Hospital Profile
             </Link>
             <Link
               href="/hospital/dashboard"
               className="flex-1 flex items-center justify-center rounded-xl bg-blood py-3 px-4 text-xs font-semibold text-white shadow hover:bg-blood-dark transition-colors"
             >
-              Return to Dashboard
+              Back to Dashboard
             </Link>
           </div>
         </div>
@@ -167,28 +167,28 @@ export default function NewRequestPage() {
 
           <div>
             <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-blood">
-              Transmission Broadcasted
+              Request Sent Successfully
             </span>
             <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-bone sm:text-3xl">
-              Emergency Request Live
+              Emergency Request Posted
             </h1>
             <p className="mt-1.5 text-xs text-mute sm:text-sm">
-              Your requisition has been transmitted to qualified on-call donors within your geographical radius.
+              Your blood request has been sent to available donors nearby.
             </p>
           </div>
 
           <div className="rounded-2xl border border-line bg-raised/50 p-5">
             <div className="flex items-center justify-center gap-2">
               <Users className="h-4 w-4 text-blood" />
-              <p className="font-mono text-xs uppercase tracking-wider text-faint">Immediate Matches</p>
+              <p className="font-mono text-xs uppercase tracking-wider text-faint">Nearby Donors Found</p>
             </div>
             <p className="mt-2 font-mono text-4xl font-extrabold text-bone">
               {success.matchedDonors}
             </p>
             <p className="mt-1 text-xs text-mute">
               {success.matchedDonors > 0
-                ? 'candidate donor(s) identified and notified via priority dispatch.'
-                : 'eligible donors currently found in direct radius. The algorithm will automatically expand reach.'}
+                ? 'donor(s) found nearby and notified.'
+                : 'donors found nearby yet. We will alert more donors soon if needed.'}
             </p>
           </div>
 
@@ -197,7 +197,7 @@ export default function NewRequestPage() {
               href="/hospital/requests"
               className="flex-1 flex items-center justify-center rounded-xl bg-blood py-3 px-4 text-xs font-semibold text-white shadow hover:bg-blood-dark transition-colors"
             >
-              Monitor Requisitions
+              View All Requests
             </Link>
             <button
               onClick={() => {
@@ -209,7 +209,7 @@ export default function NewRequestPage() {
               }}
               className="flex-1 rounded-xl border border-line bg-surface py-3 px-4 text-xs font-semibold text-bone hover:bg-raised transition-colors cursor-pointer"
             >
-              Broadcast Another
+              Post Another Request
             </button>
           </div>
         </div>
@@ -234,13 +234,13 @@ export default function NewRequestPage() {
         {/* Masthead */}
         <div className="border-b border-line pb-6 mb-8">
           <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-blood">
-            Emergency Dispatch Composer
+            New Blood Request
           </span>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-bone sm:text-4xl">
             Post Emergency Blood Request
           </h1>
           <p className="mt-1 text-sm text-mute leading-relaxed">
-            The platform will automatically match verified on-call donors within 10km, expanding outwards as needed.
+            Nearby donors within 10 km will be alerted immediately, alerting more donors if needed.
           </p>
         </div>
 
@@ -255,8 +255,8 @@ export default function NewRequestPage() {
           {/* Section 1: Blood Group Required */}
           <div className="rounded-3xl border border-line bg-surface/90 p-5 sm:p-7 backdrop-blur-xl space-y-4">
             <div className="flex items-center justify-between border-b border-line pb-3">
-              <span className="font-mono text-xs font-bold text-blood">01 • Required Blood Specimen</span>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Select One Group</span>
+              <span className="font-mono text-xs font-bold text-blood">01 • Blood Group Needed</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Select One</span>
             </div>
 
             <div className="grid grid-cols-4 gap-2.5">
@@ -283,14 +283,14 @@ export default function NewRequestPage() {
           {/* Section 2: Volume & Urgency */}
           <div className="rounded-3xl border border-line bg-surface/90 p-5 sm:p-7 backdrop-blur-xl space-y-6">
             <div className="flex items-center justify-between border-b border-line pb-3">
-              <span className="font-mono text-xs font-bold text-blood">02 • Quantity & Urgency Level</span>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Triage Tier</span>
+              <span className="font-mono text-xs font-bold text-blood">02 • Bags Needed & Urgency</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">How Urgent?</span>
             </div>
 
             {/* Units Stepper */}
             <div>
               <label className="block font-mono text-[10px] uppercase tracking-wider text-mute mb-2">
-                Number of Blood Units / Bags Needed
+                Blood Bags Needed
               </label>
               <div className="flex items-center gap-4">
                 <div className="flex items-center rounded-2xl border border-line bg-raised/60 p-1">
@@ -316,7 +316,7 @@ export default function NewRequestPage() {
                 </div>
 
                 <span className="font-mono text-xs text-mute">
-                  Standard 450ml transfusion bags
+                  Standard 450ml blood bags
                 </span>
               </div>
             </div>
@@ -324,7 +324,7 @@ export default function NewRequestPage() {
             {/* Urgency Tiers */}
             <div className="space-y-2 pt-2 border-t border-line">
               <label className="block font-mono text-[10px] uppercase tracking-wider text-mute mb-2">
-                Urgency Tier
+                Urgency Level
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {urgencyOptions.map((opt) => {
@@ -358,7 +358,7 @@ export default function NewRequestPage() {
           {/* Section 3: Clinical Notes */}
           <div className="rounded-3xl border border-line bg-surface/90 p-5 sm:p-7 backdrop-blur-xl space-y-4">
             <div className="flex items-center justify-between border-b border-line pb-3">
-              <span className="font-mono text-xs font-bold text-blood">03 • Clinical Notes (Optional)</span>
+              <span className="font-mono text-xs font-bold text-blood">03 • Notes (Optional)</span>
               <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Visible to Donors</span>
             </div>
 
@@ -366,7 +366,7 @@ export default function NewRequestPage() {
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Trauma patient in Emergency ICU, Room 4B. Immediate cross-match ready."
+              placeholder="e.g. Patient in Emergency ICU, Room 4B. Please contact coordinator upon arrival."
               className="w-full rounded-2xl border border-line bg-raised/60 p-3 text-sm text-bone placeholder-faint focus:border-blood focus:outline-none"
             />
           </div>
@@ -379,7 +379,7 @@ export default function NewRequestPage() {
               className="w-full flex items-center justify-center gap-2.5 rounded-2xl bg-blood py-3.5 px-6 text-sm font-bold text-white shadow-[0_0_20px_-3px_rgba(220,38,38,0.5)] transition-all hover:bg-blood-dark active:scale-98 disabled:opacity-60 cursor-pointer"
             >
               <Send className="h-4 w-4" />
-              <span>{loading ? 'Transmitting Broadcast...' : 'Broadcast Emergency Requisition'}</span>
+              <span>{loading ? 'Sending Request...' : 'Send Blood Request'}</span>
             </button>
           </div>
         </form>

@@ -57,18 +57,18 @@ export default function LoginPage() {
           <div className="border-b border-line bg-raised/40 p-6 sm:p-7">
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-blood">
-                Secure Access
+                Account Login
               </span>
               <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
-                Encrypted Session
+                Safe & Secure
               </span>
             </div>
 
             <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-bone sm:text-3xl">
-              Sign In to ForiKhoon
+              Log In to ForiKhoon
             </h1>
             <p className="mt-1.5 text-xs text-mute leading-relaxed sm:text-sm">
-              Access your on-call donor dashboard or hospital emergency dispatch console.
+              Access your donor dashboard or hospital portal.
             </p>
           </div>
 
@@ -98,7 +98,7 @@ export default function LoginPage() {
                     autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@domain.com"
+                    placeholder="name@example.com"
                     required
                     className="w-full rounded-xl border border-line bg-raised/60 py-2.5 pl-10 pr-4 text-sm text-bone placeholder-faint transition-all focus:border-blood focus:bg-surface focus:outline-none focus:ring-1 focus:ring-blood/50"
                   />
@@ -155,7 +155,7 @@ export default function LoginPage() {
                   disabled={loading}
                   className="w-full flex items-center justify-center gap-2 rounded-xl bg-blood py-3 px-5 text-sm font-semibold text-white shadow-[0_0_20px_-3px_rgba(220,38,38,0.5)] transition-all hover:bg-blood-dark active:scale-98 disabled:opacity-60 cursor-pointer"
                 >
-                  <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
+                  <span>{loading ? 'Logging in...' : 'Log In'}</span>
                   {!loading && <ArrowRight className="h-4 w-4" />}
                 </button>
               </div>
@@ -169,7 +169,7 @@ export default function LoginPage() {
                   href="/register"
                   className="font-semibold text-bone hover:text-white underline decoration-line hover:decoration-blood transition-colors"
                 >
-                  Create an account
+                  Register as a donor
                 </Link>
               </p>
             </div>
@@ -179,7 +179,7 @@ export default function LoginPage() {
         {/* Footnote Badge */}
         <div className="mt-4 flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-wider text-faint">
           <ShieldCheck className="h-3.5 w-3.5 text-blood" />
-          <span>Pakistan 24/7 Transfusion Security Protocol</span>
+          <span>Pakistan Emergency Blood Network • Safe & Verified</span>
         </div>
       </div>
     </div>

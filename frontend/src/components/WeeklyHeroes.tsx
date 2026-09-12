@@ -161,7 +161,7 @@ export default function WeeklyHeroes() {
                         </h3>
                         <span className="inline-flex items-center gap-1 rounded-md border border-blood/25 bg-blood/10 px-2 py-0.5 font-mono text-[10px] text-blood-lite">
                           <Award className="h-3 w-3" />
-                          Fulfilled
+                          Donated
                         </span>
                       </div>
 
@@ -174,7 +174,7 @@ export default function WeeklyHeroes() {
                           <>
                             <span className="h-3 w-px bg-line" />
                             <span className="font-mono font-semibold text-blood">
-                              Group: {BLOOD_LABELS[currentHero.bloodGroup] || currentHero.bloodGroup}
+                              Blood Group: {BLOOD_LABELS[currentHero.bloodGroup] || currentHero.bloodGroup}
                             </span>
                           </>
                         )}
@@ -186,7 +186,7 @@ export default function WeeklyHeroes() {
                   <div className="flex items-center justify-between md:justify-end gap-6 border-t border-line-soft pt-3 md:border-t-0 md:border-l md:pl-6 md:pt-0">
                     <div className="text-left md:text-right">
                       <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
-                        Commitment Score
+                        Reliability Score
                       </p>
                       <p className="mt-0.5 text-2xl sm:text-3xl font-bold tracking-tight text-bone tabular-nums">
                         {currentHero.commitmentScore}<span className="text-xs text-faint font-normal font-mono">/100</span>

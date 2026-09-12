@@ -54,11 +54,11 @@ export default function RequestDetailPage() {
     if (!request || typeof window === 'undefined') return
     const bloodType = bloodGroupLabels[request.bloodGroup] || request.bloodGroup
     const text = encodeURIComponent(
-      `🚨 EMERGENCY BLOOD NEEDED (${bloodType})\n` +
+      `🚨 URGENT BLOOD NEEDED (${bloodType})\n` +
       `Hospital: ${request.hospital?.name || 'Verified Hospital'}\n` +
-      `Units: ${request.units} Units\n` +
+      `Blood Bags: ${request.units} Bags\n` +
       `City: ${request.hospital?.user?.city || 'Pakistan'}\n` +
-      `Respond here: ${window.location.href}`
+      `Help save a life: ${window.location.href}`
     )
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
   }
@@ -70,7 +70,7 @@ export default function RequestDetailPage() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
           <p className="font-mono text-xs uppercase tracking-widest text-faint">
-            Retrieving emergency case details...
+            Loading blood request details...
           </p>
         </div>
       </div>
@@ -87,13 +87,13 @@ export default function RequestDetailPage() {
           </div>
           <h2 className="text-xl font-bold tracking-tight text-bone">Request Not Found</h2>
           <p className="mt-2 text-xs text-mute leading-relaxed">
-            This emergency transmission may have been fulfilled or expired.
+            This blood request may have been fulfilled or closed.
           </p>
           <Link
             href="/requests"
             className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blood px-4 py-2.5 text-xs font-semibold text-white shadow hover:bg-blood-dark transition-colors"
           >
-            <span>View Active Requests</span>
+            <span>View Blood Requests</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -115,7 +115,7 @@ export default function RequestDetailPage() {
           className="group mb-6 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-mute hover:text-bone transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
-          <span>All Requests</span>
+          <span>Back to Requests</span>
         </Link>
 
         {/* Main Emergency Detail Card */}
@@ -133,7 +133,7 @@ export default function RequestDetailPage() {
                       : 'border border-line bg-raised text-mute'
                   }`}
                 >
-                  {request.urgency} Emergency
+                  {request.urgency} Need
                 </span>
 
                 <span className="rounded-lg border border-line bg-surface px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-bone">
@@ -161,7 +161,7 @@ export default function RequestDetailPage() {
                 <div className="flex items-center gap-1.5 rounded-xl border border-line bg-surface/80 px-3 py-1.5 self-start sm:self-auto">
                   <ShieldCheck className="h-4 w-4 text-blood" />
                   <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-bone">
-                    Verified Medical Center
+                    Verified Hospital
                   </span>
                 </div>
               )}
@@ -178,21 +178,21 @@ export default function RequestDetailPage() {
               </div>
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Blood Group</p>
-                <p className="text-base font-bold text-bone mt-0.5">{bloodType} Universal Need</p>
+                <p className="text-base font-bold text-bone mt-0.5">{bloodType} Needed</p>
               </div>
             </div>
 
             <div className="p-5 sm:p-6 flex flex-col justify-center">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Volume Needed</p>
+              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Bags Needed</p>
               <p className="mt-0.5 font-mono text-2xl font-bold text-bone">
-                {request.units} <span className="text-xs font-normal text-mute">Bags / Units</span>
+                {request.units} <span className="text-xs font-normal text-mute">Bag{request.units > 1 ? 's' : ''}</span>
               </p>
             </div>
 
             <div className="p-5 sm:p-6 flex flex-col justify-center">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Geo-Matched Pool</p>
+              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Donors Contacted</p>
               <p className="mt-0.5 font-mono text-2xl font-bold text-bone">
-                {request.matches?.length || 0} <span className="text-xs font-normal text-mute">Donors Alerted</span>
+                {request.matches?.length || 0} <span className="text-xs font-normal text-mute">Nearby Donors</span>
               </p>
             </div>
           </div>
@@ -201,7 +201,7 @@ export default function RequestDetailPage() {
           {request.notes && (
             <div className="border-t border-line p-5 sm:p-6 bg-surface/40">
               <p className="font-mono text-[10px] uppercase tracking-wider text-faint">
-                Clinical Notes / Patient Details
+                Hospital Notes / Patient Details
               </p>
               <p className="mt-2 text-sm text-bone/90 leading-relaxed italic border-l-2 border-blood pl-3">
                 "{request.notes}"
@@ -218,7 +218,7 @@ export default function RequestDetailPage() {
                   className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blood py-3 px-5 text-center text-sm font-semibold text-white shadow-[0_0_20px_-4px_rgba(220,38,38,0.5)] transition-all hover:bg-blood-dark active:scale-98"
                 >
                   <HeartHandshake className="h-4 w-4" />
-                  <span>I Can Donate — Register Now</span>
+                  <span>I Can Donate — Sign Up Now</span>
                 </Link>
 
                 <button
@@ -226,7 +226,7 @@ export default function RequestDetailPage() {
                   className="flex items-center justify-center gap-1.5 rounded-xl border border-line bg-surface py-3 px-4 text-xs font-semibold text-bone hover:bg-raised transition-colors active:scale-98 cursor-pointer"
                 >
                   <Share2 className="h-4 w-4 text-blood" />
-                  <span>WhatsApp Alert</span>
+                  <span>Share on WhatsApp</span>
                 </button>
 
                 <button
@@ -248,20 +248,20 @@ export default function RequestDetailPage() {
               </div>
             ) : (
               <div className="rounded-xl border border-line bg-surface p-4 text-center">
-                <p className="text-sm font-semibold text-bone">This request is marked as {request.status.toLowerCase()}.</p>
+                <p className="text-sm font-semibold text-bone">This request is currently {request.status.toLowerCase()}.</p>
                 <p className="text-xs text-mute mt-1">Thank you to all community donors who responded.</p>
                 <Link
                   href="/requests"
                   className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-blood hover:underline"
                 >
-                  <span>Browse active emergencies</span>
+                  <span>View open requests</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
             )}
 
             <p className="text-center font-mono text-[9px] uppercase tracking-wider text-faint">
-              Direct Contact Details Disclosed Exclusively Upon Donor Match Acceptance
+              Hospital and donor phone numbers are private until request is accepted
             </p>
           </div>
         </div>

@@ -246,7 +246,7 @@ export default function DonorProfilePage() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
           <p className="font-mono text-xs uppercase tracking-widest text-faint">
-            Retrieving donor credentials & location...
+            Loading your profile...
           </p>
         </div>
       </div>
@@ -264,19 +264,19 @@ export default function DonorProfilePage() {
           className="group mb-6 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-mute hover:text-bone transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
-          <span>Donor Dashboard</span>
+          <span>Back to Dashboard</span>
         </Link>
 
         {/* Masthead */}
         <div className="border-b border-line pb-6 mb-8">
           <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-blood">
-            On-Call Preferences
+            Donor Settings
           </span>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-bone sm:text-4xl">
-            Donor Settings & Coordinates
+            Donor Profile & Location
           </h1>
           <p className="mt-1 text-sm text-mute leading-relaxed">
-            Update your blood group, emergency dispatch radius, and contact privacy preferences.
+            Update your blood group, location, and privacy preferences.
           </p>
         </div>
 
@@ -290,7 +290,7 @@ export default function DonorProfilePage() {
         {success && (
           <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-bone/30 bg-surface p-3.5 text-xs text-bone shadow-md">
             <Check className="h-4 w-4 shrink-0 text-blood mt-0.5" />
-            <span className="font-medium">Profile and dispatch preferences updated successfully.</span>
+            <span className="font-medium">Profile updated successfully.</span>
           </div>
         )}
 
@@ -298,8 +298,8 @@ export default function DonorProfilePage() {
           {/* Section 1: Personal Details */}
           <div className="rounded-3xl border border-line bg-surface/90 p-5 sm:p-7 backdrop-blur-xl space-y-5">
             <div className="flex items-center justify-between border-b border-line pb-3">
-              <span className="font-mono text-xs font-bold text-blood">01 • Personal Identity</span>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Verified Credentials</span>
+              <span className="font-mono text-xs font-bold text-blood">01 • Personal Details</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Account Info</span>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -347,8 +347,8 @@ export default function DonorProfilePage() {
           {/* Section 2: Blood Group & Recovery Window */}
           <div className="rounded-3xl border border-line bg-surface/90 p-5 sm:p-7 backdrop-blur-xl space-y-5">
             <div className="flex items-center justify-between border-b border-line pb-3">
-              <span className="font-mono text-xs font-bold text-blood">02 • Medical & Blood Specimen</span>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">WHO Standards</span>
+              <span className="font-mono text-xs font-bold text-blood">02 • Blood Group & Last Donation</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Health Info</span>
             </div>
 
             <div>
@@ -378,7 +378,7 @@ export default function DonorProfilePage() {
 
             <div className="space-y-1.5 pt-2 border-t border-line">
               <label className="block font-mono text-[10px] uppercase tracking-wider text-mute">
-                Last Donated Date (Optional — enforces 90-day recovery protection)
+                Last Donation Date (Optional — helps track 90-day rest period)
               </label>
               <input
                 type="date"
@@ -392,16 +392,16 @@ export default function DonorProfilePage() {
           {/* Section 3: Dispatch Coordinates & Privacy */}
           <div className="rounded-3xl border border-line bg-surface/90 p-5 sm:p-7 backdrop-blur-xl space-y-6">
             <div className="flex items-center justify-between border-b border-line pb-3">
-              <span className="font-mono text-xs font-bold text-blood">03 • Dispatch Coordinates & Privacy</span>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">10km Geo-Scan</span>
+              <span className="font-mono text-xs font-bold text-blood">03 • Location & Contact Privacy</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Match Area</span>
             </div>
 
             <div className="space-y-3">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs font-bold text-bone">Emergency Match Location</p>
+                  <p className="text-xs font-bold text-bone">Your Current Location</p>
                   <p className="text-[11px] text-mute mt-0.5">
-                    Used by the algorithm to calculate hospital proximity (25% of match score).
+                    Used to find hospitals near you in an emergency.
                   </p>
                 </div>
                 <Compass className="h-4 w-4 text-blood shrink-0" />
@@ -411,14 +411,14 @@ export default function DonorProfilePage() {
                 <div className="rounded-xl border border-bone/20 bg-raised p-3 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-semibold text-bone">
                     <Check className="h-4 w-4 text-blood" />
-                    <span>GPS Acquired ({coords.latitude.toFixed(3)}, {coords.longitude.toFixed(3)})</span>
+                    <span>GPS Location Saved ({coords.latitude.toFixed(3)}, {coords.longitude.toFixed(3)})</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => { setLocationMethod(null); setCoords(null) }}
                     className="font-mono text-[10px] uppercase tracking-wider text-mute hover:text-bone"
                   >
-                    Reset
+                    Change
                   </button>
                 </div>
               ) : locationMethod === 'manual' ? (
@@ -435,7 +435,7 @@ export default function DonorProfilePage() {
                     onClick={() => setLocationMethod(null)}
                     className="font-mono text-[10px] uppercase tracking-wider text-faint hover:text-bone"
                   >
-                    Use GPS Coordinates Instead
+                    Use GPS Location Instead
                   </button>
                 </div>
               ) : (
@@ -447,7 +447,7 @@ export default function DonorProfilePage() {
                     className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-blood/40 bg-blood/10 py-2.5 px-3 text-xs font-semibold text-blood hover:bg-blood/20 transition-colors cursor-pointer"
                   >
                     <Navigation className="h-3.5 w-3.5" />
-                    <span>{locatingInProgress ? 'Detecting GPS...' : 'Auto-Detect Current GPS'}</span>
+                    <span>{locatingInProgress ? 'Getting GPS...' : 'Use My GPS Location'}</span>
                   </button>
                   <button
                     type="button"
@@ -467,9 +467,9 @@ export default function DonorProfilePage() {
             {/* Contact Privacy Toggle */}
             <div className="flex items-center justify-between gap-4 pt-4 border-t border-line">
               <div>
-                <p className="text-xs font-bold text-bone">Automatic Phone Disclosure</p>
+                <p className="text-xs font-bold text-bone">Share Phone Number Directly</p>
                 <p className="text-[11px] text-mute mt-0.5">
-                  When enabled, verified hospitals can see your direct contact upon accepting a match.
+                  When turned on, verified hospitals can see your phone number as soon as you accept a request.
                 </p>
               </div>
 
@@ -489,7 +489,7 @@ export default function DonorProfilePage() {
               className="flex items-center justify-center gap-2 rounded-xl bg-blood py-3 px-6 text-sm font-semibold text-white shadow-[0_0_20px_-3px_rgba(220,38,38,0.5)] transition-all hover:bg-blood-dark active:scale-98 disabled:opacity-60 cursor-pointer"
             >
               <Save className="h-4 w-4" />
-              <span>{saving ? 'Saving Changes...' : 'Save Settings'}</span>
+              <span>{saving ? 'Saving...' : 'Save Changes'}</span>
             </button>
           </div>
         </form>
@@ -499,9 +499,9 @@ export default function DonorProfilePage() {
           <div className="flex items-center justify-between border-b border-line pb-3">
             <div className="flex items-center gap-2">
               <KeyRound className="h-4 w-4 text-blood" />
-              <span className="font-mono text-xs font-bold text-blood">04 • Account Security & Password</span>
+              <span className="font-mono text-xs font-bold text-blood">04 • Change Password</span>
             </div>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Auth Credentials</span>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-faint">Security</span>
           </div>
 
           {passwordError && (
@@ -602,7 +602,7 @@ export default function DonorProfilePage() {
                 className="flex items-center justify-center gap-2 rounded-xl border border-line bg-raised py-2.5 px-5 font-mono text-xs font-semibold text-bone hover:border-blood hover:text-blood transition-colors disabled:opacity-50 cursor-pointer"
               >
                 <Lock className="h-3.5 w-3.5" />
-                <span>{passwordSaving ? 'Updating Password...' : 'Change Password'}</span>
+                <span>{passwordSaving ? 'Updating...' : 'Change Password'}</span>
               </button>
             </div>
           </form>
@@ -613,9 +613,9 @@ export default function DonorProfilePage() {
           <div className="flex items-center justify-between border-b border-blood/20 pb-3">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-blood" />
-              <span className="font-mono text-xs font-bold text-blood">05 • Danger Zone</span>
+              <span className="font-mono text-xs font-bold text-blood">05 • Delete Account</span>
             </div>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-blood font-semibold">Irreversible</span>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-blood font-semibold">Permanent</span>
           </div>
 
           <div className="space-y-3">
@@ -623,8 +623,7 @@ export default function DonorProfilePage() {
               Permanently Delete Donor Account
             </p>
             <p className="text-xs text-mute leading-relaxed">
-              Once you delete your account, your profile, match history, and volunteer donor availability
-              will be permanently removed. There is no recovery or restoration path.
+              If you delete your account, all your donor records and request history will be permanently deleted. This cannot be undone.
             </p>
 
             {deleteError && (
@@ -636,7 +635,7 @@ export default function DonorProfilePage() {
 
             <div className="pt-2">
               <label className="block font-mono text-[11px] text-mute mb-2">
-                To confirm deletion, please type <strong className="font-mono text-blood">delete</strong> below:
+                To confirm, please type <strong className="font-mono text-blood">delete</strong> below:
               </label>
               <div className="flex flex-col sm:flex-row gap-3">
                 <input

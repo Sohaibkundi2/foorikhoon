@@ -109,7 +109,7 @@ export default function RequestsPage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2 rounded-full border border-blood/30 bg-blood/10 px-3.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-blood">
               <LiveDot />
-              <span>National Emergency Broadcast Grid</span>
+              <span>Emergency Blood Requests</span>
             </div>
 
             <div className="flex items-center gap-2 font-mono text-xs text-mute">
@@ -121,10 +121,10 @@ export default function RequestsPage() {
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-bone sm:text-4xl md:text-5xl">
-                Active Hospital Requests
+                Urgent Blood Requests
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mute sm:text-base">
-                Verified hospital emergency transmissions across Pakistan. Registered donors receive automatic geo-targeted dispatch alerts.
+                Verified blood requests from hospitals across Pakistan. Nearby donors are alerted right away.
               </p>
             </div>
 
@@ -134,7 +134,7 @@ export default function RequestsPage() {
                 className="flex items-center gap-2 rounded-xl bg-blood px-4 py-2.5 text-xs font-semibold text-white shadow-[0_0_20px_-3px_rgba(220,38,38,0.5)] transition-all hover:bg-blood-dark active:scale-95"
               >
                 <Droplet className="h-4 w-4 fill-white" />
-                <span>Join On-Call Donors</span>
+                <span>Register as Donor</span>
               </Link>
             </div>
           </div>
@@ -142,21 +142,21 @@ export default function RequestsPage() {
           {/* Quick Telemetry Counters */}
           <div className="grid grid-cols-2 gap-3 pt-2 sm:grid-cols-4">
             <div className="rounded-xl border border-line bg-surface/70 p-3.5 backdrop-blur-md">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Open Requests</p>
+              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Active Requests</p>
               <p className="mt-1 font-mono text-2xl font-bold text-bone">{requests.length}</p>
             </div>
             <div className="rounded-xl border border-line bg-surface/70 p-3.5 backdrop-blur-md">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Critical Status</p>
+              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Critical Need</p>
               <p className="mt-1 font-mono text-2xl font-bold text-blood">{criticalCount}</p>
             </div>
             <div className="rounded-xl border border-line bg-surface/70 p-3.5 backdrop-blur-md">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Active Cities</p>
+              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Cities</p>
               <p className="mt-1 font-mono text-2xl font-bold text-bone">{cities.length || 1}</p>
             </div>
             <div className="rounded-xl border border-line bg-surface/70 p-3.5 backdrop-blur-md">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Verification</p>
+              <p className="font-mono text-[10px] uppercase tracking-wider text-faint">Donation Proof</p>
               <p className="mt-1 font-mono text-xs font-medium text-bone leading-tight">
-                Photo Proof & Bag Label Required
+                Hospital Photo-Verified
               </p>
             </div>
           </div>
@@ -252,7 +252,7 @@ export default function RequestsPage() {
             <div className="flex flex-col items-center justify-center py-10 gap-3">
               <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
               <p className="font-mono text-xs uppercase tracking-widest text-faint">
-                Searching live emergency blood requests...
+                Loading urgent blood requests...
               </p>
             </div>
             {[1, 2, 3].map(i => (
@@ -275,11 +275,11 @@ export default function RequestsPage() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-line bg-raised text-mute">
               <Droplet className="h-6 w-6 text-blood" />
             </div>
-            <h3 className="mt-4 text-base font-semibold text-bone">No Active Broadcasts Found</h3>
+            <h3 className="mt-4 text-base font-semibold text-bone">No Blood Requests Found</h3>
             <p className="mt-1.5 text-xs text-mute sm:text-sm">
               {hasFilters
-                ? 'No requests match your selected filters. Try clearing your search parameters.'
-                : 'All hospital emergency requests are currently fulfilled or in transfusion transit.'}
+                ? 'No requests match your selected filters. Try clearing your filters.'
+                : 'There are currently no urgent blood requests. All requests have been fulfilled.'}
             </p>
             {hasFilters && (
               <button
@@ -287,7 +287,7 @@ export default function RequestsPage() {
                 className="mt-5 inline-flex items-center gap-1.5 rounded-xl border border-line bg-raised px-4 py-2 text-xs font-semibold text-bone hover:border-blood transition-colors"
               >
                 <X className="h-3.5 w-3.5" />
-                <span>Reset All Filters</span>
+                <span>Clear All Filters</span>
               </button>
             )}
           </div>
@@ -320,7 +320,7 @@ export default function RequestsPage() {
                           {bloodGroupLabels[req.bloodGroup] || req.bloodGroup}
                         </span>
                         <span className="font-mono text-[8px] uppercase tracking-wider text-mute">
-                          Required
+                          Needed
                         </span>
                       </div>
 
@@ -361,10 +361,10 @@ export default function RequestsPage() {
 
                         <div className="mt-2.5 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-faint">
                           <span className="text-bone font-semibold">
-                            {req.units} Unit{req.units !== 1 ? 's' : ''} Needed
+                            {req.units} Blood Bag{req.units !== 1 ? 's' : ''} Needed
                           </span>
                           <span>•</span>
-                          <span>{req.matches?.length || 0} Donors Notified</span>
+                          <span>{req.matches?.length || 0} Donors Contacted</span>
                           <span>•</span>
                           <span>{dayjs(req.createdAt).fromNow()}</span>
                         </div>
@@ -383,14 +383,14 @@ export default function RequestsPage() {
                         href={`/requests/${req.id}`}
                         className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-blood py-2 px-3 text-center text-xs font-semibold text-white shadow transition-all hover:bg-blood-dark active:scale-98"
                       >
-                        <span>Respond</span>
+                        <span>View Request</span>
                         <ChevronRight className="h-3.5 w-3.5" />
                       </Link>
 
                       <button
                         onClick={() => handleShare(req.id)}
                         className="flex items-center justify-center gap-1.5 rounded-xl border border-line bg-raised py-2 px-3 text-xs font-medium text-mute hover:text-bone hover:border-line-soft transition-colors cursor-pointer active:scale-98"
-                        aria-label="Share emergency broadcast"
+                        aria-label="Share blood request"
                       >
                         {copied === req.id ? (
                           <>

@@ -82,7 +82,7 @@ export default function DonorMatchesPage() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
           <p className="font-mono text-xs uppercase tracking-widest text-faint">
-            Loading incoming emergency dispatches...
+            Loading your blood requests...
           </p>
         </div>
       </div>
@@ -100,7 +100,7 @@ export default function DonorMatchesPage() {
           className="group mb-6 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-mute hover:text-bone transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
-          <span>Donor Dashboard</span>
+          <span>Back to Dashboard</span>
         </Link>
 
         {/* Masthead */}
@@ -108,13 +108,13 @@ export default function DonorMatchesPage() {
           <div>
             <div className="flex items-center gap-2 rounded-full border border-blood/30 bg-blood/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-blood w-fit mb-3">
               <Droplet className="h-3 w-3 fill-blood" />
-              <span>Transfusion Dispatch Log</span>
+              <span>Emergency Requests</span>
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight text-bone sm:text-4xl">
-              My Emergency Matches
+              My Blood Requests
             </h1>
             <p className="mt-1.5 text-sm text-mute">
-              History of all hospital emergency dispatches routed to your profile.
+              List of blood requests sent to you by nearby hospitals.
             </p>
           </div>
 
@@ -158,10 +158,10 @@ export default function DonorMatchesPage() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-line bg-raised text-mute">
               <Inbox className="h-6 w-6 text-faint" />
             </div>
-            <h3 className="mt-4 text-base font-semibold text-bone">No Matches Found</h3>
+            <h3 className="mt-4 text-base font-semibold text-bone">No Requests Found</h3>
             <p className="mt-1 text-xs text-mute">
               {activeTab === 'ALL'
-                ? 'When a verified medical center alerts your blood group, it will appear here.'
+                ? 'When a nearby hospital requests your blood group, it will appear here.'
                 : `You currently have no ${activeTab.toLowerCase()} requests.`}
             </p>
           </div>
@@ -208,7 +208,7 @@ export default function DonorMatchesPage() {
                         <p className="mt-1 text-xs text-mute truncate">{match.request.hospital.address}</p>
 
                         <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-faint">
-                          <span>{match.request.units} Unit{match.request.units > 1 ? 's' : ''} Needed</span>
+                          <span>{match.request.units} Blood Bag{match.request.units > 1 ? 's' : ''} Needed</span>
                           <span>•</span>
                           <span>{new Date(match.createdAt).toLocaleDateString()}</span>
                         </div>
@@ -224,7 +224,7 @@ export default function DonorMatchesPage() {
                               <img src={match.photoUrl} alt="Bag proof" className="h-full w-full object-cover" />
                             </button>
                             <span className="text-xs text-bone font-medium">
-                              Photo-verified collection proof
+                              Photo-verified blood bag
                             </span>
                           </div>
                         )}
@@ -272,7 +272,7 @@ export default function DonorMatchesPage() {
               className="max-h-[75vh] max-w-full rounded-2xl border border-line shadow-2xl"
             />
             <p className="max-w-sm text-center text-xs text-mute">
-              Tamper-proof photo proof uploaded by the hospital upon collection.
+              Photo proof of the blood bag uploaded by the hospital.
             </p>
           </div>
           <button

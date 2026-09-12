@@ -175,7 +175,7 @@ export default function AdminDashboard() {
   }
 
   const deleteHospital = async (id: string) => {
-    if (!confirm('Are you sure? This will delete all clinical records, requests, and data for this hospital.')) {
+    if (!confirm('Are you sure? This will permanently delete this hospital and all its blood requests and stock records.')) {
       return
     }
     setDeletingId(id)
@@ -215,7 +215,7 @@ export default function AdminDashboard() {
         <div className="flex flex-col items-center gap-4">
           <div className="h-2 w-48 animate-pulse rounded-full bg-raised" />
           <p className="font-mono text-xs uppercase tracking-widest text-faint">
-            Initializing national admin console & registries...
+            Loading admin dashboard...
           </p>
         </div>
       </div>
@@ -242,15 +242,14 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-3">
               <span className="flex h-2 w-2 rounded-full bg-blood" />
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-blood">
-                Central Operations Console
+                Admin Console
               </p>
             </div>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-bone sm:text-4xl">
-              National Blood Network Admin
+              ForiKhoon Admin Dashboard
             </h1>
             <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-mute">
-              Platform-wide telemetry, institutional verification gate, user registries, and
-              real-time shortage intelligence.
+              Overview of platform users, hospital verification, active blood requests, and shortage alerts.
             </p>
           </div>
 
@@ -261,7 +260,7 @@ export default function AdminDashboard() {
                 <strong className="font-mono font-bold text-bone">
                   {stats.pendingVerification}
                 </strong>{' '}
-                hospital{stats.pendingVerification > 1 ? 's' : ''} awaiting credentials audit
+                hospital{stats.pendingVerification > 1 ? 's' : ''} waiting for verification
               </span>
             </div>
           )}
@@ -328,14 +327,14 @@ export default function AdminDashboard() {
                   <div className="rounded-xl border border-line bg-surface p-5">
                     <div className="flex items-center justify-between text-faint">
                       <span className="font-mono text-[10px] uppercase tracking-widest">
-                        Active Donors
+                        Registered Donors
                       </span>
                       <HeartHandshake className="h-4 w-4 text-blood" />
                     </div>
                     <p className="mt-3 font-mono text-3xl font-bold tracking-tight text-blood">
                       {stats.totalDonors}
                     </p>
-                    <p className="mt-1 font-mono text-[11px] text-faint">Volunteer lifesavers</p>
+                    <p className="mt-1 font-mono text-[11px] text-faint">Available blood donors</p>
                   </div>
 
                   <div className="rounded-xl border border-line bg-surface p-5">
@@ -348,7 +347,7 @@ export default function AdminDashboard() {
                     <p className="mt-3 font-mono text-3xl font-bold tracking-tight text-bone">
                       {stats.totalHospitals}
                     </p>
-                    <p className="mt-1 font-mono text-[11px] text-faint">Medical facilities</p>
+                    <p className="mt-1 font-mono text-[11px] text-faint">Registered hospitals</p>
                   </div>
 
                   <div className="rounded-xl border border-line bg-surface p-5">
@@ -361,20 +360,20 @@ export default function AdminDashboard() {
                     <p className="mt-3 font-mono text-3xl font-bold tracking-tight text-blood">
                       {stats.totalRequests}
                     </p>
-                    <p className="mt-1 font-mono text-[11px] text-faint">Emergency calls filed</p>
+                    <p className="mt-1 font-mono text-[11px] text-faint">Total requests posted</p>
                   </div>
 
                   <div className="rounded-xl border border-line bg-surface p-5">
                     <div className="flex items-center justify-between text-faint">
                       <span className="font-mono text-[10px] uppercase tracking-widest">
-                        Matches Dispatched
+                        Donors Connected
                       </span>
                       <TrendingUp className="h-4 w-4" />
                     </div>
                     <p className="mt-3 font-mono text-3xl font-bold tracking-tight text-bone">
                       {stats.totalMatches}
                     </p>
-                    <p className="mt-1 font-mono text-[11px] text-faint">Deterministic algorithm pairings</p>
+                    <p className="mt-1 font-mono text-[11px] text-faint">Donors connected with requests</p>
                   </div>
 
                   <div className="rounded-xl border border-line bg-surface p-5">
@@ -391,28 +390,26 @@ export default function AdminDashboard() {
                     >
                       {stats.pendingVerification}
                     </p>
-                    <p className="mt-1 font-mono text-[11px] text-faint">Requires PMDC inspection</p>
+                    <p className="mt-1 font-mono text-[11px] text-faint">Hospitals awaiting approval</p>
                   </div>
                 </div>
 
                 {/* Quick Action & Network Health Card */}
                 <div className="rounded-xl border border-line bg-surface p-6">
                   <h3 className="font-mono text-xs uppercase tracking-wider text-bone">
-                    Operational Protocol Status
+                    Platform Rules & Security
                   </h3>
                   <div className="mt-4 grid gap-4 text-xs leading-relaxed text-mute sm:grid-cols-2">
                     <div className="rounded-lg border border-line bg-raised p-4">
-                      <p className="font-semibold text-bone">Deterministic Match Engine</p>
+                      <p className="font-semibold text-bone">Donor Matching System</p>
                       <p className="mt-1">
-                        Active. Scoring weight formula (35% blood compatibility, 25% proximity, 25%
-                        commitment, 15% urgency) operating nominally.
+                        Active. Matches donors based on blood compatibility, distance, reliability score, and urgency.
                       </p>
                     </div>
                     <div className="rounded-lg border border-line bg-raised p-4">
-                      <p className="font-semibold text-bone">Anti-Spam Requisition Gate</p>
+                      <p className="font-semibold text-bone">Verified Requests Only</p>
                       <p className="mt-1">
-                        Strictly enforced. Donors cannot broadcast blood requests; only verified
-                        licensed hospitals possess authorization.
+                        Strictly enforced. Only verified hospitals can post blood requests to protect donors from spam or fake emergencies.
                       </p>
                     </div>
                   </div>
@@ -425,15 +422,15 @@ export default function AdminDashboard() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-4">
                   <h3 className="font-mono text-xs uppercase tracking-wider text-bone">
-                    Registered Medical Centers ({hospitals.length})
+                    Registered Hospitals ({hospitals.length})
                   </h3>
-                  <span className="font-mono text-[11px] text-faint">PMDC Verification Registry</span>
+                  <span className="font-mono text-[11px] text-faint">Hospital Verification</span>
                 </div>
 
                 {hospitals.length === 0 ? (
                   <div className="rounded-xl border border-line bg-surface p-12 text-center">
                     <Building2 className="mx-auto h-8 w-8 text-faint" />
-                    <p className="mt-4 text-sm font-medium text-bone">No hospitals registered</p>
+                    <p className="mt-4 text-sm font-medium text-bone">No hospitals registered yet</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -465,8 +462,8 @@ export default function AdminDashboard() {
                             <p className="mt-1 text-xs text-mute">{hospital.address}</p>
                             <p className="mt-2 font-mono text-[11px] text-faint">
                               License: <strong className="text-bone">{hospital.licenseNo}</strong> ·{' '}
-                              City: {hospital.user?.city || 'N/A'} · Contact:{' '}
-                              {hospital.user?.email || 'N/A'} · Requests Filed:{' '}
+                              City: {hospital.user?.city || 'N/A'} · Email:{' '}
+                              {hospital.user?.email || 'N/A'} · Requests:{' '}
                               {hospital.requests?.length || 0}
                             </p>
                           </div>
@@ -486,8 +483,8 @@ export default function AdminDashboard() {
                               {verifyingId === hospital.id
                                 ? 'Updating...'
                                 : hospital.verified
-                                ? 'Revoke License'
-                                : 'Grant Verification'}
+                                ? 'Revoke Verification'
+                                : 'Verify Hospital'}
                             </button>
 
                             <button
@@ -513,15 +510,15 @@ export default function AdminDashboard() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-4">
                   <h3 className="font-mono text-xs uppercase tracking-wider text-bone">
-                    Platform Accounts ({users.length})
+                    User Accounts ({users.length})
                   </h3>
-                  <span className="font-mono text-[11px] text-faint">Role & City Manifest</span>
+                  <span className="font-mono text-[11px] text-faint">Users by Role & City</span>
                 </div>
 
                 {users.length === 0 ? (
                   <div className="rounded-xl border border-line bg-surface p-12 text-center">
                     <Users className="mx-auto h-8 w-8 text-faint" />
-                    <p className="mt-4 text-sm font-medium text-bone">No users registered</p>
+                    <p className="mt-4 text-sm font-medium text-bone">No users registered yet</p>
                   </div>
                 ) : (
                   <div className="overflow-hidden rounded-xl border border-line bg-surface">
@@ -577,7 +574,7 @@ export default function AdminDashboard() {
                                 onClick={() => setUserToDelete(u)}
                                 disabled={deletingUserId === u.id}
                                 aria-label={`Delete ${u.name || u.email}`}
-                                title="Delete user & associated records"
+                                title="Delete user"
                                 className="inline-flex items-center justify-center rounded-md border border-blood/30 bg-blood/10 p-1.5 text-blood hover:bg-blood/20 transition-colors disabled:opacity-50 cursor-pointer"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
@@ -597,15 +594,15 @@ export default function AdminDashboard() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-4">
                   <h3 className="font-mono text-xs uppercase tracking-wider text-bone">
-                    Emergency Requisitions ({requests.length})
+                    Blood Requests ({requests.length})
                   </h3>
-                  <span className="font-mono text-[11px] text-faint">National Broadcast Ledger</span>
+                  <span className="font-mono text-[11px] text-faint">All Blood Requests</span>
                 </div>
 
                 {requests.length === 0 ? (
                   <div className="rounded-xl border border-line bg-surface p-12 text-center">
                     <Inbox className="mx-auto h-8 w-8 text-faint" />
-                    <p className="mt-4 text-sm font-medium text-bone">No blood requests filed</p>
+                    <p className="mt-4 text-sm font-medium text-bone">No blood requests posted yet</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -638,12 +635,12 @@ export default function AdminDashboard() {
                               </span>
                             </div>
                             <p className="mt-1.5 text-sm font-medium text-bone">
-                              {req.hospital?.name || 'Unknown Medical Center'}
+                              {req.hospital?.name || 'Unknown Hospital'}
                             </p>
                             <p className="mt-0.5 font-mono text-[11px] text-faint">
-                              Units: <strong className="text-bone">{req.units}</strong> · City:{' '}
-                              {req.hospital?.user?.city || 'N/A'} · Matched Donors:{' '}
-                              {req.matches?.length || 0} · Filed:{' '}
+                              Bags Needed: <strong className="text-bone">{req.units}</strong> · City:{' '}
+                              {req.hospital?.user?.city || 'N/A'} · Donors Notified:{' '}
+                              {req.matches?.length || 0} · Posted:{' '}
                               {new Date(req.createdAt).toLocaleDateString()}
                             </p>
                           </div>
@@ -662,20 +659,20 @@ export default function AdminDashboard() {
                   <div className="flex items-center gap-2">
                     <ShieldAlert className="h-4 w-4 text-blood" />
                     <h3 className="font-mono text-xs uppercase tracking-wider text-bone">
-                      Predictive Shortage Intelligence ({predictions.length})
+                      Blood Shortage Forecast ({predictions.length})
                     </h3>
                   </div>
-                  <span className="font-mono text-[11px] text-faint">Flask ML Engine Port 5001</span>
+                  <span className="font-mono text-[11px] text-faint">Shortage Prediction Model</span>
                 </div>
 
                 {predictions.length === 0 ? (
                   <div className="rounded-xl border border-line bg-surface p-12 text-center">
                     <ShieldAlert className="mx-auto h-8 w-8 text-faint" />
                     <p className="mt-4 text-sm font-medium text-bone">
-                      No shortage predictions returned
+                      No shortage predictions available
                     </p>
                     <p className="mt-1 text-xs text-mute">
-                      Ensure the predictive service is active on port 5001.
+                      Shortage prediction service is currently unavailable.
                     </p>
                   </div>
                 ) : (
@@ -698,10 +695,10 @@ export default function AdminDashboard() {
                             </div>
                             <div>
                               <p className="font-mono text-xs uppercase tracking-wider text-bone">
-                                Antigen Group {bloodGroupLabels[pred.bloodGroup] || pred.bloodGroup}
+                                Blood Group {bloodGroupLabels[pred.bloodGroup] || pred.bloodGroup}
                               </p>
                               <p className="mt-1 font-mono text-xs text-faint">
-                                30-Day Requests: <span className="text-bone">{pred.requestCount}</span> · Available Donors: <span className="text-bone">{pred.donorCount}</span> · Ratio: <span className="text-bone">{pred.ratio}</span>
+                                30-Day Requests: <span className="text-bone">{pred.requestCount}</span> · Donors Available: <span className="text-bone">{pred.donorCount}</span> · Ratio: <span className="text-bone">{pred.ratio}</span>
                               </p>
                             </div>
                           </div>
@@ -739,8 +736,8 @@ export default function AdminDashboard() {
                 <Trash2 className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="text-base font-bold text-bone">Delete Platform User</h4>
-                <p className="font-mono text-[11px] text-blood uppercase">Permanent Administrative Action</p>
+                <h4 className="text-base font-bold text-bone">Delete User Account</h4>
+                <p className="font-mono text-[11px] text-blood uppercase">Permanent Action</p>
               </div>
             </div>
 
@@ -751,7 +748,7 @@ export default function AdminDashboard() {
                 (<span className="font-mono text-blood">{userToDelete.role}</span>)?
               </p>
               <div className="rounded-lg border border-blood/20 bg-blood/5 p-3 text-[11px] text-bone">
-                ⚠️ All associated records (hospital requisitions, inventory, active match dispatches, donor availability history, and credentials) will be permanently purged.
+                ⚠️ All related data (blood requests, stock records, and donor matches) will be permanently deleted.
               </div>
             </div>
 
@@ -771,7 +768,7 @@ export default function AdminDashboard() {
                 className="inline-flex items-center gap-2 rounded-lg bg-blood px-4 py-2 font-mono text-xs font-semibold text-white shadow hover:bg-blood-dark transition-all disabled:opacity-50 cursor-pointer"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                <span>{deletingUserId === userToDelete.id ? 'Deleting...' : 'Confirm Permanent Deletion'}</span>
+                <span>{deletingUserId === userToDelete.id ? 'Deleting...' : 'Delete User Account'}</span>
               </button>
             </div>
           </div>

@@ -61,26 +61,26 @@ export default function Navbar() {
 
   const donorLinks = [
     { href: '/donor/dashboard', label: 'Dashboard', hint: 'Your live activity & stats', icon: Activity },
-    { href: '/donor/matches', label: 'My Matches', hint: 'Nearby hospital calls', icon: Droplet },
-    { href: '/donor/profile', label: 'Profile & Radius', hint: 'Blood group & availability', icon: ShieldCheck },
+    { href: '/donor/matches', label: 'My Matches', hint: 'Nearby blood requests', icon: Droplet },
+    { href: '/donor/profile', label: 'Profile & Settings', hint: 'Blood group & location', icon: ShieldCheck },
   ]
 
   const hospitalLinks = [
-    { href: '/hospital/dashboard', label: 'Dashboard', hint: 'Emergency overview', icon: Activity },
-    { href: '/hospital/requests', label: 'Blood Requests', hint: 'Open & fulfilled calls', icon: Droplet },
-    { href: '/hospital/inventory', label: 'Blood Inventory', hint: 'Units currently in stock', icon: ShieldCheck },
-    { href: '/hospital/request/new', label: 'Post Emergency', hint: 'Broadcast urgent request', icon: Building2 },
-    { href: '/hospital/analytics', label: 'Analytics', hint: 'Shortage predictions', icon: Trophy },
+    { href: '/hospital/dashboard', label: 'Dashboard', hint: 'Hospital overview', icon: Activity },
+    { href: '/hospital/requests', label: 'Blood Requests', hint: 'Active & completed requests', icon: Droplet },
+    { href: '/hospital/inventory', label: 'Blood Stock', hint: 'Bags in stock', icon: ShieldCheck },
+    { href: '/hospital/request/new', label: 'New Request', hint: 'Post urgent request', icon: Building2 },
+    { href: '/hospital/analytics', label: 'Analytics', hint: 'Shortage & activity stats', icon: Trophy },
   ]
 
   const adminLinks = [
-    { href: '/admin/dashboard', label: 'Admin Console', hint: 'Platform controls', icon: Activity },
+    { href: '/admin/dashboard', label: 'Admin Console', hint: 'Platform overview', icon: Activity },
   ]
 
   const publicLinks = [
-    { href: '/requests', label: 'Active Requests', hint: 'Live hospital emergency needs', icon: Search },
-    { href: '/leaderboard', label: 'Leaderboard', hint: 'Top verified lifesavers in Pakistan', icon: Trophy },
-    { href: '/#how-it-works', label: 'The Protocol', hint: 'Dispatch to photo-verified bag', icon: HelpCircle },
+    { href: '/requests', label: 'Active Requests', hint: 'Current blood needs', icon: Search },
+    { href: '/leaderboard', label: 'Leaderboard', hint: 'Top lifesavers in Pakistan', icon: Trophy },
+    { href: '/#how-it-works', label: 'How It Works', hint: 'From request to donation', icon: HelpCircle },
   ]
 
   const navLinks = user?.role === 'DONOR' ? donorLinks
@@ -253,7 +253,7 @@ export default function Navbar() {
                 <div className="flex items-center gap-1.5">
                   <LiveDot />
                   <span className="font-mono text-[9px] uppercase tracking-wider text-blood font-semibold">
-                    Live Dispatch Grid
+                    Emergency Blood Network
                   </span>
                 </div>
                 <span className="font-mono text-[9px] uppercase tracking-wider text-faint">
@@ -337,7 +337,7 @@ export default function Navbar() {
                     className="flex items-center justify-center gap-1.5 rounded-xl bg-blood py-2.5 text-center text-xs font-semibold text-white shadow transition-all hover:bg-blood-dark active:scale-98"
                   >
                     <Droplet className="h-3.5 w-3.5 fill-white" />
-                    <span>Donor Signup</span>
+                    <span>Join as Donor</span>
                   </Link>
 
                   <Link
@@ -346,7 +346,7 @@ export default function Navbar() {
                     className="flex items-center justify-center gap-1.5 rounded-xl border border-line bg-surface py-2.5 text-center text-xs font-medium text-bone hover:bg-raised transition-colors active:scale-98"
                   >
                     <Building2 className="h-3.5 w-3.5 text-blood" />
-                    <span>Hospital Portal</span>
+                    <span>Hospital Login</span>
                   </Link>
                 </div>
               )}
