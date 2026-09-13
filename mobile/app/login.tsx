@@ -97,6 +97,12 @@ export default function LoginScreen() {
           </View>
         </Field>
 
+        <View style={styles.forgotWrap}>
+          <Link href="/forgot-password" style={styles.forgotLink}>
+            Forgot password?
+          </Link>
+        </View>
+
         <Button
           tone="primary"
           size="lg"
@@ -104,7 +110,7 @@ export default function LoginScreen() {
           icon={ArrowRight}
           busy={loading}
           onPress={handleLogin}
-          style={{ marginTop: 10 }}
+          style={{ marginTop: 6 }}
         >
           {loading ? 'Signing in…' : 'Sign in'}
         </Button>
@@ -127,6 +133,18 @@ const styles = StyleSheet.create({
   passwordWrap: { position: 'relative', justifyContent: 'center' },
   passwordInput: { paddingRight: 92 },
   revealBtn: { position: 'absolute', right: 7, paddingVertical: 7 },
+
+  forgotWrap: {
+    alignItems: 'flex-end',
+    marginTop: -6,
+    marginBottom: 16,
+  },
+  forgotLink: {
+    fontFamily: font.mono.regular,
+    fontSize: 11,
+    letterSpacing: 0.3,
+    color: color.mute,
+  },
 
   footerRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

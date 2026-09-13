@@ -11,7 +11,7 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import {
-  ArrowLeft, ArrowUpRight, CalendarDays, Check, CircleCheck, LogOut, MapPin,
+  ArrowLeft, ArrowUpRight, CalendarDays, Check, CircleCheck, KeyRound, LogOut, MapPin,
   TriangleAlert,
 } from 'lucide-react-native'
 import { useAuthStore } from '../../src/store/authStore'
@@ -23,7 +23,7 @@ import OfflineBanner from '../../src/components/OfflineBanner'
 
 import {
   Screen, PageHead, Panel, Field, Input, Button, Notice, Rule, Label, SectionLabel,
-  Skeleton, TextAction, LiveDot, ContextualLoading,
+  Skeleton, TextAction, LiveDot, ContextualLoading, RowLink,
 } from '../../src/components/fk'
 import {
   color, wash, font, radius, statusTone, toneFor, bloodLabel, BLOOD_GROUPS,
@@ -440,6 +440,35 @@ export default function DonorProfileScreen() {
             Cancel
           </TextAction>
 
+          {/* ── Security ──────────────────────────────────────────────────── */}
+          <SectionLabel index="05" style={{ marginTop: 32 }}>Security</SectionLabel>
+
+          <RowLink onPress={() => router.push('/change-password')}>
+            <View style={styles.actionRowInner}>
+              <KeyRound size={16} color={color.mute} strokeWidth={2} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.actionTitle}>Change password</Text>
+                <Text style={styles.actionSub}>Update your account password</Text>
+              </View>
+            </View>
+          </RowLink>
+
+          {/* ── Danger Zone ───────────────────────────────────────────────── */}
+          <SectionLabel index="06" style={{ marginTop: 32 }}>Danger Zone</SectionLabel>
+
+          <RowLink
+            onPress={() => router.push('/delete-account')}
+            style={styles.dangerRow}
+          >
+            <View style={styles.actionRowInner}>
+              <TriangleAlert size={16} color={color.bloodLite} strokeWidth={2} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.dangerActionTitle}>Delete account</Text>
+                <Text style={styles.dangerActionSub}>Permanently wipe your account and all records</Text>
+              </View>
+            </View>
+          </RowLink>
+
           {/* ── Session ───────────────────────────────────────────────────── */}
           <Rule style={{ marginTop: 34 }} />
           <Pressable onPress={handleLogout} style={styles.logoutRow} hitSlop={6}>
@@ -528,5 +557,40 @@ const styles = StyleSheet.create({
   logoutText: {
     fontFamily: font.mono.medium, fontSize: 10, color: color.bloodLite,
     letterSpacing: 1.4, textTransform: 'uppercase',
+  },
+
+  // Security & Danger Zone
+  actionRowInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  actionTitle: {
+    fontFamily: font.sans.medium,
+    fontSize: 14,
+    color: color.bone,
+    letterSpacing: -0.2,
+  },
+  actionSub: {
+    fontFamily: font.sans.regular,
+    fontSize: 12,
+    color: color.mute,
+    marginTop: 2,
+  },
+  dangerRow: {
+    backgroundColor: wash.blood,
+    borderColor: wash.bloodEdge,
+  },
+  dangerActionTitle: {
+    fontFamily: font.sans.medium,
+    fontSize: 14,
+    color: color.bloodLite,
+    letterSpacing: -0.2,
+  },
+  dangerActionSub: {
+    fontFamily: font.sans.regular,
+    fontSize: 12,
+    color: color.mute,
+    marginTop: 2,
   },
 })
