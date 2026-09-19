@@ -8,64 +8,73 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  name      String?
-  phone     String?
-  role      Role      @default(DONOR)
-  password  String
-  city      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  donor               Donor?
-  hospital            Hospital?
-  passwordResetTokens PasswordResetToken[]
+  id                   String               @id @default(uuid())
+  email                String               @unique
+  name                 String?
+  phone                String?
+  role                 Role                 @default(DONOR)
+  password             String
+  city                 String
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  donor                Donor?
+  hospital             Hospital?
+  staffProfile         Staff?               @relation("StaffUser")
+  createdStaff         Staff[]              @relation("AdminStaff")
+  passwordResetTokens  PasswordResetToken[]
+  adminRoleChanges     RoleChangeLog[]      @relation("AdminRoleChanges")
+  targetRoleChanges    RoleChangeLog[]      @relation("TargetUserRoleChanges")
 }
 
 model Donor {
-  id              String     @id @default(uuid())
-  userId          String     @unique
-  bloodGroup      BloodGroup
-  lastDonated     DateTime?
-  isAvailable     Boolean    @default(true)
-  commitmentScore Int        @default(0)
-  area            String
-  latitude        Float
-  longitude       Float
-  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  matches         Match[]
-  pushToken       String?
-  shareContactInfo Boolean @default(false)
+  id                 String                    @id @default(uuid())
+  userId             String                    @unique
+  bloodGroup         BloodGroup
+  lastDonated        DateTime?
+  isAvailable        Boolean                   @default(true)
+  commitmentScore    Int                       @default(0)
+  area               String
+  latitude           Float
+  longitude          Float
+  user               User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matches            Match[]
+  pushToken          String?
+  shareContactInfo   Boolean                   @default(false)
+  staffRegistrations StaffDonorRegistration[]
+  candidateAccesses  CandidateListAccess[]
 }
 
 model Hospital {
-  id        String         @id @default(uuid())
-  userId    String         @unique
-  name      String
-  address   String
-  latitude  Float
-  longitude Float
-  licenseNo String         @unique
-  verified  Boolean        @default(false)
-  requests  BloodRequest[]
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  inventory Inventory[]
-  pushToken String?
+  id                String                @id @default(uuid())
+  userId            String                @unique
+  name              String
+  address           String
+  latitude          Float
+  longitude         Float
+  licenseNo         String                @unique
+  verified          Boolean               @default(false)
+  requests          BloodRequest[]
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inventory         Inventory[]
+  pushToken         String?
+  createdStaff      Staff[]               @relation("HospitalStaff")
+  candidateAccesses CandidateListAccess[]
 }
 
 model BloodRequest {
-  id         String        @id @default(uuid())
-  hospitalId String
-  bloodGroup BloodGroup
-  units      Int
-  urgency    Urgency       @default(NORMAL)
-  status     RequestStatus @default(PENDING)
-  notes      String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-  expiresAt  DateTime?
-  hospital   Hospital      @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
-  matches    Match[]
+  id                String                @id @default(uuid())
+  hospitalId        String
+  bloodGroup        BloodGroup
+  units             Int
+  urgency           Urgency               @default(NORMAL)
+  status            RequestStatus         @default(PENDING)
+  notes             String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  expiresAt         DateTime?
+  hospital          Hospital              @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  matches           Match[]
+  candidateAccesses CandidateListAccess[]
 }
 
 model Match {
@@ -92,10 +101,68 @@ model Inventory {
   @@unique([hospitalId, bloodGroup])
 }
 
+model Staff {
+  id                  String                    @id @default(uuid())
+  userId              String                    @unique
+  createdByHospitalId String?
+  createdByAdminId    String?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  user                User                      @relation("StaffUser", fields: [userId], references: [id], onDelete: Cascade)
+  createdByHospital   Hospital?                 @relation("HospitalStaff", fields: [createdByHospitalId], references: [id], onDelete: SetNull)
+  createdByAdmin      User?                     @relation("AdminStaff", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  registrations       StaffDonorRegistration[]
+
+  @@index([createdByHospitalId])
+  @@index([createdByAdminId])
+}
+
+model StaffDonorRegistration {
+  id           String   @id @default(uuid())
+  staffId      String
+  donorId      String
+  registeredAt DateTime @default(now())
+  staff        Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  donor        Donor    @relation(fields: [donorId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([donorId])
+}
+
+model CandidateListAccess {
+  id         String       @id @default(uuid())
+  hospitalId String
+  donorId    String
+  requestId  String
+  accessedAt DateTime     @default(now())
+  hospital   Hospital     @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  donor      Donor        @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  request    BloodRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([hospitalId])
+  @@index([donorId])
+  @@index([requestId])
+}
+
+model RoleChangeLog {
+  id           String   @id @default(uuid())
+  adminId      String
+  targetUserId String
+  oldRole      Role
+  newRole      Role
+  changedAt    DateTime @default(now())
+  admin        User     @relation("AdminRoleChanges", fields: [adminId], references: [id], onDelete: Cascade)
+  targetUser   User     @relation("TargetUserRoleChanges", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([targetUserId])
+}
+
 enum Role {
   DONOR
   HOSPITAL
   ADMIN
+  STAFF
 }
 
 enum BloodGroup {
